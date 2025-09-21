@@ -83,17 +83,23 @@ class ErrorDetectionAgent {
    * React Error Boundary 설정
    */
   setupReactErrorBoundary() {
-    // React 컴포넌트 오류를 catch하는 전역 핸들러
-    const originalComponentDidCatch = React.Component.prototype.componentDidCatch
+    // React가 로드되었는지 확인
+    if (typeof window !== 'undefined' && window.React) {
+      // React 컴포넌트 오류를 catch하는 전역 핸들러
+      const originalComponentDidCatch = window.React.Component.prototype.componentDidCatch
 
-    React.Component.prototype.componentDidCatch = function(error, errorInfo) {
-      // 원본 메서드 호출
-      if (originalComponentDidCatch) {
-        originalComponentDidCatch.call(this, error, errorInfo)
+      window.React.Component.prototype.componentDidCatch = function(error, errorInfo) {
+        // 원본 메서드 호출
+        if (originalComponentDidCatch) {
+          originalComponentDidCatch.call(this, error, errorInfo)
+        }
+
+        // 오류 처리
+        window.errorDetectionAgent?.handleReactError(error, errorInfo, this)
       }
-
-      // 오류 처리
-      window.errorDetectionAgent?.handleReactError(error, errorInfo, this)
+    } else {
+      // React가 아직 로드되지 않은 경우, 나중에 다시 시도
+      setTimeout(() => this.setupReactErrorBoundary(), 1000)
     }
   }
 

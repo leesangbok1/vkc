@@ -1,30 +1,155 @@
 import React from 'react'
+import { enhancedTokenManager } from '../../utils/enhancedTokenManager.js'
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false, error: null, errorInfo: null }
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      isTokenRelated: false,
+      isImageRelated: false
+    }
   }
 
   static getDerivedStateFromError(error) {
     // Update state so the next render will show the fallback UI
-    return { hasError: true }
+    return {
+      hasError: true,
+      error: error,
+      errorInfo: null
+    }
   }
 
   componentDidCatch(error, errorInfo) {
     // Log error details for debugging
     console.error('ErrorBoundary caught an error:', error, errorInfo)
 
+    // Check if error is token-related or image-related
+    const isTokenRelated = this.isTokenRelatedError(error)
+    const isImageRelated = this.isImageProcessingError(error)
+
     this.setState({
       error: error,
-      errorInfo: errorInfo
+      errorInfo: errorInfo,
+      isTokenRelated,
+      isImageRelated
     })
+
+    // Handle token-related errors
+    if (isTokenRelated) {
+      this.handleTokenError(error)
+    }
+
+    // Handle image-related errors
+    if (isImageRelated) {
+      this.handleImageError(error)
+    }
 
     // You can also log the error to an error reporting service here
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'exception', {
         description: error.toString(),
-        fatal: false
+        fatal: false,
+        custom_parameters: {
+          token_related: isTokenRelated
+        }
+      })
+    }
+  }
+
+  /**
+   * Check if error is related to token exhaustion
+   */
+  isTokenRelatedError(error) {
+    const errorMessage = error.message || error.toString()
+    const tokenErrorIndicators = [
+      'rate limit',
+      'rate_limit',
+      'token',
+      'quota',
+      'usage limit',
+      '429',
+      'too many requests',
+      'throttle'
+    ]
+
+    return tokenErrorIndicators.some(indicator =>
+      errorMessage.toLowerCase().includes(indicator.toLowerCase())
+    )
+  }
+
+  /**
+   * Check if error is related to image processing
+   */
+  isImageProcessingError(error) {
+    const errorMessage = error.message || error.toString()
+    const imageErrorIndicators = [
+      'could not process image',
+      'image processing',
+      'invalid image',
+      'image upload',
+      'image format',
+      'image size',
+      'unsupported image'
+    ]
+
+    return imageErrorIndicators.some(indicator =>
+      errorMessage.toLowerCase().includes(indicator.toLowerCase())
+    )
+  }
+
+  /**
+   * Handle token-related errors
+   */
+  handleTokenError(error) {
+    console.log('🚨 Token-related error detected in ErrorBoundary')
+
+    // Determine which service might be affected
+    const errorMessage = error.message || error.toString()
+    let serviceId = 'claude' // default
+
+    if (errorMessage.includes('github') || errorMessage.includes('GitHub')) {
+      serviceId = 'github'
+    } else if (errorMessage.includes('firebase') || errorMessage.includes('Firebase')) {
+      serviceId = 'firebase'
+    }
+
+    // Notify token manager
+    try {
+      enhancedTokenManager.onTokenExhausted(serviceId, {
+        source: 'ErrorBoundary',
+        error: errorMessage,
+        component: this.props.componentName || 'Unknown'
+      })
+    } catch (tokenError) {
+      console.warn('Failed to notify token manager:', tokenError)
+    }
+  }
+
+  /**
+   * Handle image processing errors
+   */
+  handleImageError(error) {
+    console.log('🖼️ Image processing error detected in ErrorBoundary')
+
+    const errorMessage = error.message || error.toString()
+    console.error('Image processing error details:', {
+      error: errorMessage,
+      component: this.props.componentName || 'Unknown',
+      timestamp: new Date().toISOString()
+    })
+
+    // Log to analytics if available
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'exception', {
+        description: 'Image processing error: ' + errorMessage,
+        fatal: false,
+        custom_parameters: {
+          error_type: 'image_processing',
+          component: this.props.componentName || 'Unknown'
+        }
       })
     }
   }
@@ -35,6 +160,16 @@ class ErrorBoundary extends React.Component {
 
   handleGoHome = () => {
     window.location.href = '/'
+  }
+
+  handleRetryWithTokenManager = async () => {
+    try {
+      await enhancedTokenManager.retryNow()
+      this.setState({ hasError: false, error: null, errorInfo: null, isTokenRelated: false })
+    } catch (error) {
+      console.warn('Token manager retry failed:', error)
+      window.location.reload()
+    }
   }
 
   render() {
@@ -49,15 +184,31 @@ class ErrorBoundary extends React.Component {
             </h1>
 
             <p className="error-message">
-              죄송합니다. 예상치 못한 오류가 발생했습니다.
-              페이지를 새로고침하거나 홈으로 돌아가 주세요.
+              {this.state.isTokenRelated ? (
+                <>
+                  토큰 사용량 한도에 도달했습니다.
+                  자동 재개 시스템이 활성화되었습니다.
+                </>
+              ) : (
+                <>
+                  죄송합니다. 예상치 못한 오류가 발생했습니다.
+                  페이지를 새로고침하거나 홈으로 돌아가 주세요.
+                </>
+              )}
             </p>
 
             <div className="error-actions">
-              <button onClick={this.handleReload} className="error-btn primary">
-                <i className="fa-solid fa-refresh"></i>
-                페이지 새로고침
-              </button>
+              {this.state.isTokenRelated ? (
+                <button onClick={this.handleRetryWithTokenManager} className="error-btn token-retry">
+                  <i className="fa-solid fa-clock-rotate-left"></i>
+                  토큰 복구 재시도
+                </button>
+              ) : (
+                <button onClick={this.handleReload} className="error-btn primary">
+                  <i className="fa-solid fa-refresh"></i>
+                  페이지 새로고침
+                </button>
+              )}
 
               <button onClick={this.handleGoHome} className="error-btn secondary">
                 <i className="fa-solid fa-home"></i>
@@ -66,15 +217,15 @@ class ErrorBoundary extends React.Component {
             </div>
 
             {/* 개발 환경에서만 상세 오류 정보 표시 */}
-            {process.env.NODE_ENV === 'development' && (
+            {process.env.NODE_ENV === 'development' && this.state.error && (
               <details className="error-details">
                 <summary>개발자용 오류 정보</summary>
                 <div className="error-stack">
                   <h4>Error:</h4>
-                  <pre>{this.state.error && this.state.error.toString()}</pre>
+                  <pre>{this.state.error.toString()}</pre>
 
                   <h4>Component Stack:</h4>
-                  <pre>{this.state.errorInfo.componentStack}</pre>
+                  <pre>{this.state.errorInfo?.componentStack || 'Component stack not available'}</pre>
                 </div>
               </details>
             )}
@@ -161,6 +312,16 @@ const styles = `
 
 .error-btn.secondary:hover {
   background-color: #545b62;
+  transform: translateY(-1px);
+}
+
+.error-btn.token-retry {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.error-btn.token-retry:hover {
+  background-color: #138496;
   transform: translateY(-1px);
 }
 

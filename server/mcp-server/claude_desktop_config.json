@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "imessage-commander": {
+      "command": "node",
+      "args": ["/Users/bk/Desktop/poi-main/server/mcp-server/dist/index.js"],
+      "env": {
+        "PORT": "8991",
+        "JWT_SECRET": "your-super-secure-jwt-secret-change-this",
+        "PHONE_NUMBER": "+1234567890",
+        "IMESSAGE_POLL_INTERVAL": "2000",
+        "MAX_MESSAGE_AGE": "300000",
+        "ALLOWED_COMMANDS": "git,npm,node,test,build,claude",
+        "COMMAND_TIMEOUT": "30000",
+        "LOG_LEVEL": "info",
+        "LOG_FILE": "/Users/bk/Desktop/poi-main/server/mcp-server/logs/mcp-server.log",
+        "PROJECT_ROOT": "/Users/bk/Desktop/poi-main"
+      }
+    }
+  }
+}
