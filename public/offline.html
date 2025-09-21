@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오프라인 - Viet K-Connect</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .offline-container {
+            max-width: 500px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .offline-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 32px;
+            animation: pulse 2s infinite;
+        }
+
+        .offline-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+
+        .offline-message {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .retry-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .retry-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .network-status {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .status-online {
+            color: #4CAF50;
+        }
+
+        .status-offline {
+            color: #FF6B6B;
+        }
+
+        .offline-tips {
+            margin-top: 20px;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .offline-tips h3 {
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .offline-tips ul {
+            list-style: none;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .offline-tips li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .offline-tips li::before {
+            content: '💡';
+            position: absolute;
+            left: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .offline-container {
+                padding: 30px 20px;
+            }
+
+            .offline-title {
+                font-size: 1.6rem;
+            }
+
+            .offline-message {
+                font-size: 1rem;
+            }
+
+            .offline-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">
+            <span id="offline-emoji">📡</span>
+        </div>
+
+        <h1 class="offline-title">인터넷 연결 없음</h1>
+
+        <p class="offline-message">
+            현재 인터넷에 연결되어 있지 않습니다.<br>
+            연결을 확인한 후 다시 시도해주세요.
+        </p>
+
+        <button class="retry-button" onclick="window.location.reload()">
+            <span>🔄</span>
+            다시 시도
+        </button>
+
+        <div class="network-status">
+            <strong>연결 상태:</strong>
+            <span id="connection-status" class="status-offline">오프라인</span>
+        </div>
+
+        <div class="offline-tips">
+            <h3>💡 연결 문제 해결 방법</h3>
+            <ul>
+                <li>Wi-Fi 또는 모바일 데이터 연결 확인</li>
+                <li>라우터 재시작 시도</li>
+                <li>비행기 모드 켜고 끄기</li>
+                <li>네트워크 설정 재설정</li>
+                <li>잠시 후 다시 시도</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 네트워크 상태 모니터링
+        function updateConnectionStatus() {
+            const statusElement = document.getElementById('connection-status');
+            const emojiElement = document.getElementById('offline-emoji');
+
+            if (navigator.onLine) {
+                statusElement.textContent = '온라인';
+                statusElement.className = 'status-online';
+                emojiElement.textContent = '✅';
+
+                // 온라인 상태가 되면 자동으로 홈페이지로 이동
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+            } else {
+                statusElement.textContent = '오프라인';
+                statusElement.className = 'status-offline';
+                emojiElement.textContent = '📡';
+            }
+        }
+
+        // 초기 상태 확인
+        updateConnectionStatus();
+
+        // 네트워크 상태 변화 감지
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+
+        // 주기적으로 연결 상태 확인
+        setInterval(() => {
+            updateConnectionStatus();
+        }, 5000);
+
+        // Service Worker 등록 확인
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(() => {
+                console.log('Service Worker is ready');
+            });
+        }
+
+        // 키보드 단축키 (Space 또는 Enter로 새로고침)
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space' || event.code === 'Enter') {
+                event.preventDefault();
+                window.location.reload();
+            }
+        });
+    </script>
+</body>
+</html>

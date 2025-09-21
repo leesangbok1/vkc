@@ -20,7 +20,8 @@ import { renderPostDetailPage } from './pages/PostDetailPage.js';
 import { renderAllPostsPage } from './pages/AllPostsPage.js';
 import { renderLoginModal } from './components/LoginModal.js';
 import { renderCertificationModal } from './components/CertificationModal.js';
-import { renderAdminDashboardModal } from './components/AdminDashboardModal.js';
+// 관리자 대시보드 제거됨 - 별도 관리자 전용 페이지로 분리
+import AutoTaskManager from './components/AutoTaskManager.js';
 import { initI18n, setLanguage, getLanguage } from './i18n/i18n.js';
 
 // --- GLOBAL STATE ---
@@ -44,7 +45,7 @@ const state = {
     isLangDropdownOpen: false,
     isLoginModalOpen: false,
     isCertificationModalOpen: false,
-    isAdminModalOpen: false,
+    // 관리자 모달 제거됨
 };
 
 // --- MODAL & DROPDOWN CONTROL ---
@@ -88,25 +89,9 @@ function closeCertificationModal() {
     state.isCertificationModalOpen = false;
 }
 
-function openAdminModal() {
-    if (state.isAdminModalOpen) return;
-    state.isAdminModalOpen = true;
-    const modalHTML = renderAdminDashboardModal(state.allPosts);
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    setTimeout(() => {
-        document.getElementById('admin-dashboard-modal')?.classList.add('show');
-    }, 10);
-}
+// 관리자 모달 기능 제거됨 - 별도 /admin 경로로 접근
 
-function closeAdminModal() {
-    if (!state.isAdminModalOpen) return;
-    const modalOverlay = document.getElementById('admin-dashboard-modal');
-    if (modalOverlay) {
-        modalOverlay.classList.remove('show');
-        modalOverlay.addEventListener('transitionend', () => modalOverlay.remove(), { once: true });
-    }
-    state.isAdminModalOpen = false;
-}
+// 관리자 모달 닫기 기능 제거됨
 
 function toggleDropdown(type, forceClose = false) {
     const dropdownId = type === 'user' ? 'user-dropdown-menu' : 'language-dropdown-menu';
@@ -181,8 +166,8 @@ function render(data = null) {
 
     // Render admin button if current user is admin
     if (state.currentUser && state.currentUser.isAdmin) {
-        const adminButton = `<button id="admin-dashboard-button" class="menu-button" style="position: fixed; bottom: 20px; left: 20px; z-index: 1000; background-color: #f44336; color: white;"><i class="fa-solid fa-user-gear"></i></button>`;
-        document.body.insertAdjacentHTML('beforeend', adminButton);
+        // 관리자 버튼 제거됨 - 일반 사용자 인터페이스에서 비건됨
+        // 관리자 버튼 렌더링 제거됨
     }
 }
 
@@ -416,9 +401,7 @@ function setupEventListeners() {
                 console.error("답변 채택 실패:", error);
                 alert("답변 채택에 실패했습니다.");
             }
-        } else if (target.matches('#admin-dashboard-button')) {
-            e.preventDefault();
-            openAdminModal();
+        // 관리자 대시보드 버튼 이벤트 제거됨
         } else if (target.matches('.delete-post-button')) {
             e.preventDefault();
             const postIdToDelete = target.dataset.postId;
@@ -426,7 +409,7 @@ function setupEventListeners() {
                 try {
                     await deletePost(postIdToDelete);
                     alert('게시글이 삭제되었습니다.');
-                    closeAdminModal();
+                    // 관리자 모달 닫기 제거됨
                     navigate('home'); // Refresh page after deletion
                 } catch (error) {
                     console.error("게시글 삭제 실패:", error);

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code 자동 모니터링 시스템</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+            background-size: 200% 100%;
+            animation: gradient 3s ease infinite;
+        }
+
+        @keyframes gradient {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .status-value {
+            color: #333;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .task-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .task-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .log-container {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-timestamp {
+            color: #a0aec0;
+            margin-right: 10px;
+        }
+
+        .indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .indicator.active {
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        .indicator.waiting {
+            background: #f59e0b;
+        }
+
+        .indicator.error {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .task-queue {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .task-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 3px solid #667eea;
+            font-size: 13px;
+        }
+
+        .task-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #6c757d;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Claude Code 자동 모니터링</h1>
+
+        <div class="status-card">
+            <div class="status-item">
+                <span class="status-label">모니터링 상태:</span>
+                <span class="status-value">
+                    <span class="indicator waiting" id="status-indicator"></span>
+                    <span id="status-text">대기 중</span>
+                </span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">마지막 확인:</span>
+                <span class="status-value" id="last-check">아직 확인 안함</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">대기 중인 작업:</span>
+                <span class="status-value" id="queue-count">0개</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">다음 확인 예정:</span>
+                <span class="status-value" id="next-check">설정되지 않음</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-primary" id="start-monitoring">모니터링 시작</button>
+            <button class="btn-secondary" id="check-now">즉시 확인</button>
+            <button class="btn-danger" id="stop-monitoring">중지</button>
+        </div>
+
+        <textarea
+            class="task-input"
+            id="task-input"
+            placeholder="Claude Code에게 요청할 작업을 입력하세요...&#10;&#10;예시:&#10;- React 컴포넌트 생성&#10;- 버그 수정&#10;- 코드 리팩토링&#10;- 테스트 작성 등"
+        ></textarea>
+
+        <div class="controls">
+            <button class="btn-primary" id="add-task">작업 추가</button>
+            <button class="btn-secondary" id="clear-queue">큐 초기화</button>
+        </div>
+
+        <div class="task-queue" id="task-queue" style="display: none;">
+            <h4 style="margin-bottom: 10px; color: #374151;">대기 중인 작업</h4>
+            <div id="task-list"></div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <h4 style="margin-bottom: 10px; color: #374151;">시스템 로그</h4>
+            <div class="log-container" id="log-container">
+                <div class="log-entry">
+                    <span class="log-timestamp">[시작]</span>
+                    <span>Claude Code 모니터링 시스템 준비 완료</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            💡 이 시스템은 5시간 주기로 Claude Code 사용 가능 여부를 확인합니다<br>
+            브라우저 탭을 열어두시면 백그라운드에서 자동으로 작동합니다
+        </div>
+    </div>
+
+    <script>
+        class ClaudeCodeMonitor {
+            constructor() {
+                this.isMonitoring = false;
+                this.taskQueue = JSON.parse(localStorage.getItem('claude_task_queue') || '[]');
+                this.monitoringInterval = null;
+                this.checkInterval = 5 * 60 * 60 * 1000; // 5시간
+                this.lastCheck = localStorage.getItem('claude_last_check');
+                this.nextCheckTime = null;
+
+                this.initializeUI();
+                this.loadState();
+            }
+
+            initializeUI() {
+                // 버튼 이벤트 리스너
+                document.getElementById('start-monitoring').addEventListener('click', () => this.startMonitoring());
+                document.getElementById('stop-monitoring').addEventListener('click', () => this.stopMonitoring());
+                document.getElementById('check-now').addEventListener('click', () => this.checkNow());
+                document.getElementById('add-task').addEventListener('click', () => this.addTask());
+                document.getElementById('clear-queue').addEventListener('click', () => this.clearQueue());
+
+                // 페이지 가시성 변경 감지
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden && this.isMonitoring) {
+                        this.log('페이지 활성화됨 - 상태 확인');
+                        this.checkNow();
+                    }
+                });
+
+                // 브라우저 종료 시 상태 저장
+                window.addEventListener('beforeunload', () => {
+                    this.saveState();
+                });
+
+                this.updateUI();
+            }
+
+            loadState() {
+                const savedState = localStorage.getItem('claude_monitor_state');
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    this.isMonitoring = state.isMonitoring || false;
+                    this.lastCheck = state.lastCheck;
+                    this.nextCheckTime = state.nextCheckTime;
+
+                    if (this.isMonitoring) {
+                        this.log('이전 세션에서 모니터링이 활성화되어 있었습니다');
+                        this.startMonitoring();
+                    }
+                }
+            }
+
+            saveState() {
+                const state = {
+                    isMonitoring: this.isMonitoring,
+                    lastCheck: this.lastCheck,
+                    nextCheckTime: this.nextCheckTime
+                };
+                localStorage.setItem('claude_monitor_state', JSON.stringify(state));
+                localStorage.setItem('claude_task_queue', JSON.stringify(this.taskQueue));
+            }
+
+            startMonitoring() {
+                if (this.isMonitoring) return;
+
+                this.isMonitoring = true;
+                this.log('모니터링 시작됨');
+                this.updateStatus('active', '모니터링 중');
+
+                // 즉시 한 번 확인
+                this.checkNow();
+
+                // 주기적 확인 설정
+                this.scheduleNextCheck();
+
+                this.updateUI();
+                this.saveState();
+            }
+
+            stopMonitoring() {
+                if (!this.isMonitoring) return;
+
+                this.isMonitoring = false;
+                if (this.monitoringInterval) {
+                    clearTimeout(this.monitoringInterval);
+                    this.monitoringInterval = null;
+                }
+
+                this.log('모니터링 중지됨');
+                this.updateStatus('waiting', '대기 중');
+                this.nextCheckTime = null;
+
+                this.updateUI();
+                this.saveState();
+            }
+
+            checkNow() {
+                this.lastCheck = new Date().toISOString();
+                this.log('Claude Code 상태 확인 중...');
+
+                // 실제로는 Claude Code의 상태를 확인할 수 없으므로
+                // 시뮬레이션으로 처리
+                setTimeout(() => {
+                    const isAvailable = this.simulateClaudeStatus();
+
+                    if (isAvailable) {
+                        this.log('✅ Claude Code 사용 가능 - 작업 처리 시작');
+                        this.processNextTask();
+                    } else {
+                        this.log('⏳ Claude Code 사용량 한도 도달 - 다음 확인까지 대기');
+                        this.updateStatus('waiting', '사용량 한도 대기 중');
+                    }
+
+                    this.updateUI();
+                    this.saveState();
+                }, 1000);
+            }
+
+            simulateClaudeStatus() {
+                // 실제 환경에서는 Claude Code API나 상태를 확인하는 로직이 필요
+                // 여기서는 시뮬레이션으로 80% 확률로 사용 가능하다고 가정
+                return Math.random() > 0.2;
+            }
+
+            processNextTask() {
+                if (this.taskQueue.length === 0) {
+                    this.log('처리할 작업이 없습니다');
+                    this.updateStatus('active', '작업 대기 중');
+                    return;
+                }
+
+                const task = this.taskQueue.shift();
+                this.log(`작업 처리 시작: ${task.title}`);
+                this.updateStatus('active', '작업 처리 중');
+
+                // 실제로는 Claude Code에 작업을 전달하는 로직이 필요
+                // 여기서는 시뮬레이션
+                setTimeout(() => {
+                    this.log(`✅ 작업 완료: ${task.title}`);
+
+                    // 다음 작업이 있으면 계속 처리
+                    if (this.taskQueue.length > 0) {
+                        setTimeout(() => this.processNextTask(), 2000);
+                    } else {
+                        this.updateStatus('active', '모니터링 중');
+                    }
+
+                    this.updateUI();
+                    this.saveState();
+                }, 3000 + Math.random() * 5000); // 3-8초 랜덤 처리 시간
+            }
+
+            scheduleNextCheck() {
+                if (!this.isMonitoring) return;
+
+                this.nextCheckTime = Date.now() + this.checkInterval;
+
+                this.monitoringInterval = setTimeout(() => {
+                    if (this.isMonitoring) {
+                        this.checkNow();
+                        this.scheduleNextCheck(); // 다음 확인 예약
+                    }
+                }, this.checkInterval);
+
+                this.log(`다음 확인 예정: ${new Date(this.nextCheckTime).toLocaleString()}`);
+            }
+
+            addTask() {
+                const taskInput = document.getElementById('task-input');
+                const taskText = taskInput.value.trim();
+
+                if (!taskText) {
+                    alert('작업 내용을 입력해주세요');
+                    return;
+                }
+
+                const task = {
+                    id: Date.now(),
+                    title: taskText.split('\n')[0].substring(0, 50) + (taskText.length > 50 ? '...' : ''),
+                    content: taskText,
+                    createdAt: new Date().toISOString()
+                };
+
+                this.taskQueue.push(task);
+                taskInput.value = '';
+
+                this.log(`작업 추가됨: ${task.title}`);
+                this.updateUI();
+                this.saveState();
+
+                // 모니터링 중이고 Claude가 사용 가능하면 즉시 처리
+                if (this.isMonitoring) {
+                    this.checkNow();
+                }
+            }
+
+            clearQueue() {
+                if (this.taskQueue.length === 0) return;
+
+                const confirmed = confirm('모든 대기 중인 작업을 삭제하시겠습니까?');
+                if (confirmed) {
+                    this.taskQueue = [];
+                    this.log('작업 큐가 초기화되었습니다');
+                    this.updateUI();
+                    this.saveState();
+                }
+            }
+
+            updateStatus(type, text) {
+                const indicator = document.getElementById('status-indicator');
+                const statusText = document.getElementById('status-text');
+
+                indicator.className = `indicator ${type}`;
+                statusText.textContent = text;
+            }
+
+            updateUI() {
+                // 상태 업데이트
+                document.getElementById('last-check').textContent =
+                    this.lastCheck ? new Date(this.lastCheck).toLocaleString() : '아직 확인 안함';
+
+                document.getElementById('queue-count').textContent = `${this.taskQueue.length}개`;
+
+                document.getElementById('next-check').textContent =
+                    this.nextCheckTime ? new Date(this.nextCheckTime).toLocaleString() : '설정되지 않음';
+
+                // 작업 큐 표시
+                const taskQueueElement = document.getElementById('task-queue');
+                const taskListElement = document.getElementById('task-list');
+
+                if (this.taskQueue.length > 0) {
+                    taskQueueElement.style.display = 'block';
+                    taskListElement.innerHTML = this.taskQueue.map(task =>
+                        `<div class="task-item">
+                            <strong>${task.title}</strong><br>
+                            <small style="color: #6b7280;">추가됨: ${new Date(task.createdAt).toLocaleString()}</small>
+                        </div>`
+                    ).join('');
+                } else {
+                    taskQueueElement.style.display = 'none';
+                }
+
+                // 버튼 상태
+                document.getElementById('start-monitoring').disabled = this.isMonitoring;
+                document.getElementById('stop-monitoring').disabled = !this.isMonitoring;
+            }
+
+            log(message) {
+                const logContainer = document.getElementById('log-container');
+                const timestamp = new Date().toLocaleTimeString();
+
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.innerHTML = `
+                    <span class="log-timestamp">[${timestamp}]</span>
+                    <span>${message}</span>
+                `;
+
+                logContainer.appendChild(logEntry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+
+                // 로그가 너무 많이 쌓이지 않도록 제한
+                const logEntries = logContainer.querySelectorAll('.log-entry');
+                if (logEntries.length > 50) {
+                    logEntries[0].remove();
+                }
+            }
+        }
+
+        // 시스템 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            new ClaudeCodeMonitor();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+#!/bin/bash
+# Claude Code 자동 재개 시스템 실행 스크립트
+
+# 스크립트 경로
+SCRIPT_PATH="$HOME/.local/bin/claude-auto-resume"
+
+# 인자가 있으면 그대로 전달, 없으면 기본 실행
+if [ $# -eq 0 ]; then
+    python3 "$SCRIPT_PATH"
+else
+    python3 "$SCRIPT_PATH" "$@"
+fi

@@ -1,6 +1,18 @@
-// --- MOCK DATA & MOCK API ---
+// Firebase API with Real-time Database Integration
+import { isFirebaseConnected, testFirebaseConnection } from '../config/firebase-config.js';
+import {
+  listenToQuestions,
+  listenToQuestion,
+  listenToAnswers,
+  createQuestion as createRealtimeQuestion,
+  createAnswer as createRealtimeAnswer,
+  setUserOnline,
+  setUserOffline
+} from '../api/realtime-firebase.js';
+import { notificationService } from '../services/notification-service.js';
+import { chatSystem } from '../features/chat/ChatSystem.js';
 
-// --- MOCK DATA ---
+// --- MOCK DATA (폴백용) ---
 const mockUsers = {
     'user01': { id: 'user01', name: 'Minh', profilePic: 'https://placehold.co/40x40/31343C/FFFFFF?text=M', isAdmin: true, email: 'minh@example.com' },
     'user02': { id: 'user02', name: 'Hoa', profilePic: 'https://placehold.co/40x40/9C27B0/FFFFFF?text=H', certification: '운전면허', email: 'hoa@example.com' },
@@ -27,22 +39,91 @@ let mockAnswers = {
     ],
 };
 
-// --- MOCK AUTH ---
+// --- AUTH 관리 ---
 let currentUser = null;
+let realtimeListeners = new Map(); // 실시간 리스너 관리
+let isRealtimeMode = false; // 실시간 모드 플래그
+
+// Firebase 연결 상태 확인 및 초기화
+const initializeRealtimeMode = async () => {
+  const connectionTest = await testFirebaseConnection();
+  isRealtimeMode = connectionTest.success;
+
+  if (isRealtimeMode) {
+    console.log('🔥 실시간 모드 활성화됨');
+  } else {
+    console.warn('⚠️ 모킹 모드로 실행됨:', connectionTest.error);
+  }
+
+  return isRealtimeMode;
+};
+
+// 초기화 실행
+initializeRealtimeMode();
 
 export async function signInWithGoogle() {
     // 목업: 첫 번째 유저로 로그인
     currentUser = mockUsers['user01'];
+
+    // 실시간 모드에서 사용자 온라인 상태 설정
+    if (isRealtimeMode && currentUser) {
+        await setUserOnline(currentUser.id, {
+            name: currentUser.name,
+            profilePic: currentUser.profilePic
+        });
+
+        // 채팅 시스템에 사용자 설정
+        chatSystem.setCurrentUser(currentUser);
+
+        // 알림 구독 시작
+        notificationService.subscribeToUserNotifications(currentUser.id, (notifications) => {
+            console.log(`📬 ${notifications.length}개의 알림 수신`);
+        });
+    }
+
     return currentUser;
 }
 
 export async function signInWithFacebook() {
     // 목업: 두 번째 유저로 로그인
     currentUser = mockUsers['user02'];
+
+    // 실시간 모드에서 사용자 온라인 상태 설정
+    if (isRealtimeMode && currentUser) {
+        await setUserOnline(currentUser.id, {
+            name: currentUser.name,
+            profilePic: currentUser.profilePic
+        });
+
+        // 채팅 시스템에 사용자 설정
+        chatSystem.setCurrentUser(currentUser);
+
+        // 알림 구독 시작
+        notificationService.subscribeToUserNotifications(currentUser.id, (notifications) => {
+            console.log(`📬 ${notifications.length}개의 알림 수신`);
+        });
+    }
+
     return currentUser;
 }
 
 export async function signOutUser() {
+    // 실시간 모드에서 사용자 오프라인 상태 설정
+    if (isRealtimeMode && currentUser) {
+        await setUserOffline(currentUser.id);
+
+        // 모든 실시간 리스너 정리
+        realtimeListeners.forEach((unsubscribe, key) => {
+            if (typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
+        });
+        realtimeListeners.clear();
+
+        // 채팅 시스템 정리
+        chatSystem.cleanup();
+    }
+
     currentUser = null;
 }
 
@@ -67,25 +148,86 @@ export async function getUser(userId, usersCache) {
     return { name: 'Unknown User', profilePic: '' };
 }
 
-export async function fetchHomepagePosts(usersCache) {
-    // 최신순 10개
-    const posts = [...mockPosts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
-    return Promise.all(posts.map(async (post) => {
-        const author = await getUser(post.authorId, usersCache);
-        return { ...post, author };
-    }));
+export async function fetchHomepagePosts(usersCache, enableRealtime = true) {
+    if (isRealtimeMode && enableRealtime) {
+        // 실시간 질문 데이터 구독
+        return new Promise((resolve) => {
+            const unsubscribe = listenToQuestions((questions) => {
+                const latestQuestions = questions.slice(0, 10);
+                Promise.all(latestQuestions.map(async (post) => {
+                    const author = await getUser(post.authorId, usersCache);
+                    return { ...post, author };
+                })).then(resolve);
+            }, {
+                sortBy: 'createdAt',
+                limit: 10
+            });
+
+            // 리스너 관리
+            realtimeListeners.set('homepage_posts', unsubscribe);
+        });
+    } else {
+        // 폴백: 목 데이터 사용
+        const posts = [...mockPosts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
+        return Promise.all(posts.map(async (post) => {
+            const author = await getUser(post.authorId, usersCache);
+            return { ...post, author };
+        }));
+    }
 }
 
-export async function fetchPostDetails(postId, usersCache) {
-    const post = mockPosts.find((p) => p.id === postId);
-    if (!post) return null;
-    const author = await getUser(post.authorId, usersCache);
-    const answers = (mockAnswers[postId] || []);
-    const answersWithAuthors = await Promise.all(answers.map(async (ans) => {
-        const answerAuthor = await getUser(ans.authorId, usersCache);
-        return { ...ans, author: answerAuthor };
-    }));
-    return { ...post, author, answers: answersWithAuthors };
+export async function fetchPostDetails(postId, usersCache, enableRealtime = true) {
+    if (isRealtimeMode && enableRealtime) {
+        // 실시간 질문 데이터 구독
+        return new Promise((resolve) => {
+            let postData = null;
+            let answersData = [];
+
+            // 질문 데이터 감시
+            const unsubscribePost = listenToQuestion(postId, async (question) => {
+                if (question) {
+                    const author = await getUser(question.authorId, usersCache);
+                    postData = { ...question, author };
+
+                    if (answersData.length > 0) {
+                        resolve({ ...postData, answers: answersData });
+                    }
+                } else {
+                    resolve(null);
+                }
+            });
+
+            // 답변 데이터 감시
+            const unsubscribeAnswers = listenToAnswers(postId, async (answers) => {
+                const answersWithAuthors = await Promise.all(answers.map(async (ans) => {
+                    const answerAuthor = await getUser(ans.authorId, usersCache);
+                    return { ...ans, author: answerAuthor };
+                }));
+                answersData = answersWithAuthors;
+
+                if (postData) {
+                    resolve({ ...postData, answers: answersData });
+                }
+            });
+
+            // 리스너 관리
+            realtimeListeners.set(`post_${postId}`, () => {
+                if (unsubscribePost) unsubscribePost();
+                if (unsubscribeAnswers) unsubscribeAnswers();
+            });
+        });
+    } else {
+        // 폴백: 목 데이터 사용
+        const post = mockPosts.find((p) => p.id === postId);
+        if (!post) return null;
+        const author = await getUser(post.authorId, usersCache);
+        const answers = (mockAnswers[postId] || []);
+        const answersWithAuthors = await Promise.all(answers.map(async (ans) => {
+            const answerAuthor = await getUser(ans.authorId, usersCache);
+            return { ...ans, author: answerAuthor };
+        }));
+        return { ...post, author, answers: answersWithAuthors };
+    }
 }
 
 export async function fetchPaginatedPosts(filter, sortType, lastVisible, firstVisible, usersCache) {
@@ -112,15 +254,40 @@ export async function fetchPaginatedPosts(filter, sortType, lastVisible, firstVi
     };
 }
 
-export async function createQuestion(title, content, user) {
+export async function createQuestion(title, content, user, category = 'General', tags = []) {
+    if (isRealtimeMode) {
+        // 실시간 데이터베이스에 질문 생성
+        const questionData = {
+            title,
+            content,
+            authorId: user.id,
+            authorName: user.name,
+            category,
+            tags: Array.isArray(tags) ? tags : [],
+            viewCount: 0,
+            answerCount: 0,
+            likes: 0
+        };
+
+        const newQuestion = await createRealtimeQuestion(questionData);
+
+        if (newQuestion) {
+            console.log('🔥 실시간 질문 생성:', newQuestion.id);
+            return newQuestion;
+        } else {
+            console.warn('⚠️ 실시간 질문 생성 실패, 목 데이터로 폴백');
+        }
+    }
+
+    // 폴백: 목 데이터 사용
     const newPost = {
         id: `post${Math.random().toString(36).slice(2, 10)}`,
         title,
         content,
         authorId: user.id,
         createdAt: new Date(),
-        category: 'General',
-        tags: [],
+        category,
+        tags,
         viewCount: 0,
         answerCount: 0,
         likes: 0,
@@ -130,6 +297,42 @@ export async function createQuestion(title, content, user) {
 }
 
 export async function createAnswer(postId, content, user) {
+    if (isRealtimeMode) {
+        // 실시간 데이터베이스에 답변 생성
+        const answerData = {
+            content,
+            authorId: user.id,
+            authorName: user.name,
+            likes: 0,
+            isAccepted: false
+        };
+
+        const newAnswer = await createRealtimeAnswer(postId, answerData);
+
+        if (newAnswer) {
+            console.log('🔥 실시간 답변 생성:', newAnswer.id);
+
+            // 질문 작성자에게 알림 전송
+            const post = mockPosts.find(p => p.id === postId);
+            if (post && post.authorId !== user.id) {
+                await notificationService.notifyNewAnswer(
+                    post.authorId,
+                    {
+                        id: user.id,
+                        name: user.name,
+                        profilePic: user.profilePic
+                    },
+                    post.title
+                );
+            }
+
+            return newAnswer;
+        } else {
+            console.warn('⚠️ 실시간 답변 생성 실패, 목 데이터로 폴백');
+        }
+    }
+
+    // 폴백: 목 데이터 사용
     const newAnswer = {
         id: `ans${Math.random().toString(36).slice(2, 10)}`,
         content,

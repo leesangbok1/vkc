@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mobile": "vite --host 0.0.0.0 --port 3000",
+    "dev:network": "vite --host --port 3000",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:mobile": "vite preview --host 0.0.0.0 --port 4173"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
@@ -17,6 +20,7 @@
     "@boudev/magicui": "^2.0.4",
     "firebase": "^12.0.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.1"
   }
 }
