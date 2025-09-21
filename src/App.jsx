@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Header from '@components/layout/Header'
-import HomePage from '@pages/HomePage'
-import PostDetailPage from '@pages/PostDetailPage'
-import AllPostsPage from '@pages/AllPostsPage'
+import HomePage from '@pages/HomePage.jsx'
+import PostDetailPage from '@pages/PostDetailPage.jsx'
+import AllPostsPage from '@pages/AllPostsPage.jsx'
 import LoginModal from '@components/auth/LoginModal'
+import AutoTaskManager from '@components/AutoTaskManager.jsx'
 import { AuthProvider, useAuth } from '@services/AuthContext'
 import { RealtimeProvider } from '@services/RealtimeContext'
 import { NotificationProvider } from '@services/NotificationContext'
 import ErrorBoundary from '@components/common/ErrorBoundary'
 import LoadingSpinner from '@components/common/LoadingSpinner'
-import './style.css'
+import './index.css'
 
 // 메인 앱 컴포넌트
 function AppContent() {
@@ -40,6 +41,9 @@ function AppContent() {
       {isLoginModalOpen && (
         <LoginModal onClose={() => setIsLoginModalOpen(false)} />
       )}
+
+      {/* AutoTaskManager - 개발 모드에서만 표시 */}
+      {process.env.NODE_ENV === 'development' && <AutoTaskManager />}
     </div>
   )
 }

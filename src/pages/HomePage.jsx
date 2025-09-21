@@ -3,6 +3,7 @@ import { useAuth } from '@services/AuthContext'
 import { useRealtime } from '@services/RealtimeContext'
 import LoadingSpinner, { SkeletonLoader } from '@components/common/LoadingSpinner'
 import QuestionCard from '@components/questions/QuestionCard'
+import QuestionForm from '@components/questions/QuestionForm'
 import WelcomeBanner from '@components/home/WelcomeBanner'
 import CategoryFilter from '@components/filters/CategoryFilter'
 import StatsWidget from '@components/widgets/StatsWidget'
@@ -16,6 +17,12 @@ const HomePage = () => {
   const [error, setError] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
+
+  // 질문 작성 완료 핸들러
+  const handleQuestionSubmit = async (questionData) => {
+    // 새 질문이 추가되면 목록 새로고침
+    await handleRefresh()
+  }
 
   // 게시물 로드
   const loadPosts = async (enableRealtime = true) => {
@@ -107,6 +114,9 @@ const HomePage = () => {
           </div>
 
           {/* 카테고리 필터 */}
+          {/* 질문 작성 폼 */}
+          <QuestionForm onSubmit={handleQuestionSubmit} />
+
           <CategoryFilter
             selectedCategory={selectedCategory}
             onCategoryChange={setSelectedCategory}

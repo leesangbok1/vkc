@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ClaudeUsageManager from '../utils/tokenManager.js';
+import { autoWorkflow } from '../utils/auto-workflow-manager.js';
 
 /**
  * Claude API 자동 작업 관리 컴포넌트
@@ -7,6 +8,7 @@ import ClaudeUsageManager from '../utils/tokenManager.js';
 const AutoTaskManager = () => {
   const [usageManager] = useState(() => new ClaudeUsageManager());
   const [status, setStatus] = useState(null);
+  const [workflowStatus, setWorkflowStatus] = useState(null);
   const [logs, setLogs] = useState([]);
   const [isVisible, setIsVisible] = useState(false);
   const intervalRef = useRef(null);
@@ -18,6 +20,7 @@ const AutoTaskManager = () => {
     // 상태 업데이트 주기
     intervalRef.current = setInterval(() => {
       setStatus(usageManager.getStatus());
+      setWorkflowStatus(autoWorkflow.getStatus());
     }, 1000);
 
     // 로그 추가 함수 오버라이드
@@ -149,7 +152,7 @@ const AutoTaskManager = () => {
       {/* 상태 정보 */}
       <div style={{ padding: '16px' }}>
         <div style={{ marginBottom: '16px' }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>현재 상태</h4>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Claude 사용량 상태</h4>
           <div style={{ fontSize: '12px', color: '#666' }}>
             <div>모니터링: {status?.isMonitoring ? '🟢 활성' : '🔴 비활성'}</div>
             <div>대기 중인 작업: {status?.queueLength || 0}개</div>
@@ -157,6 +160,25 @@ const AutoTaskManager = () => {
             <div>마지막 확인: {formatTime(status?.lastUsageCheck)}</div>
           </div>
         </div>
+
+        {/* 자동 워크플로 상태 */}
+        {workflowStatus && (
+          <div style={{ marginBottom: '16px' }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>자동 워크플로 상태</h4>
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              <div>실행 상태: {workflowStatus.isRunning ? '🟢 실행 중' : '🔴 대기 중'}</div>
+              <div>총 이슈: {workflowStatus.totalIssues}개</div>
+              <div>대기 이슈: {workflowStatus.pendingIssues}개</div>
+              <div>완료 이슈: {workflowStatus.completedIssues}개</div>
+              {workflowStatus.currentIssue && (
+                <>
+                  <div>현재 이슈: {workflowStatus.currentIssue.title}</div>
+                  <div>진행률: {workflowStatus.currentIssue.currentStep + 1}/{workflowStatus.currentIssue.steps.length}</div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 현재 작업 */}
         {status?.currentTask && (

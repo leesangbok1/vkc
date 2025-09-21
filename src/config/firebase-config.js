@@ -6,13 +6,13 @@ import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
 // Firebase 설정 (환경 변수에서 로드)
 const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY || "demo-api-key",
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || "viet-kconnect.firebaseapp.com",
-  databaseURL: process.env.VITE_FIREBASE_DATABASE_URL || "https://viet-kconnect-default-rtdb.firebaseio.com/",
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || "viet-kconnect",
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || "viet-kconnect.appspot.com",
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: process.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef123456789"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "viet-kconnect.firebaseapp.com",
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://viet-kconnect-default-rtdb.firebaseio.com/",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "viet-kconnect",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "viet-kconnect.appspot.com",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef123456789"
 };
 
 // Firebase 앱 초기화
@@ -28,7 +28,7 @@ try {
   storage = getStorage(app);
 
   // 개발 환경에서 에뮬레이터 사용
-  if (process.env.NODE_ENV === 'development' && !window.location.hostname.includes('firebaseapp.com')) {
+  if (import.meta.env.DEV && !window.location.hostname.includes('firebaseapp.com')) {
     try {
       // Database 에뮬레이터
       if (!database._delegate._repoInternal) {

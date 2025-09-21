@@ -9,7 +9,14 @@
     "dev:network": "vite --host --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "preview:mobile": "vite preview --host 0.0.0.0 --port 4173"
+    "preview:mobile": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 
+// 자동 워크플로 시스템 초기화
+import './utils/issue-registry.js'
+
+// 오류 감지 에이전트 초기화
+import './utils/error-detection-agent.js'
+
 // React 18의 새로운 Root API 사용
 ReactDOM.createRoot(document.getElementById('app')).render(
   <React.StrictMode>
