@@ -458,10 +458,16 @@ gh pr create --title "Add social login" --body "Implements OAuth login"
 - **진행률**: 10% (6/76 Story Points)
 - **상세**: [SPRINT_BACKLOG.md](./SPRINT_BACKLOG.md) 참조
 
-### 다음 마일스톤
-- **M1**: Backend Integration (10/02)
-- **M2**: AI Features (10/16)
-- **M3**: Beta Launch (10/30)
+### 업데이트된 마일스톤 계획 (2025)
+- **M1**: 프로젝트 정리 및 기초 정비 (01/24~02/07)
+- **M2**: 백엔드 인프라 완성 (02/08~02/21)
+- **M3**: 핵심 기능 구현 (02/22~03/14)
+- **M4**: UI/UX 완성 및 모바일 최적화 (03/15~03/28)
+- **M5**: 품질 보증 및 테스트 (03/29~04/11)
+- **M6**: 베타 런칭 준비 (04/12~04/25)
+
+**📋 상세 계획**: [MILESTONES.md](./MILESTONES.md) 참조  
+**🔍 이슈 분석**: [ISSUE_ANALYSIS.md](./ISSUE_ANALYSIS.md) 참조
 
 ---
 
