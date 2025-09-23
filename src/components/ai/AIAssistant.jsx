@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import PropTypes from 'prop-types'
 import aiService from '@services/AIService'
 
 const AIAssistant = ({
@@ -716,6 +717,14 @@ if (typeof document !== 'undefined') {
   const styleSheet = document.createElement('style')
   styleSheet.textContent = styles
   document.head.appendChild(styleSheet)
+}
+
+AIAssistant.propTypes = {
+  mode: PropTypes.oneOf(['suggestion', 'categorize', 'improve', 'translate']),
+  question: PropTypes.object,
+  onResult: PropTypes.func,
+  autoTrigger: PropTypes.bool,
+  className: PropTypes.string
 }
 
 export default AIAssistant

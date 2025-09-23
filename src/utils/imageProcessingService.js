@@ -2,11 +2,14 @@
  * OpenAI Vision API를 이용한 이미지 처리 서비스
  */
 
+import logger from './logger.js'
+import environment from './environment.js'
+
 class ImageProcessingService {
   constructor() {
-    this.apiKey = import.meta.env.VITE_OPENAI_API_KEY || ''
-    this.apiUrl = 'https://api.openai.com/v1'
-    this.visionModel = 'gpt-4o' // 또는 'gpt-4-vision-preview'
+    this.apiKey = environment.API_CONFIG.openai.apiKey
+    this.apiUrl = environment.API_CONFIG.openai.baseUrl
+    this.visionModel = environment.API_CONFIG.openai.visionModel
     this.isEnabled = !!this.apiKey
 
     // 지원되는 이미지 형식
@@ -14,7 +17,24 @@ class ImageProcessingService {
     this.maxFileSize = 20 * 1024 * 1024 // 20MB
     this.maxImageSize = { width: 2048, height: 2048 }
 
-    console.log('🖼️ 이미지 처리 서비스 초기화:', this.isEnabled ? '활성화됨' : '비활성화됨 (API 키 없음)')
+    // 캐싱 시스템
+    this.cache = new Map()
+    this.cacheTimeout = 10 * 60 * 1000 // 10분
+    this.maxCacheSize = 50
+
+    // 통계
+    this.stats = {
+      requests: 0,
+      cacheHits: 0,
+      errors: 0,
+      totalProcessingTime: 0
+    }
+
+    logger.info('이미지 처리 서비스 초기화', {
+      enabled: this.isEnabled,
+      model: this.visionModel,
+      supportedFormats: this.supportedFormats
+    })
   }
 
   /**
@@ -104,13 +124,69 @@ class ImageProcessingService {
   }
 
   /**
+   * 캐시 키 생성
+   */
+  generateCacheKey(imageFile, prompt, options) {
+    const fileInfo = `${imageFile.name}-${imageFile.size}-${imageFile.lastModified}`
+    const optionsStr = JSON.stringify(options)
+    return `${fileInfo}-${prompt}-${optionsStr}`
+  }
+
+  /**
+   * 캐시에서 결과 가져오기
+   */
+  getCachedResult(cacheKey) {
+    const cached = this.cache.get(cacheKey)
+    if (cached && (Date.now() - cached.timestamp < this.cacheTimeout)) {
+      this.stats.cacheHits++
+      logger.debug('캐시에서 이미지 분석 결과 반환', { cacheKey })
+      return cached.result
+    }
+    return null
+  }
+
+  /**
+   * 캐시에 결과 저장
+   */
+  setCachedResult(cacheKey, result) {
+    // 캐시 크기 제한
+    if (this.cache.size >= this.maxCacheSize) {
+      const oldestKey = this.cache.keys().next().value
+      this.cache.delete(oldestKey)
+    }
+
+    this.cache.set(cacheKey, {
+      result,
+      timestamp: Date.now()
+    })
+
+    logger.debug('이미지 분석 결과 캐시에 저장', { cacheKey })
+  }
+
+  /**
    * OpenAI Vision API로 이미지 분석
    */
   async analyzeImage(imageFile, prompt = "이 이미지에 대해 설명해주세요.", options = {}) {
+    const startTime = Date.now()
+    this.stats.requests++
+
     try {
       if (!this.isEnabled) {
         throw new Error('이미지 처리 서비스가 활성화되지 않았습니다. OpenAI API 키를 확인하세요.')
       }
+
+      // 캐시 확인
+      const cacheKey = this.generateCacheKey(imageFile, prompt, options)
+      const cachedResult = this.getCachedResult(cacheKey)
+      if (cachedResult) {
+        return cachedResult
+      }
+
+      logger.info('이미지 분석 시작', {
+        fileName: imageFile.name,
+        fileSize: imageFile.size,
+        prompt: prompt.substring(0, 50)
+      })
 
       // 이미지 유효성 검사
       const validation = this.validateImage(imageFile)
@@ -153,7 +229,7 @@ class ImageProcessingService {
         temperature: options.temperature || 0.3
       }
 
-      console.log('🖼️ OpenAI Vision API 요청 시작...')
+      logger.startTimer('openai-vision-api')
 
       const response = await fetch(`${this.apiUrl}/chat/completions`, {
         method: 'POST',
@@ -164,13 +240,20 @@ class ImageProcessingService {
         body: JSON.stringify(requestData)
       })
 
+      logger.endTimer('openai-vision-api')
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error?.message || response.statusText
+
+        logger.error('OpenAI Vision API 요청 실패', {
+          status: response.status,
+          errorMessage,
+          fileName: imageFile.name
+        })
 
         // 400 오류 상세 처리
         if (response.status === 400) {
-          const errorMessage = errorData.error?.message || response.statusText
-
           if (errorMessage.toLowerCase().includes('image')) {
             throw new Error(`이미지 처리 오류: ${errorMessage}`)
           } else if (errorMessage.toLowerCase().includes('token')) {
@@ -180,7 +263,7 @@ class ImageProcessingService {
           }
         }
 
-        throw new Error(`OpenAI API 오류 (${response.status}): ${errorData.error?.message || response.statusText}`)
+        throw new Error(`OpenAI API 오류 (${response.status}): ${errorMessage}`)
       }
 
       const result = await response.json()
@@ -190,17 +273,40 @@ class ImageProcessingService {
         throw new Error('API 응답에서 내용을 찾을 수 없습니다.')
       }
 
-      console.log('🖼️ 이미지 분석 완료')
+      const processingTime = Date.now() - startTime
+      this.stats.totalProcessingTime += processingTime
 
-      return {
+      const analysisResult = {
         success: true,
         content: content.trim(),
         usage: result.usage,
-        model: this.visionModel
+        model: this.visionModel,
+        processingTime,
+        cached: false
       }
 
+      // 결과 캐시에 저장
+      this.setCachedResult(cacheKey, analysisResult)
+
+      logger.info('이미지 분석 완료', {
+        fileName: imageFile.name,
+        processingTime,
+        tokenUsage: result.usage?.total_tokens
+      })
+
+      return analysisResult
+
     } catch (error) {
-      console.error('🖼️ 이미지 처리 실패:', error)
+      this.stats.errors++
+      const processingTime = Date.now() - startTime
+
+      logger.error('이미지 처리 실패', {
+        error: error.message,
+        fileName: imageFile.name,
+        processingTime,
+        totalRequests: this.stats.requests,
+        errorRate: (this.stats.errors / this.stats.requests * 100).toFixed(2) + '%'
+      })
 
       // 오류 타입별 사용자 친화적 메시지
       let userMessage = error.message
@@ -253,6 +359,56 @@ class ImageProcessingService {
   }
 
   /**
+   * 캐시 관리
+   */
+  clearCache() {
+    this.cache.clear()
+    logger.info('이미지 처리 캐시 지우기 완료')
+  }
+
+  /**
+   * 통계 정보 가져오기
+   */
+  getStats() {
+    const cacheHitRate = this.stats.requests > 0
+      ? (this.stats.cacheHits / this.stats.requests * 100).toFixed(2) + '%'
+      : '0%'
+
+    const errorRate = this.stats.requests > 0
+      ? (this.stats.errors / this.stats.requests * 100).toFixed(2) + '%'
+      : '0%'
+
+    const avgProcessingTime = this.stats.requests > 0
+      ? Math.round(this.stats.totalProcessingTime / (this.stats.requests - this.stats.cacheHits))
+      : 0
+
+    return {
+      requests: this.stats.requests,
+      cacheHits: this.stats.cacheHits,
+      cacheHitRate,
+      errors: this.stats.errors,
+      errorRate,
+      totalProcessingTime: this.stats.totalProcessingTime,
+      avgProcessingTime,
+      cacheSize: this.cache.size,
+      maxCacheSize: this.maxCacheSize
+    }
+  }
+
+  /**
+   * 통계 초기화
+   */
+  resetStats() {
+    this.stats = {
+      requests: 0,
+      cacheHits: 0,
+      errors: 0,
+      totalProcessingTime: 0
+    }
+    logger.info('이미지 처리 통계 초기화 완료')
+  }
+
+  /**
    * 서비스 상태 확인
    */
   getStatus() {
@@ -262,7 +418,13 @@ class ImageProcessingService {
       model: this.visionModel,
       supportedFormats: this.supportedFormats,
       maxFileSize: this.maxFileSize,
-      maxImageSize: this.maxImageSize
+      maxImageSize: this.maxImageSize,
+      cache: {
+        size: this.cache.size,
+        maxSize: this.maxCacheSize,
+        timeout: this.cacheTimeout
+      },
+      stats: this.getStats()
     }
   }
 }

@@ -1,0 +1,11 @@
+{
+  "message": "지금 작업 중인 디렉토리가 어디야?",
+  "originalMessage": "지금 작업 중인 디렉토리가 어디야?",
+  "timestamp": "2025-09-23T10:51:31.864Z",
+  "workspace": "/Users/bk/Desktop/poi-main",
+  "projectInfo": {
+    "name": "poi",
+    "version": "0.0.0",
+    "description": "No description"
+  }
+}

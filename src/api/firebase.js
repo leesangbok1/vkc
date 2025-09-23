@@ -29,7 +29,7 @@ let mockPosts = [
     { id: 'post005', title: '한국에서 전세 계약 시 주의할 점은 무엇인가요?', authorId: 'user04', content: '처음으로 한국에서 전세 계약을 하려고 합니다. 사기당하지 않으려면 어떤 점을 주의해야 할까요?', category: 'Housing', tags: ['전세', '계약', '부동산'], createdAt: new Date('2024-07-26T16:00:00'), viewCount: 220, answerCount: 0, likes: 2 },
     { id: 'post006', title: '한국 건강보험 외국인 가입 절차 및 혜택 문의', authorId: 'user01', content: '한국 건강보험에 외국인도 가입할 수 있다고 들었습니다. 가입 절차와 어떤 혜택을 받을 수 있는지 궁금합니다.', category: 'Healthcare', tags: ['건강보험', '외국인', '의료'], createdAt: new Date('2024-07-25T09:30:00'), viewCount: 190, answerCount: 0, likes: 8 },
 ];
-let mockAnswers = {
+const mockAnswers = {
     'post001': [
         { id: 'ans001', authorId: 'user02', content: '저도 작년에 신청해서 받았습니다! 일단 해당 지역에 거주해야 하고, 지자체에서 발급하는 추천서가 필수입니다. 소득 요건도 있으니 공고를 잘 확인해야 해요.', createdAt: new Date('2024-07-30T11:00:00'), likes: 3, isAccepted: false },
         { id: 'ans002', authorId: 'expert01', content: '전문가 의견: F-2-R 비자는 인구감소지역 활성화를 위한 제도로, 지자체별 요건이 상이합니다. 기본적으로 법무부 고시 소득요건(전년도 GNI 70% 이상)과 해당 지자체의 추천서가 핵심입니다. 추천서 발급 기준(취업/창업 분야, 거주 기간 등)을 먼저 확인하시는 것이 중요합니다.', createdAt: new Date('2024-07-30T15:00:00'), likes: 7, isAccepted: true },
@@ -41,7 +41,7 @@ let mockAnswers = {
 
 // --- AUTH 관리 ---
 let currentUser = null;
-let realtimeListeners = new Map(); // 실시간 리스너 관리
+const realtimeListeners = new Map(); // 실시간 리스너 관리
 let isRealtimeMode = false; // 실시간 모드 플래그
 
 // Firebase 연결 상태 확인 및 초기화
