@@ -395,7 +395,7 @@ window.addEventListener('beforeunload', () => {
 });
 
 // 개발 모드에서 디버깅 정보 제공
-if (process.env.NODE_ENV === 'development') {
+if (import.meta.env.DEV) {
   window.debugRealtimeListeners = {
     count: () => listenerManager.getActiveListenerCount(),
     list: () => Array.from(listenerManager.listeners.keys()),

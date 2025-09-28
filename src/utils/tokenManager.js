@@ -12,7 +12,7 @@ class ClaudeUsageManager {
     this.maxRetries = 3;
 
     // Claude API 설정
-    this.claudeApiKey = process.env.REACT_APP_CLAUDE_API_KEY;
+    this.claudeApiKey = import.meta.env.VITE_CLAUDE_API_KEY || null;
     this.claudeApiUrl = 'https://api.anthropic.com/v1';
 
     // 로컬 스토리지 키

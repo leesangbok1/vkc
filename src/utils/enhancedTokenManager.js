@@ -174,7 +174,8 @@ class EnhancedTokenManager {
    */
   async checkClaudeStatus(service) {
     if (!service.apiKey) {
-      throw new Error('Claude API key not configured')
+      console.log('🔧 Claude API 키가 설정되지 않음 - 개발 모드로 실행')
+      return { available: false, rateLimitInfo: {} }
     }
 
     // 간단한 사용량 확인 요청
@@ -243,7 +244,8 @@ class EnhancedTokenManager {
    */
   async checkGitHubStatus(service) {
     if (!service.apiKey) {
-      throw new Error('GitHub API key not configured')
+      console.log('🔧 GitHub API 키가 설정되지 않음 - 개발 모드로 실행')
+      return { available: false, rateLimitInfo: {} }
     }
 
     const response = await fetch(`${service.baseUrl}/rate_limit`, {
