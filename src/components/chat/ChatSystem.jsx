@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import PropTypes from 'prop-types'
 import { useAuth } from '@services/AuthContext'
 import { useRealtime } from '@services/RealtimeContext'
 
@@ -950,6 +951,15 @@ if (typeof document !== 'undefined') {
   const styleSheet = document.createElement('style')
   styleSheet.textContent = styles
   document.head.appendChild(styleSheet)
+}
+
+ChatSystem.propTypes = {
+  chatType: PropTypes.oneOf(['general', 'expert', 'private']),
+  targetUserId: PropTypes.string,
+  postId: PropTypes.string,
+  isMinimized: PropTypes.bool,
+  onToggleMinimize: PropTypes.func,
+  onClose: PropTypes.func
 }
 
 export default ChatSystem

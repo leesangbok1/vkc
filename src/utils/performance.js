@@ -553,7 +553,7 @@ export const lazyImageLoader = new LazyImageLoader()
 
 // React 개발 도구 함수
 export const withPerformanceLogging = (Component, componentName) => {
-  return React.forwardRef((props, ref) => {
+  const WrappedComponent = React.forwardRef((props, ref) => {
     const renderStart = performance.now()
 
     React.useEffect(() => {
@@ -567,6 +567,9 @@ export const withPerformanceLogging = (Component, componentName) => {
 
     return React.createElement(Component, { ...props, ref })
   })
+
+  WrappedComponent.displayName = `withPerformanceLogging(${componentName})`
+  return WrappedComponent
 }
 
 export default {

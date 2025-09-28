@@ -505,7 +505,7 @@ class ChatSystem {
     if (!isFirebaseConnected()) return [];
 
     try {
-      let messagesRef = ref(database, `chat_messages/${roomId}`);
+      const messagesRef = ref(database, `chat_messages/${roomId}`);
       let messagesQuery;
 
       if (beforeTimestamp) {

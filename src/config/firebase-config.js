@@ -7,10 +7,10 @@ import { getStorage, connectStorageEmulator } from 'firebase/storage';
 // Firebase 설정 (환경 변수에서 로드)
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "viet-kconnect.firebaseapp.com",
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://viet-kconnect-default-rtdb.firebaseio.com/",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "viet-kconnect",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "viet-kconnect.appspot.com",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "demo-project.firebaseapp.com",
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://demo-project-default-rtdb.firebaseio.com/",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "demo-project.appspot.com",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef123456789"
 };
@@ -30,24 +30,20 @@ try {
   // 개발 환경에서 에뮬레이터 사용
   if (import.meta.env.DEV && !window.location.hostname.includes('firebaseapp.com')) {
     try {
-      // Database 에뮬레이터
-      if (!database._delegate._repoInternal) {
-        connectDatabaseEmulator(database, 'localhost', 9000);
-      }
-
-      // Auth 에뮬레이터
-      if (!auth._delegate.config.emulator) {
-        connectAuthEmulator(auth, 'http://localhost:9099');
-      }
-
-      // Storage 에뮬레이터
-      if (!storage._delegate._url.includes('localhost')) {
-        connectStorageEmulator(storage, 'localhost', 9199);
-      }
+      // Firebase 에뮬레이터 연결 시도
+      // 이미 연결된 경우 에러가 발생하지만 정상적인 동작
+      connectDatabaseEmulator(database, 'localhost', 9000);
+      connectAuthEmulator(auth, 'http://localhost:9099');
+      connectStorageEmulator(storage, 'localhost', 9199);
 
       console.log('🔧 Firebase 에뮬레이터 연결됨');
     } catch (error) {
-      console.warn('⚠️ Firebase 에뮬레이터 연결 실패 (이미 연결되었거나 에뮬레이터가 실행되지 않음):', error.message);
+      // 에뮬레이터가 이미 연결되었거나 실행되지 않은 경우
+      if (error.message.includes('already') || error.message.includes('emulator')) {
+        console.log('🔧 Firebase 에뮬레이터가 이미 연결되어 있거나 프로덕션 모드입니다');
+      } else {
+        console.warn('⚠️ Firebase 에뮬레이터 연결 실패:', error.message);
+      }
     }
   }
 

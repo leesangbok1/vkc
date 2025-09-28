@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import PropTypes from 'prop-types'
 import { useAuth } from '@services/AuthContext'
 import LoadingSpinner from '@components/common/LoadingSpinner'
 
@@ -361,6 +362,10 @@ if (typeof document !== 'undefined') {
   const styleSheet = document.createElement('style')
   styleSheet.textContent = styles
   document.head.appendChild(styleSheet)
+}
+
+LoginModal.propTypes = {
+  onClose: PropTypes.func.isRequired
 }
 
 export default LoginModal

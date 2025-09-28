@@ -1,0 +1,18 @@
+{
+  "message": "워크스페이스 이동",
+  "timestamp": "2025-09-23T11:17:42.383Z",
+  "workspace": "/Users/bk/Desktop/poi-main",
+  "projectInfo": {
+    "name": "poi",
+    "version": "0.0.0",
+    "description": "No description"
+  },
+  "gitInfo": {
+    "branch": "no-git",
+    "status": "0개 파일 변경"
+  },
+  "systemInfo": {
+    "platform": "darwin",
+    "nodeVersion": "v24.8.0"
+  }
+}
