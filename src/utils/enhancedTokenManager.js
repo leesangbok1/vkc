@@ -221,7 +221,7 @@ class EnhancedTokenManager {
    */
   async checkFirebaseStatus(service) {
     try {
-      const { testFirebaseConnection } = await import('../config/firebase-config.js')
+      const { testFirebaseConnection } = await import('../config/firebase.js')
       const result = await testFirebaseConnection()
 
       return {

@@ -1,5 +1,5 @@
 // Firebase API with Real-time Database Integration
-import { isFirebaseConnected, testFirebaseConnection } from '../config/firebase-config.js';
+import { isFirebaseConnected, testFirebaseConnection } from '../config/firebase.js';
 import {
   listenToQuestions,
   listenToQuestion,
@@ -8,9 +8,9 @@ import {
   createAnswer as createRealtimeAnswer,
   setUserOnline,
   setUserOffline
-} from '../api/realtime-firebase.js';
+} from './realtime-firebase.js';
 import { notificationService } from '../services/notification-service.js';
-import { chatSystem } from '../features/chat/ChatSystem.js';
+import { chatSystem } from './ChatSystem.js';
 
 // --- MOCK DATA (폴백용) ---
 const mockUsers = {

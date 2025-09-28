@@ -13,9 +13,9 @@ import {
   startAt,
   endAt
 } from 'firebase/database';
-import { database, isFirebaseConnected } from '../../config/firebase-config.js';
-import { listenerManager } from '../../api/realtime-firebase.js';
-import { notificationService, NOTIFICATION_TYPES } from '../../services/notification-service.js';
+import { database, isFirebaseConnected } from '../config/firebase.js';
+import { listenerManager } from './realtime-firebase.js';
+import { notificationService, NOTIFICATION_TYPES } from './notification-service.js';
 
 // 메시지 타입 정의
 export const MESSAGE_TYPES = {

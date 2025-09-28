@@ -1,7 +1,7 @@
 // 실시간 질문 목록 컴포넌트
-import { listenToQuestions } from '../../api/realtime-firebase.js';
-import { listenerManager } from '../../api/realtime-firebase.js';
-import { notificationService } from '../../services/notification-service.js';
+import { listenToQuestions } from "@services/realtime-firebase.js"
+import { listenerManager } from "@services/realtime-firebase.js"
+import { notificationService } from "@services/notification-service";
 
 export class RealtimeQuestionList {
   constructor(containerId, options = {}) {

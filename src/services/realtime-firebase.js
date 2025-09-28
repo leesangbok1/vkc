@@ -17,7 +17,7 @@ import {
   startAt,
   endAt
 } from 'firebase/database';
-import { database, isFirebaseConnected } from '../config/firebase-config.js';
+import { database, isFirebaseConnected } from '../config/firebase.js';
 
 // 실시간 리스너 관리
 class RealtimeListenerManager {

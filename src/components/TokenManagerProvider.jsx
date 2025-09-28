@@ -150,7 +150,7 @@ export const TokenManagerProvider = ({
    */
   const handleFirebaseStatusRequest = async (workerInstance, messageId) => {
     try {
-      const { testFirebaseConnection } = await import('../config/firebase-config.js')
+      const { testFirebaseConnection } = await import('../config/firebase.js')
       const result = await testFirebaseConnection()
 
       workerInstance.postMessage({

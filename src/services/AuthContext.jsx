@@ -4,7 +4,7 @@ import {
   signInWithFacebook,
   signOutUser,
   onAuthChange
-} from '../api/firebase.js'
+} from "@services/firebase-api"
 
 // 인증 컨텍스트 생성
 const AuthContext = createContext()

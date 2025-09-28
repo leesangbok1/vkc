@@ -1,5 +1,18 @@
 {
-    "recommendations": [
-        "iganbold.yoyo-ai-versioning"
-    ]
+  "recommendations": [
+    "iganbold.yoyo-ai-versioning",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+    "christian-kohler.path-intellisense",
+    "formulahendry.auto-rename-tag",
+    "ms-vscode.vscode-json",
+    "ritwickdey.liveserver",
+    "gruntfuggly.todo-tree",
+    "wayou.vscode-todo-highlight",
+    "aaron-bond.better-comments",
+    "pranaygp.vscode-css-peek",
+    "steoates.autoimport-es6-ts"
+  ],
+  "unwantedRecommendations": []
 }

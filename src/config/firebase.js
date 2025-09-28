@@ -73,7 +73,12 @@ if (import.meta.env.DEV) {
   }
 }
 
-// Firebase 연결 상태 확인
+// Firebase 연결 상태 확인 (간단한 버전)
+export const isFirebaseConnected = () => {
+  return !!database && !!auth
+}
+
+// Firebase 연결 상태 확인 (상세 버전)
 export const checkFirebaseConnection = async () => {
   try {
     // Database 연결 테스트

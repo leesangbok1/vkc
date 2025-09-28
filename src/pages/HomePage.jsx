@@ -7,7 +7,7 @@ import QuestionForm from '@components/questions/QuestionForm'
 import WelcomeBanner from '@components/home/WelcomeBanner'
 import CategoryFilter from '@components/filters/CategoryFilter'
 import StatsWidget from '@components/widgets/StatsWidget'
-import { fetchHomepagePosts } from '../api/firebase.js'
+import { fetchHomepagePosts } from "@services/firebase-api"
 
 const HomePage = () => {
   const { user } = useAuth()

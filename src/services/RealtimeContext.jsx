@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { listenerManager } from '../api/realtime-firebase.js'
-import { isFirebaseConnected } from '../config/firebase-config.js'
+import { listenerManager } from './realtime-firebase.js'
+import { isFirebaseConnected } from '../config/firebase.js'
 
 // 실시간 컨텍스트 생성
 const RealtimeContext = createContext()

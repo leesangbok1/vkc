@@ -11,8 +11,8 @@ import {
   orderByChild,
   limitToLast
 } from 'firebase/database';
-import { database, isFirebaseConnected } from '../config/firebase-config.js';
-import { listenerManager } from '../api/realtime-firebase.js';
+import { database, isFirebaseConnected } from '../config/firebase.js';
+import { listenerManager } from "@services/realtime-firebase.js";
 
 // 알림 타입 정의
 export const NOTIFICATION_TYPES = {

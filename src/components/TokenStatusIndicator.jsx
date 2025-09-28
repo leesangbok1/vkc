@@ -41,7 +41,7 @@ const TokenStatusIndicator = ({ position = 'bottom-right', compact = false }) =>
     updateStatus()
 
     // 주기적 상태 업데이트
-    const statusInterval = setInterval(updateStatus, 5000)
+    const statusUpdateInterval = setInterval(updateStatus, 5000)
 
     // 토큰 소진 이벤트 리스너
     window.addEventListener('tokenExhausted', handleTokenExhausted)

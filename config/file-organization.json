@@ -1,0 +1,86 @@
+{
+  "rules": {
+    "components": {
+      "patterns": ["*.jsx"],
+      "destinations": {
+        "auth": ["Login", "Auth", "SignIn", "SignUp", "Register"],
+        "layout": ["Header", "Footer", "Sidebar", "Nav", "Layout"],
+        "common": ["Button", "Modal", "Loading", "Spinner", "Error", "Toast", "Alert"],
+        "forms": ["Form", "Input", "Select", "Checkbox", "Radio"],
+        "ui": ["Card", "Table", "List", "Grid", "Panel"],
+        "questions": ["Question", "Answer", "Comment"],
+        "filters": ["Filter", "Search", "Sort"],
+        "widgets": ["Widget", "Stats", "Chart", "Graph"],
+        "home": ["Welcome", "Banner", "Hero"],
+        "realtime": ["Realtime", "Live", "Stream"],
+        "admin": ["Admin", "Dashboard", "Management"]
+      },
+      "basePath": "src/components"
+    },
+    "pages": {
+      "patterns": ["*Page.jsx", "*View.jsx"],
+      "basePath": "src/pages"
+    },
+    "services": {
+      "patterns": ["*Service.js", "*API.js", "*Api.js", "*service.js", "*api.js"],
+      "basePath": "src/services"
+    },
+    "utils": {
+      "patterns": ["*Utils.js", "*Util.js", "*Helper.js", "*utils.js", "*util.js", "*helper.js"],
+      "basePath": "src/utils"
+    },
+    "hooks": {
+      "patterns": ["use*.js", "use*.jsx"],
+      "basePath": "src/hooks"
+    },
+    "contexts": {
+      "patterns": ["*Context.jsx", "*Provider.jsx"],
+      "basePath": "src/services"
+    },
+    "config": {
+      "patterns": ["config.js", "*Config.js", "*config.js", "*.config.js"],
+      "basePath": "src/config"
+    },
+    "tests": {
+      "patterns": ["*.test.js", "*.test.jsx", "*.spec.js", "*.spec.jsx"],
+      "basePath": "src/tests"
+    },
+    "styles": {
+      "patterns": ["*.css", "*.scss", "*.module.css"],
+      "basePath": "src/styles"
+    },
+    "assets": {
+      "patterns": ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg", "*.ico"],
+      "basePath": "src/assets"
+    },
+    "docs": {
+      "patterns": ["*.md", "*.txt", "README*"],
+      "destinations": {
+        "api": ["API", "api"],
+        "guides": ["Guide", "guide", "Tutorial", "tutorial"],
+        "architecture": ["Architecture", "architecture", "Design", "design"],
+        "project": ["Project", "project", "PRD", "prd"]
+      },
+      "basePath": "docs"
+    },
+    "scripts": {
+      "patterns": ["*.sh", "*.py", "build*", "deploy*", "start*"],
+      "basePath": "scripts"
+    }
+  },
+  "ignorePaths": [
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    ".next",
+    ".nuxt",
+    "coverage"
+  ],
+  "autoMove": {
+    "enabled": true,
+    "dryRun": false,
+    "createFolders": true,
+    "logMoves": true
+  }
+}

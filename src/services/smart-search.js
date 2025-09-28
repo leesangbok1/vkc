@@ -1,6 +1,6 @@
 // 스마트 검색 서비스 - AI 기반 검색 최적화
-import { aiService } from './ai-service.js';
-import { isFirebaseConnected } from '../config/firebase-config.js';
+import { aiService } from './AIService.js';
+import { isFirebaseConnected } from '../config/firebase.js';
 import {
   ref,
   get,
@@ -10,7 +10,7 @@ import {
   endAt,
   limitToFirst
 } from 'firebase/database';
-import { database } from '../config/firebase-config.js';
+import { database } from '../config/firebase.js';
 
 class SmartSearchService {
   constructor() {

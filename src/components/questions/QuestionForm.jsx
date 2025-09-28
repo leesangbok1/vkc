@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@services/AuthContext'
-import { createQuestion } from '../../api/firebase.js'
+import { createQuestion } from "@services/firebase-api"
 
 /**
  * 질문 작성 폼 컴포넌트

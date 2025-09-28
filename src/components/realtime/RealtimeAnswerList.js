@@ -1,5 +1,5 @@
 // 실시간 답변 목록 컴포넌트
-import { listenToAnswers } from '../../api/realtime-firebase.js';
+import { listenToAnswers } from "@services/realtime-firebase.js"';
 import { notificationService } from '../../services/notification-service.js';
 
 export class RealtimeAnswerList {
