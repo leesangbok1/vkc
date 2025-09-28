@@ -1,0 +1,98 @@
+name: 🐛 버그 리포트
+description: 버그나 오류를 신고하세요
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        버그를 신고해 주셔서 감사합니다. 아래 정보를 최대한 자세히 작성해 주세요.
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: 🐛 버그 설명
+      description: 어떤 버그가 발생했나요?
+      placeholder: 버그에 대한 명확하고 간결한 설명을 작성해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: 🔄 재현 단계
+      description: 버그를 재현하는 단계를 작성해 주세요
+      placeholder: |
+        1. 이동: '...'
+        2. 클릭: '....'
+        3. 스크롤: '....'
+        4. 오류 확인
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: ✅ 예상 동작
+      description: 어떤 결과를 예상했나요?
+      placeholder: 예상했던 결과를 명확하고 간결하게 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: ❌ 실제 동작
+      description: 실제로 어떤 일이 일어났나요?
+      placeholder: 실제 발생한 결과를 명확하고 간결하게 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 📸 스크린샷
+      description: 가능하다면 스크린샷을 추가해 주세요
+      placeholder: 스크린샷이나 동영상을 여기에 첨부해 주세요.
+
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: 🌐 브라우저
+      description: 어떤 브라우저에서 문제가 발생했나요?
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - 기타
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: 📱 기기/OS
+      description: 사용 중인 기기와 운영체제를 알려주세요
+      placeholder: 예) iPhone 13 iOS 15.0, Windows 11, macOS Monterey
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 🚨 우선순위
+      description: 이 버그의 우선순위는 어떻게 평가하시나요?
+      options:
+        - 낮음 - 사소한 문제
+        - 보통 - 일반적인 버그
+        - 높음 - 중요한 기능 문제
+        - 긴급 - 서비스 중단 수준
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📝 추가 정보
+      description: 버그와 관련된 추가 정보나 컨텍스트를 제공해 주세요
+      placeholder: 관련된 다른 이슈, 해결 시도, 기타 정보 등

@@ -1,0 +1,91 @@
+name: 📚 문서화 요청
+description: 문서 개선이나 새로운 문서 작성을 요청하세요
+title: "[DOCS] "
+labels: ["documentation", "needs-docs"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        문서화 요청을 해주셔서 감사합니다. 더 나은 문서를 만들기 위해 아래 정보를 작성해 주세요.
+
+  - type: dropdown
+    id: docs-type
+    attributes:
+      label: 📋 문서 유형
+      description: 어떤 종류의 문서화가 필요한가요?
+      options:
+        - API 문서
+        - 사용자 가이드
+        - 개발자 가이드
+        - 설치 가이드
+        - 기존 문서 개선
+        - README 업데이트
+        - 기타
+    validations:
+      required: true
+
+  - type: textarea
+    id: docs-description
+    attributes:
+      label: 📝 문서화 내용
+      description: 어떤 내용의 문서가 필요한가요?
+      placeholder: 필요한 문서의 내용과 범위를 자세히 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: target-audience
+    attributes:
+      label: 👥 대상 사용자
+      description: 이 문서를 주로 누가 사용하게 될까요?
+      placeholder: 예) 신규 개발자, 최종 사용자, API 사용자, 관리자 등
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-state
+    attributes:
+      label: 📊 현재 상태
+      description: 관련된 기존 문서가 있다면 어떤 상태인가요?
+      placeholder: 기존 문서의 링크나 위치, 문제점 등을 설명해 주세요.
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: ✅ 요구사항
+      description: 문서에 포함되어야 할 필수 내용들을 나열해 주세요
+      placeholder: |
+        - [ ] 설치 방법
+        - [ ] 기본 사용법
+        - [ ] 예제 코드
+        - [ ] FAQ
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 🚨 우선순위
+      description: 이 문서화 작업의 우선순위는?
+      options:
+        - 낮음 - 여유가 있을 때
+        - 보통 - 일반적인 문서화 요청
+        - 높음 - 빠른 시일 내 필요
+        - 긴급 - 즉시 필요
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: 📖 참고 자료
+      description: 참고할 만한 문서나 자료가 있나요?
+      placeholder: 유사한 프로젝트의 문서, 가이드라인, 스타일 가이드 등
+
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: 📝 추가 정보
+      description: 문서화와 관련된 추가 정보나 요청사항
+      placeholder: 특별한 형식 요구사항, 번역 필요 여부, 기타 고려사항 등
