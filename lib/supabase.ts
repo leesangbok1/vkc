@@ -11,8 +11,9 @@ export const createSupabaseClient = () => {
 }
 
 // 서버 사이드용
-export const createSupabaseServerClient = () => {
-  const { cookies } = require('next/headers')
+export const createSupabaseServerClient = async () => {
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,15 +21,12 @@ export const createSupabaseServerClient = () => {
     {
       cookies: {
         get(name: string) {
-          const cookieStore = cookies()
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: any) {
-          const cookieStore = cookies()
           cookieStore.set({ name, value, ...options })
         },
         remove(name: string, options: any) {
-          const cookieStore = cookies()
           cookieStore.set({ name, value: '', ...options })
         },
       },

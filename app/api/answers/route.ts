@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // POST /api/answers - 새 답변 생성
 export async function POST(request: NextRequest) {
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
 
   try {
     // 인증 확인

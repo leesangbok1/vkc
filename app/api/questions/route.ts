@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const sort = searchParams.get('sort') || 'created_at'
   const order = searchParams.get('order') || 'desc'
 
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
 
   try {
     let query = supabase
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/questions - 새 질문 생성
 export async function POST(request: NextRequest) {
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
 
   try {
     // 인증 확인

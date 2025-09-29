@@ -78,7 +78,7 @@ function ExpertCard({ expert }: { expert: any }) {
 }
 
 export default async function HomePage() {
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
 
   // 최신 질문들 조회
   const { data: recentQuestions } = await supabase
