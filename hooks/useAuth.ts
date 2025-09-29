@@ -131,6 +131,33 @@ export function useAuth() {
     return { data, error }
   }
 
+  const isAdmin = () => {
+    if (!user) return false
+    // users 테이블에서 role 정보를 가져와야 하지만,
+    // 현재는 간단히 user_metadata를 확인
+    return user.user_metadata?.role === 'admin'
+  }
+
+  const signInWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    return { data, error }
+  }
+
+  const signInWithFacebook = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    return { data, error }
+  }
+
   return {
     user,
     session,
@@ -141,5 +168,8 @@ export function useAuth() {
     resetPassword,
     updatePassword,
     updateProfile,
+    isAdmin,
+    signInWithGoogle,
+    signInWithFacebook,
   }
 }

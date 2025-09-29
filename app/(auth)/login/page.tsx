@@ -18,8 +18,8 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const { signIn } = useAuth()
 
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard'
-  const oauthError = searchParams.get('error')
+  const redirectTo = searchParams?.get('redirectTo') || '/dashboard'
+  const oauthError = searchParams?.get('error')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

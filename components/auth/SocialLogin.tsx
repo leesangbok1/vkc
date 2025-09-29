@@ -1,10 +1,9 @@
 'use client'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { FcGoogle } from 'react-icons/fc'
 import { RiKakaoTalkFill } from 'react-icons/ri'
 import { useState } from 'react'
-import { Database } from '@/lib/database.types'
 
 interface SocialLoginProps {
   redirectTo?: string
@@ -12,7 +11,7 @@ interface SocialLoginProps {
 
 export function SocialLogin({ redirectTo = '/dashboard' }: SocialLoginProps) {
   const [loading, setLoading] = useState<'google' | 'kakao' | null>(null)
-  const supabase = createClientComponentClient<Database>()
+  const supabase = createSupabaseClient()
 
   const handleGoogleLogin = async () => {
     setLoading('google')
