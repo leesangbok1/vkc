@@ -16,12 +16,8 @@ extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-enabled = true
 # Port to use for the local database URL.
 port = 54322
-# External query timeout value in seconds. The default value is 3 minutes.
-# If a query takes longer than this timeout then the operation will be cancelled.
-external_query_timeout = 180
 # The database major version to use. This has to be the same as your remote database's. Run `SHOW
 # server_version_num;` on the remote database to check.
 major_version = 15

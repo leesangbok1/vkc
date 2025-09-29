@@ -1,6 +1,5 @@
 import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { Database } from './database.types'
 
 // 클라이언트 사이드용 (브라우저)
@@ -12,8 +11,8 @@ export const createSupabaseClient = () => {
 }
 
 // 서버 사이드용
-export const createSupabaseServerClient = async () => {
-  const cookieStore = await cookies()
+export const createSupabaseServerClient = () => {
+  const { cookies } = require('next/headers')
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,12 +20,15 @@ export const createSupabaseServerClient = async () => {
     {
       cookies: {
         get(name: string) {
+          const cookieStore = cookies()
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: any) {
+          const cookieStore = cookies()
           cookieStore.set({ name, value, ...options })
         },
         remove(name: string, options: any) {
+          const cookieStore = cookies()
           cookieStore.set({ name, value: '', ...options })
         },
       },
