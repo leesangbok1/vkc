@@ -2,7 +2,7 @@
  * 유틸리티 함수들에 대한 테스트
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // Mock 환경 설정
 const mockEnvironment = {
@@ -219,7 +219,7 @@ describe('Expert Matching Algorithm', () => {
 })
 
 describe('Answer Quality Evaluation', () => {
-  function evaluateAnswerQuality(question, answer, category) {
+  function evaluateAnswerQuality(question, answer) {
     const answerLength = answer.length
     const completenessScore = Math.min(answerLength / 200, 1) * 0.8 + 0.2
 
@@ -244,8 +244,8 @@ describe('Answer Quality Evaluation', () => {
     const shortAnswer = '네, 가능합니다.'
     const longAnswer = '네, 가능합니다. 출입국관리사무소에 가서 신청서를 작성하고 필요한 서류를 제출하면 됩니다. 소득증명서, 납세증명서, 건강보험 가입증명서 등이 필요합니다.'
 
-    const shortEval = evaluateAnswerQuality('비자 연장', shortAnswer, 'visa')
-    const longEval = evaluateAnswerQuality('비자 연장', longAnswer, 'visa')
+    const shortEval = evaluateAnswerQuality('비자 연장', shortAnswer)
+    const longEval = evaluateAnswerQuality('비자 연장', longAnswer)
 
     expect(longEval.completeness).toBeGreaterThan(shortEval.completeness)
   })
@@ -254,8 +254,8 @@ describe('Answer Quality Evaluation', () => {
     const relevantAnswer = '비자 연장을 위해서는 출입국관리사무소에서 신청하세요.'
     const irrelevantAnswer = '날씨가 좋네요. 오늘 점심 뭐 드셨나요?'
 
-    const relevantEval = evaluateAnswerQuality('비자 연장 방법', relevantAnswer, 'visa')
-    const irrelevantEval = evaluateAnswerQuality('비자 연장 방법', irrelevantAnswer, 'visa')
+    const relevantEval = evaluateAnswerQuality('비자 연장 방법', relevantAnswer)
+    const irrelevantEval = evaluateAnswerQuality('비자 연장 방법', irrelevantAnswer)
 
     expect(relevantEval.relevance).toBeGreaterThanOrEqual(irrelevantEval.relevance)
   })
@@ -263,7 +263,7 @@ describe('Answer Quality Evaluation', () => {
   it('should provide overall quality scores', () => {
     const goodAnswer = '비자 연장을 위해서는 출입국관리사무소에 가서 신청서를 작성하고, 소득증명서, 납세증명서, 건강보험 가입증명서 등의 서류를 제출해야 합니다. 연장 신청은 현재 비자 만료일 4개월 전부터 가능합니다.'
 
-    const evaluation = evaluateAnswerQuality('F-2-7 비자 연장 방법', goodAnswer, 'visa')
+    const evaluation = evaluateAnswerQuality('F-2-7 비자 연장 방법', goodAnswer)
 
     expect(evaluation.overallScore).toBeGreaterThan(0.2)
     expect(evaluation.overallScore).toBeLessThanOrEqual(1)

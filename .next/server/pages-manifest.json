@@ -1,8 +1,1 @@
-{
-  "/_app": "pages/_app.js",
-  "/_error": "pages/_error.js",
-  "/PostDetailPage": "pages/PostDetailPage.js",
-  "/AllPostsPage": "pages/AllPostsPage.js",
-  "/HomePage": "pages/HomePage.js",
-  "/_document": "pages/_document.js"
-}
+{}

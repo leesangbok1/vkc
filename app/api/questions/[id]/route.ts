@@ -4,11 +4,12 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabase-serve
 // GET /api/questions/[id] - 특정 질문 조회 + 조회수 증가
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
-    const questionId = params.id
+    const { id } = await params
+    const questionId = id
 
     // 질문 조회 (상세 정보 포함)
     const { data: question, error } = await supabase

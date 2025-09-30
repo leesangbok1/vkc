@@ -10,14 +10,20 @@ import { faker } from '@faker-js/faker'
 import dotenv from 'dotenv'
 
 // 환경변수 로드
-dotenv.config({ path: '.env.local' })
+dotenv.config({ path: '.env' })
+
+// Mock 모드 확인
+const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true'
 
 // Supabase 클라이언트 설정
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co'
+const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'mock-service-key'
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Missing Supabase environment variables')
+if (isMockMode) {
+  console.log('🟡 Mock 모드로 실행 - 실제 데이터베이스에 영향 없음')
+} else if (!supabaseUrl.includes('supabase.co') || supabaseServiceKey === 'mock-service-key') {
+  console.error('❌ 실제 Supabase 환경변수가 필요합니다')
+  console.log('   NEXT_PUBLIC_SUPABASE_URL과 NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY를 설정하세요')
   process.exit(1)
 }
 
@@ -166,6 +172,13 @@ async function insertInBatches<T>(
 ): Promise<void> {
   console.log(`📦 Inserting ${data.length} records into ${table} in batches of ${batchSize}`)
 
+  if (isMockMode) {
+    // Mock 모드에서는 실제 삽입 없이 시뮬레이션
+    console.log(`🟡 Mock 모드: ${table}에 ${data.length}개 레코드 삽입 시뮬레이션`)
+    await new Promise(resolve => setTimeout(resolve, 100)) // 시뮬레이션 지연
+    return
+  }
+
   for (let i = 0; i < data.length; i += batchSize) {
     const batch = data.slice(i, i + batchSize)
     const { error } = await supabase.from(table).insert(batch)
@@ -187,19 +200,32 @@ async function generateMockData() {
   try {
     // 1. 카테고리 생성
     console.log('📁 Creating categories...')
-    await supabase.from('categories').delete().neq('id', 0) // 기존 데이터 정리
+    if (!isMockMode) {
+      await supabase.from('categories').delete().neq('id', 0) // 기존 데이터 정리
+    }
     await insertInBatches('categories', vietnamCategories)
 
     // 카테고리 ID 가져오기
-    const { data: categories } = await supabase.from('categories').select('id, slug')
-    const categoryMap = categories?.reduce((map, cat) => {
-      map[cat.slug] = cat.id
-      return map
-    }, {} as Record<string, number>) || {}
+    let categoryMap: Record<string, number> = {}
+    if (isMockMode) {
+      // Mock 모드에서는 가상 ID 사용
+      categoryMap = vietnamCategories.reduce((map, cat, index) => {
+        map[cat.slug] = index + 1
+        return map
+      }, {} as Record<string, number>)
+    } else {
+      const { data: categories } = await supabase.from('categories').select('id, slug')
+      categoryMap = categories?.reduce((map, cat) => {
+        map[cat.slug] = cat.id
+        return map
+      }, {} as Record<string, number>) || {}
+    }
 
     // 2. 사용자 생성 (150명)
     console.log('👥 Creating users...')
-    await supabase.from('users').delete().neq('id', '00000000-0000-0000-0000-000000000000') // 기존 데이터 정리
+    if (!isMockMode) {
+      await supabase.from('users').delete().neq('id', '00000000-0000-0000-0000-000000000000') // 기존 데이터 정리
+    }
 
     const users = Array.from({ length: 150 }, (_, i) => {
       const name = vietnamUserProfiles.names[i % vietnamUserProfiles.names.length]
@@ -243,9 +269,16 @@ async function generateMockData() {
     const { data: createdUsers } = await supabase.from('users').select('id')
     const userIds = createdUsers?.map(u => u.id) || []
 
+    // Mock mode용 사용자 ID 생성
+    const mockUserIds = isMockMode ?
+      Array.from({ length: 150 }, (_, i) => `mock-user-${i + 1}`) :
+      userIds;
+
     // 3. 질문 생성 (600개)
     console.log('❓ Creating questions...')
-    await supabase.from('questions').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    if (!isMockMode) {
+      await supabase.from('questions').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    }
 
     const questions = Array.from({ length: 600 }, (_, i) => {
       const template = faker.helpers.arrayElement(questionTemplates)
@@ -272,7 +305,7 @@ async function generateMockData() {
         id: faker.string.uuid(),
         title,
         content,
-        author_id: faker.helpers.arrayElement(userIds),
+        author_id: faker.helpers.arrayElement(mockUserIds),
         category_id: categoryMap[category],
         tags,
         urgency: faker.helpers.arrayElement(['low', 'normal', 'high']),
@@ -292,9 +325,16 @@ async function generateMockData() {
     const { data: createdQuestions } = await supabase.from('questions').select('id')
     const questionIds = createdQuestions?.map(q => q.id) || []
 
+    // Mock mode용 질문 ID 생성
+    const mockQuestionIds = isMockMode ?
+      Array.from({ length: 600 }, (_, i) => `mock-question-${i + 1}`) :
+      questionIds;
+
     // 4. 답변 생성 (1,500개)
     console.log('💬 Creating answers...')
-    await supabase.from('answers').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    if (!isMockMode) {
+      await supabase.from('answers').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    }
 
     const answers = Array.from({ length: 1500 }, (_, i) => {
       const template = faker.helpers.arrayElement(answerTemplates)
@@ -328,8 +368,8 @@ async function generateMockData() {
       return {
         id: faker.string.uuid(),
         content,
-        question_id: faker.helpers.arrayElement(questionIds),
-        author_id: faker.helpers.arrayElement(userIds),
+        question_id: faker.helpers.arrayElement(mockQuestionIds),
+        author_id: faker.helpers.arrayElement(mockUserIds),
         is_anonymous: faker.datatype.boolean(0.05),
         vote_score: faker.number.int({ min: 0, max: 30 }),
         is_helpful: faker.datatype.boolean(0.4),
@@ -345,21 +385,28 @@ async function generateMockData() {
     const { data: createdAnswers } = await supabase.from('answers').select('id')
     const answerIds = createdAnswers?.map(a => a.id) || []
 
+    // Mock mode용 답변 ID 생성
+    const mockAnswerIds = isMockMode ?
+      Array.from({ length: 1500 }, (_, i) => `mock-answer-${i + 1}`) :
+      answerIds;
+
     // 5. 투표 생성 (2,000개)
     console.log('👍 Creating votes...')
-    await supabase.from('votes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    if (!isMockMode) {
+      await supabase.from('votes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    }
 
     const votes = Array.from({ length: 2000 }, () => {
       const targetType = faker.helpers.arrayElement(['question', 'answer'])
       const targetId = targetType === 'question'
-        ? faker.helpers.arrayElement(questionIds)
-        : faker.helpers.arrayElement(answerIds)
+        ? faker.helpers.arrayElement(mockQuestionIds)
+        : faker.helpers.arrayElement(mockAnswerIds)
 
       return {
         id: faker.string.uuid(),
         target_id: targetId,
         target_type: targetType,
-        user_id: faker.helpers.arrayElement(userIds),
+        user_id: faker.helpers.arrayElement(mockUserIds),
         vote_type: faker.helpers.arrayElement(['up', 'up', 'up', 'down']), // 75% 추천
         created_at: faker.date.recent({ days: 80 }).toISOString(),
         updated_at: new Date().toISOString()
@@ -370,7 +417,9 @@ async function generateMockData() {
 
     // 6. 댓글 생성 (500개)
     console.log('💭 Creating comments...')
-    await supabase.from('comments').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    if (!isMockMode) {
+      await supabase.from('comments').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    }
 
     const comments = Array.from({ length: 500 }, () => {
       const commentTexts = [
@@ -387,9 +436,9 @@ async function generateMockData() {
       return {
         id: faker.string.uuid(),
         content: faker.helpers.arrayElement(commentTexts),
-        target_id: faker.helpers.arrayElement([...questionIds, ...answerIds]),
+        target_id: faker.helpers.arrayElement([...mockQuestionIds, ...mockAnswerIds]),
         target_type: faker.helpers.arrayElement(['question', 'answer']),
-        author_id: faker.helpers.arrayElement(userIds),
+        author_id: faker.helpers.arrayElement(mockUserIds),
         parent_id: null,
         created_at: faker.date.recent({ days: 75 }).toISOString(),
         updated_at: new Date().toISOString()
@@ -400,12 +449,14 @@ async function generateMockData() {
 
     // 7. 북마크 생성 (300개)
     console.log('🔖 Creating bookmarks...')
-    await supabase.from('bookmarks').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    if (!isMockMode) {
+      await supabase.from('bookmarks').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    }
 
     const bookmarks = Array.from({ length: 300 }, () => ({
       id: faker.string.uuid(),
-      user_id: faker.helpers.arrayElement(userIds),
-      target_id: faker.helpers.arrayElement(questionIds),
+      user_id: faker.helpers.arrayElement(mockUserIds),
+      target_id: faker.helpers.arrayElement(mockQuestionIds),
       target_type: 'question' as const,
       created_at: faker.date.recent({ days: 70 }).toISOString()
     }))
@@ -414,7 +465,9 @@ async function generateMockData() {
 
     // 8. 알림 생성 (400개)
     console.log('🔔 Creating notifications...')
-    await supabase.from('notifications').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    if (!isMockMode) {
+      await supabase.from('notifications').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    }
 
     const notifications = Array.from({ length: 400 }, () => {
       const types = ['answer', 'comment', 'vote', 'mention']
@@ -429,13 +482,13 @@ async function generateMockData() {
 
       return {
         id: faker.string.uuid(),
-        user_id: faker.helpers.arrayElement(userIds),
+        user_id: faker.helpers.arrayElement(mockUserIds),
         type,
         title: titles[type as keyof typeof titles],
         message: `회원님의 질문에 새로운 활동이 있습니다.`,
         data: {
-          question_id: faker.helpers.arrayElement(questionIds),
-          from_user: faker.helpers.arrayElement(userIds)
+          question_id: faker.helpers.arrayElement(mockQuestionIds),
+          from_user: faker.helpers.arrayElement(mockUserIds)
         },
         is_read: faker.datatype.boolean(0.6),
         created_at: faker.date.recent({ days: 65 }).toISOString()
@@ -463,15 +516,13 @@ async function generateMockData() {
   }
 }
 
-// 스크립트 실행
-if (require.main === module) {
-  generateMockData()
-    .then(() => {
-      console.log('✅ Script completed successfully')
-      process.exit(0)
-    })
-    .catch((error) => {
-      console.error('❌ Script failed:', error)
-      process.exit(1)
-    })
-}
+// 스크립트 실행 (ES 모듈 호환)
+generateMockData()
+  .then(() => {
+    console.log('✅ Script completed successfully')
+    process.exit(0)
+  })
+  .catch((error) => {
+    console.error('❌ Script failed:', error)
+    process.exit(1)
+  })

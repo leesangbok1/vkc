@@ -203,7 +203,14 @@ global.CustomEvent = class {
   }
 }
 
-// 환경 변수 모킹
+// 환경 변수 모킹 (Next.js 15 표준)
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co'
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+process.env.NEXT_PUBLIC_APP_NAME = 'Viet K-Connect Test'
+process.env.NEXT_PUBLIC_APP_VERSION = '1.0.0'
+process.env.NEXT_PUBLIC_DEV_MODE = 'true'
+process.env.NEXT_PUBLIC_MOCK_MODE = 'true'
+
 vi.mock('../utils/environment.js', () => ({
   default: {
     isDevelopment: true,

@@ -2,7 +2,7 @@
  * Button 컴포넌트 테스트
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // Button 컴포넌트 모킹
 const buttonVariants = {

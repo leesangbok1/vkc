@@ -19,7 +19,9 @@ describe('lib/utils', () => {
     })
 
     it('should handle conditional classes', () => {
-      const result = cn('always', true && 'conditional', false && 'hidden')
+      const isConditional = true
+      const isHidden = false
+      const result = cn('always', isConditional && 'conditional', isHidden && 'hidden')
       expect(result).toBe('always conditional')
     })
 

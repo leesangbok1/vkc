@@ -2,6 +2,7 @@
   "name": "viet-kconnect",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "dev:mobile": "next dev --hostname 0.0.0.0 --port 3000",
@@ -18,6 +19,8 @@
     "type-check": "tsc --noEmit",
     "db:generate": "tsx scripts/db/generate-mock-data.ts",
     "db:reset": "tsx scripts/db/reset-database.ts",
+    "supabase:setup": "node scripts/setup-supabase.js",
+    "supabase:check": "node scripts/setup-supabase.js",
     "github:auto": "node scripts/github-auto-issue.js",
     "commit:agents": "node scripts/github-auto-issue.js"
   },

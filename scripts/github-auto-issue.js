@@ -42,7 +42,11 @@ function checkAgentCompletion() {
       const content = fs.readFileSync(file, 'utf8')
       const agentNumber = path.basename(file).match(/agent-(\d+)/)?.[1]
 
-      if (content.includes('✅ 완료') || content.includes('✅ **완료**')) {
+      // 더 정확한 완료 상태 감지
+      if (content.includes('✅ 완료') ||
+          content.includes('✅ **완료**') ||
+          content.includes('Agent ' + agentNumber + ' 작업 완료') ||
+          content.includes(`## ✅ Agent ${agentNumber} 작업 완료`)) {
         completedAgents.push(`Agent ${agentNumber}`)
       } else {
         pendingAgents.push(`Agent ${agentNumber}`)
@@ -196,6 +200,9 @@ async function checkForNewCompletions(currentCompleted) {
  * 사용자 확인 요청
  */
 async function askUserConfirmation(newCompletions) {
+  const { createRequire } = await import('module')
+  const require = createRequire(import.meta.url)
+
   return new Promise((resolve) => {
     const readline = require('readline').createInterface({
       input: process.stdin,
