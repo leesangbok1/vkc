@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { AuthProvider } from '@/src/services/AuthContext'
-import { ThemeProvider } from '@/components/theme-provider'
+import { AuthProvider } from '../src/services/AuthContext'
+import { NotificationProvider } from '../src/services/NotificationContext'
+import Header from '../src/components/layout/Header'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -34,25 +35,16 @@ export default function RootLayout({
         <meta name="theme-color" content="#007bff" />
       </head>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProvider>
+        <AuthProvider>
+          <NotificationProvider>
             <div className="min-h-screen flex flex-col bg-background">
-              <header className="bg-white shadow-sm border-b">
-                <div className="container mx-auto px-4 h-16 flex items-center">
-                  <h1 className="text-xl font-bold text-blue-600">VietKConnect</h1>
-                </div>
-              </header>
+              <Header />
               <main className="flex-1">
                 {children}
               </main>
             </div>
-          </AuthProvider>
-        </ThemeProvider>
+          </NotificationProvider>
+        </AuthProvider>
       </body>
     </html>
   )

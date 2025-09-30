@@ -249,11 +249,89 @@ await supabase.auth.signInWithOAuth({
 3. **빠른 완성 필요**: 완벽함보다는 동작하는 버전 우선
 4. **테스트 필수**: UX 시나리오 반드시 확인
 
-**Agent 1로부터의 메시지**: "모든 에이전트의 작업이 Agent 5의 인증 시스템에 의존합니다. 최대한 빠르게 QuestionInput UX부터 완성해주세요!"
+## 🚨 **Agent 1 긴급 지시사항 (2025-09-30)**
+
+### **3차 우선순위 대기**
+- **상황**: Agent 3 Supabase 설정 완료 후 즉시 시작
+- **타임라인**: 2시간 이내 완료
+- **핵심**: QuestionInput UX가 사용자 경험의 핵심
+
+### **구체적 실행 사항**
+1. **QuestionInput UX 최우선 구현** (자연스러운 로그인 플로우)
+2. AuthContext 및 useAuth hook 생성
+3. 로그인 모달 컴포넌트 구현
+4. Agent 1에게 UX 테스트 결과 보고
+
+### **🎉 Agent 3 완료! 즉시 작업 시작**
+
+**Agent 1로부터의 메시지**: "Supabase 클라이언트 준비 완료! QuestionInput UX 최우선 구현하세요!"
+
+### **🚀 즉시 작업 시작 가능**
+- ✅ Supabase Auth 클라이언트 준비됨
+- ✅ Database Types 사용 가능
+- **현재 시간**: 2025-09-30 오후
+- **병렬 작업**: Agent 4와 독립적으로 동시 진행
 
 ---
 
 **담당자**: Agent 5
-**예상 소요**: 2-3시간
-**의존성**: 없음 (독립 작업 가능)
-**영향 범위**: 전체 프로젝트 (모든 에이전트가 대기 중)
+**예상 소요**: 2시간 (Supabase 준비 후)
+**의존성**: Agent 3 완료 후
+**영향 범위**: 전체 사용자 경험의 핵심
+
+---
+
+## 📋 **Agent 5 독립적 작업 영역**
+
+### **전용 폴더**
+- `/components/auth/` - 인증 관련 컴포넌트
+- `/components/forms/` - QuestionInput 등 폼 컴포넌트
+- `/hooks/auth/` - 인증 관련 훅
+
+### **전용 파일**
+- `components/forms/QuestionInput.tsx` (최우선)
+- `components/auth/LoginModal.tsx`
+- `components/auth/SocialLoginButtons.tsx`
+- `hooks/useAuth.ts`
+- `lib/supabase-auth.ts`
+
+### **충돌 방지**
+- Agent 3: `/lib/supabase.ts` (기본 클라이언트)
+- Agent 4: `/lib/database/` (DB 스키마)
+- Agent 5: `/components/auth/`, `/hooks/auth/` (인증 전용)
+
+---
+
+## 📋 **Agent 5 작업 완료 보고 양식**
+
+**완료 시 이 파일에 추가할 내용:**
+```
+## ✅ Agent 5 작업 완료 보고 (날짜/시간)
+
+### 생성한 컴포넌트들
+- [ ] components/forms/QuestionInput.tsx (핵심 UX)
+- [ ] components/auth/LoginModal.tsx
+- [ ] components/auth/SocialLoginButtons.tsx
+- [ ] hooks/useAuth.ts
+
+### QuestionInput UX 테스트
+- [ ] 미로그인 시 일반 입력창 표시
+- [ ] 첫 타이핑 시 로그인 모달 표시
+- [ ] 로그인 후 입력 재개 가능
+- [ ] "나중에" 버튼으로 모달 닫기
+
+### 인증 시스템 테스트
+- [ ] Google OAuth 로그인 성공
+- [ ] Kakao OAuth 로그인 성공
+- [ ] 세션 유지 24시간 확인
+- [ ] 로그아웃 기능 정상
+
+### Supabase Auth 연동
+- [ ] Supabase Auth 클라이언트 연동
+- [ ] 사용자 세션 관리
+- [ ] 보안 쿠키 설정
+
+### 다음 Agent 준비 완료
+- [ ] Agent 6 소셜 로그인 확장 가능
+- [ ] Agent 8 UI 컴포넌트 인증 연동 가능
+```

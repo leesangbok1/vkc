@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { useAuth } from '@services/AuthContext'
-import { useNotifications } from '@services/NotificationContext'
+import { useAuth } from '../../services/AuthContext'
+import { useNotifications } from '../../services/NotificationContext'
 
 const Header = ({ onLoginClick }) => {
   const { user, logout, isAdmin } = useAuth()

@@ -47,4 +47,66 @@ comments (id, content, target_id, target_type, user_id, created_at)
 - [ ] 보안 정책 테스트
 - [ ] Agent 7의 목업 데이터 삽입 준비
 
+## 🚨 **Agent 1 지시사항 (2025-09-30)**
+
+### **대기 상태**: Agent 3 Supabase 설정 완료 후 시작
+
+### **독립적 작업 영역**
+- **폴더**: `/lib/database/`, `/scripts/db/`
+- **파일**: `schema.sql`, `migrations/`, `seed.sql`
+- **충돌 방지**: Agent 3, 5와 완전 분리된 영역
+
+### **구체적 작업 지시**
+1. **ERD 설계**: Agent 7의 600개 목업 데이터 구조 분석
+2. **SQL 스키마**: PostgreSQL 테이블 생성 스크립트
+3. **RLS 정책**: Row Level Security 보안 설정
+4. **인덱스 최적화**: 검색 성능을 위한 인덱스 설계
+
+### **🎉 Agent 3 완료 신호 수신됨**
+- ✅ Supabase 클라이언트 구조 완성
+- ✅ Database Types 정의 완료 (users, questions, answers)
+- ✅ Mock 환경변수 설정 완료
+
+### **🚀 즉시 작업 시작 가능**
+**현재 시간**: 2025-09-30 오후
+**병렬 작업**: Agent 5와 독립적으로 동시 진행
+**예상 완료**: 2-3시간 이내
+
+---
+
+## 📋 **Agent 4 작업 완료 보고 양식**
+
+**완료 시 이 파일에 추가할 내용:**
+```
+## ✅ Agent 4 작업 완료 보고 (날짜/시간)
+
+### 생성한 파일들
+- [ ] lib/database/schema.sql
+- [ ] lib/database/migrations/001_initial.sql
+- [ ] scripts/db/seed.sql
+- [ ] scripts/db/setup.sql
+
+### 구현한 테이블들
+- [ ] users (사용자)
+- [ ] categories (카테고리)
+- [ ] questions (질문)
+- [ ] answers (답변)
+- [ ] votes (투표)
+- [ ] comments (댓글)
+
+### RLS 정책 설정
+- [ ] 사용자별 데이터 접근 제한
+- [ ] 공개/비공개 게시글 정책
+- [ ] 관리자 권한 설정
+
+### 테스트 결과
+- [ ] 스키마 생성 성공
+- [ ] Agent 7 목업 데이터 삽입 성공
+- [ ] 쿼리 성능 테스트 통과
+
+### 다음 Agent 준비 완료
+- [ ] Agent 5 인증 시스템에서 DB 사용 가능
+- [ ] Agent 7 CRUD API와 DB 연결 가능
+```
+
 **담당자**: Agent 4

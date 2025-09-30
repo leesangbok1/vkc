@@ -1,8 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { Button } from '@/components/ui/button'
+import { useAuth } from '../src/services/AuthContext'
 
 export default function HomePage() {
   const { user, profile, loading } = useAuth()
@@ -74,12 +73,12 @@ export default function HomePage() {
               )}
 
               <div className="flex flex-col sm:flex-row gap-4 sm:space-x-4 sm:space-y-0">
-                <Button size="lg" className="w-full sm:w-auto">
+                <button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
                   질문하기
-                </Button>
-                <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                </button>
+                <button className="w-full sm:w-auto border border-gray-300 hover:border-gray-400 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors">
                   질문 보기
-                </Button>
+                </button>
               </div>
             </div>
           ) : (
