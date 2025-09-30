@@ -12,7 +12,7 @@ import path from 'path'
 // 환경 변수 확인
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.VITE_GITHUB_TOKEN
 const REPO_OWNER = 'leesangbok1'
-const REPO_NAME = 'viet-kconnect'
+const REPO_NAME = 'vkc'
 
 if (!GITHUB_TOKEN) {
   console.error('❌ GITHUB_TOKEN 환경 변수가 설정되지 않음')
