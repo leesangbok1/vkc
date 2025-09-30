@@ -1,17 +1,18 @@
 # POI Project - Viet K-Connect (Legacy)
 
-⚠️ **이 프로젝트는 레거시 버전입니다**
+✅ **현재 활성 개발 중인 프로젝트입니다**
 
 ---
 
-## 🚨 중요 공지
+## � 프로젝트 현황
 
-### 현재 상태
-- **이 프로젝트**: 초기 Vanilla JS 프로토타입 (개발 중단)
-- **실제 프로젝트**: `/Users/bk/Desktop/viet-kconnect` (Next.js 14 + shadcn/ui)
-- **실행 중**: http://localhost:3000
+### 개발 상태
+- **프로젝트명**: Viet K-Connect
+- **기술 스택**: React + Firebase + OpenAI 
+- **개발 서버**: http://localhost:3000
+- **상태**: 활성 개발 중
 
-**→ 새 프로젝트로 이동하세요**: `/Users/bk/Desktop/viet-kconnect/`
+**📁 문서 위치**: `/docs/` 폴더에 정확한 API 및 사용자 가이드
 
 ---
 
@@ -38,21 +39,20 @@
 
 ## 🏗️ 기술 스택 (레거시)
 
-### Frontend
-- **Framework**: Vanilla JavaScript + Vite
-- **상태 관리**: 단일 전역 state 객체
-- **라우팅**: 해시 기반 클라이언트 사이드 라우팅
-- **스타일링**: CSS 변수 + BEM 패턴
-- **의존성**: React/Firebase (설치되어 있지만 미사용)
+### Frontend  
+- **Framework**: React (최신 버전)
+- **상태 관리**: React Context + Hooks
+- **라우팅**: React Router
+- **스타일링**: CSS3 + 반응형 디자인
+- **PWA**: Progressive Web App 지원
 
-### 실제 구현 (새 프로젝트)
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **UI Library**: shadcn/ui + Tailwind CSS
-- **State**: Zustand
-- **Database**: Supabase (PostgreSQL)
-- **Auth**: Supabase Auth
-- **AI**: OpenAI GPT-3.5
+### Backend & Services
+- **Database**: Firebase Firestore
+- **Auth**: Firebase Auth (Google, Facebook, Kakao)
+- **Realtime**: Firebase Realtime Database
+- **Storage**: Firebase Storage  
+- **AI**: OpenAI GPT-3.5 (질문 분류, 번역, 추천)
+- **Hosting**: Firebase Hosting
 
 ---
 

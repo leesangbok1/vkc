@@ -8,6 +8,12 @@ import { autoWorkflow } from './auto-workflow-manager.js'
  * 현재 프로젝트의 모든 이슈를 등록하고 자동 해결 시작
  */
 export function initializeAutoWorkflow() {
+  // 개발 환경에서 자동 워크플로우 비활성화
+  if (import.meta.env.DEV) {
+    console.log('🔧 개발 모드: 자동 워크플로우가 비활성화됨')
+    return
+  }
+  
   console.log('🚀 자동 워크플로 초기화 중...')
 
   // Issue 1: QuestionForm 컴포넌트 누락 (Critical)

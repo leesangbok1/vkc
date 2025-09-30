@@ -43,7 +43,7 @@ function AppContent() {
       )}
 
       {/* AutoTaskManager - 개발 모드에서만 표시 */}
-      {process.env.NODE_ENV === 'development' && <AutoTaskManager />}
+      {import.meta.env.DEV && <AutoTaskManager />}
     </div>
   )
 }

@@ -319,7 +319,7 @@ class ErrorBoundary extends React.Component {
             </div>
 
             {/* 개발 환경에서만 상세 오류 정보 표시 */}
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="error-details">
                 <summary>개발자용 오류 정보</summary>
                 <div className="error-stack">

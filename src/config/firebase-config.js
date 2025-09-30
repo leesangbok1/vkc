@@ -4,15 +4,15 @@ import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
-// Firebase 설정 (환경 변수에서 로드)
+// Firebase 설정 (환경 변수에서 로드) - 개발 시 모킹 모드 기본값
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "demo-project.firebaseapp.com",
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://demo-project-default-rtdb.firebaseio.com/",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "demo-project.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef123456789"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || null,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || null,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || null,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || null,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || null,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || null,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || null
 };
 
 // Firebase 앱 초기화
@@ -21,38 +21,44 @@ let database;
 let auth;
 let storage;
 
-try {
-  app = initializeApp(firebaseConfig);
-  database = getDatabase(app);
-  auth = getAuth(app);
-  storage = getStorage(app);
+// Firebase 설정이 완전히 구성되어 있는지 확인
+const hasValidFirebaseConfig = Object.values(firebaseConfig).every(value => value !== null);
 
-  // 개발 환경에서 에뮬레이터 사용
-  if (import.meta.env.DEV && !window.location.hostname.includes('firebaseapp.com')) {
-    try {
-      // Firebase 에뮬레이터 연결 시도
-      // 이미 연결된 경우 에러가 발생하지만 정상적인 동작
-      connectDatabaseEmulator(database, 'localhost', 9000);
-      connectAuthEmulator(auth, 'http://localhost:9099');
-      connectStorageEmulator(storage, 'localhost', 9199);
+if (hasValidFirebaseConfig) {
+  try {
+    app = initializeApp(firebaseConfig);
+    database = getDatabase(app);
+    auth = getAuth(app);
+    storage = getStorage(app);
 
-      console.log('🔧 Firebase 에뮬레이터 연결됨');
-    } catch (error) {
-      // 에뮬레이터가 이미 연결되었거나 실행되지 않은 경우
-      if (error.message.includes('already') || error.message.includes('emulator')) {
-        console.log('🔧 Firebase 에뮬레이터가 이미 연결되어 있거나 프로덕션 모드입니다');
-      } else {
+    // 개발 환경에서 에뮬레이터 사용 (환경 변수로 제어)
+    if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+      try {
+        connectDatabaseEmulator(database, 'localhost', 9000);
+        connectAuthEmulator(auth, 'http://localhost:9099');
+        connectStorageEmulator(storage, 'localhost', 9199);
+        console.log('🔧 Firebase 에뮬레이터 연결됨');
+      } catch (error) {
         console.warn('⚠️ Firebase 에뮬레이터 연결 실패:', error.message);
+        // 에뮬레이터 실패시 모킹 모드로 전환
+        app = null;
+        database = null;
+        auth = null;
+        storage = null;
       }
+    } else {
+      console.log('🔥 Firebase 프로덕션 모드 초기화 성공');
     }
+  } catch (error) {
+    console.error('❌ Firebase 초기화 실패:', error);
+    // 폴백: 모킹 모드로 전환
+    app = null;
+    database = null;
+    auth = null;
+    storage = null;
   }
-
-  console.log('🔥 Firebase 초기화 성공');
-} catch (error) {
-  console.error('❌ Firebase 초기화 실패:', error);
-
-  // 폴백: 모킹 모드로 전환
-  console.warn('🔄 모킹 모드로 전환합니다');
+} else {
+  console.log('🔄 Firebase 설정이 없어 모킹 모드로 실행됩니다');
   app = null;
   database = null;
   auth = null;

@@ -6,7 +6,14 @@ import { autoWorkflow } from '../utils/auto-workflow-manager.js';
  * Claude API 자동 작업 관리 컴포넌트
  */
 const AutoTaskManager = () => {
-  const [usageManager] = useState(() => new ClaudeUsageManager());
+  const [usageManager] = useState(() => {
+    try {
+      return new ClaudeUsageManager()
+    } catch (error) {
+      console.warn('⚠️ ClaudeUsageManager 초기화 실패:', error.message)
+      return null
+    }
+  });
   const [status, setStatus] = useState(null);
   const [workflowStatus, setWorkflowStatus] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -14,12 +21,14 @@ const AutoTaskManager = () => {
   const intervalRef = useRef(null);
 
   useEffect(() => {
-    // Claude 사용량 매니저 시작
-    usageManager.startMonitoring();
+    // Claude 사용량 매니저 시작 (초기화 성공한 경우에만)
+    if (usageManager) {
+      usageManager.startMonitoring();
+    }
 
     // 상태 업데이트 주기
     intervalRef.current = setInterval(() => {
-      setStatus(usageManager.getStatus());
+      setStatus(usageManager?.getStatus() || null);
       setWorkflowStatus(autoWorkflow.getStatus());
     }, 1000);
 
@@ -110,6 +119,11 @@ const AutoTaskManager = () => {
         </button>
       </div>
     );
+  }
+
+  // usageManager가 초기화되지 않았으면 렌더링하지 않음
+  if (!usageManager) {
+    return null;
   }
 
   return (

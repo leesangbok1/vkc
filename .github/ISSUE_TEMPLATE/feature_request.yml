@@ -1,0 +1,85 @@
+name: ✨ 기능 요청
+description: 새로운 기능이나 개선사항을 제안해주세요
+title: "[FEATURE] "
+labels: ["enhancement", "feature"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        새로운 기능을 제안해 주셔서 감사합니다. 아래 정보를 최대한 자세히 작성해 주세요.
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: ✨ 기능 설명
+      description: 어떤 기능을 원하시나요?
+      placeholder: 원하는 기능에 대한 명확하고 간결한 설명을 작성해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-solving
+    attributes:
+      label: 🔧 해결하고자 하는 문제
+      description: 이 기능이 어떤 문제를 해결하나요?
+      placeholder: 현재 겪고 있는 문제나 불편함을 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: 💡 제안하는 해결책
+      description: 어떻게 구현하면 좋을지 아이디어가 있나요?
+      placeholder: 구체적인 구현 방법이나 아이디어를 설명해 주세요.
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: ✅ 수용 기준
+      description: 이 기능이 완성되었다고 판단할 기준은 무엇인가요?
+      placeholder: |
+        - [ ] 사용자가 로그인할 수 있다
+        - [ ] 로그인 상태가 유지된다
+        - [ ] 로그아웃 기능이 작동한다
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 🚨 우선순위
+      description: 이 기능의 우선순위는 어떻게 평가하시나요?
+      options:
+        - 낮음 - Nice to have
+        - 보통 - 중요하지만 급하지 않음
+        - 높음 - 중요하고 빠른 구현 필요
+        - 긴급 - 즉시 구현 필요
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: 🧩 예상 복잡도
+      description: 이 기능의 구현 복잡도를 어떻게 예상하시나요?
+      options:
+        - 낮음 - 1-2일 작업
+        - 보통 - 3-5일 작업
+        - 높음 - 1-2주 작업
+        - 매우 높음 - 2주 이상 작업
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 대안 고려사항
+      description: 다른 해결 방법을 고려해보셨나요?
+      placeholder: 고려해본 다른 해결책이나 대안들을 설명해 주세요.
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📝 추가 정보
+      description: 이 기능 요청과 관련된 추가 정보를 제공해 주세요
+      placeholder: 관련 링크, 참고 자료, 유사한 기능 예시 등

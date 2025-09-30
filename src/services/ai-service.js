@@ -1,7 +1,7 @@
 // AI 서비스 - 질문 분류, 답변 추천, 번역 등
 class AIService {
   constructor() {
-    this.apiKey = process.env.VITE_OPENAI_API_KEY || '';
+    this.apiKey = import.meta.env.VITE_OPENAI_API_KEY || '';
     this.baseURL = 'https://api.openai.com/v1';
     this.model = 'gpt-3.5-turbo';
     this.isEnabled = !!this.apiKey;
