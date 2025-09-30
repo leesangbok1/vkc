@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState } from 'react'
 import { useAuth } from '../../services/AuthContext'
 import { useNotifications } from '../../services/NotificationContext'

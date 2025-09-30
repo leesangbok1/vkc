@@ -121,4 +121,41 @@ Agent 8 (Header) → Agent 3 (Supabase) → Agent 4 (DB) → Agent 5 (Auth)
 2. **캐시 문제**: Next.js 개발 시 캐시 삭제 필요
 3. **정확한 기록**: 포트, 시간 등 세부 정보 정확성 요구
 
+---
+
+## 📅 **오늘 업무 플랜 (2025-09-30)**
+
+### **🔴 진행 중인 긴급 해결 (현재 상황)**
+- ✅ **Client Component 오류 해결**: `'use client'` 지시어 추가 완료
+- ✅ **Firebase 환경변수 수정**: `import.meta.env` → `process.env.NEXT_PUBLIC_*` 완료
+- 🔄 **SSR 오류 해결**: "window is not defined" 문제 해결 중
+
+### **🟡 오늘 병렬 작업 시작 대상**
+- **Agent 4 (Database Schema)**: Supabase 스키마 구현
+- **Agent 5 (Authentication)**: 인증 시스템 구현
+- **Agent 8 (UI Components)**: UI 최적화 요구사항 적용
+
+### **🟢 통합 브랜치 전략**
+- **브랜치**: `feature/issue-41-supabase` (통합 브랜치)
+- **커밋 방식**: 작업 완료 후 사용자 승인 필수
+- **이슈 발행**: 각 에이전트별 개별 이슈 계속 유지
+
+### **📋 필수 참조 문서 (모든 에이전트)**
+- `/Users/bk/Desktop/viet-kconnect/docs/TECHNICAL_DOCS.md`
+- `/Users/bk/Desktop/viet-kconnect/docs/create-designs.md`
+
+### **⏰ 오늘 작업 순서**
+```
+1. 🚨 SSR 오류 해결 → 개발 서버 정상화
+2. 💾 현재 수정사항 커밋 (사용자 승인 후)
+3. 🔄 Agent 4, 5 병렬 작업 시작
+4. 🎨 Agent 8 UI 최적화 시작
+5. 📊 Agent 2, 7 추가 업무 배정
+```
+
+### **🔧 커밋 승인 시스템**
+- **원칙**: 모든 커밋 전 사용자 승인 필수
+- **현재 대기 중**: Client Component + Firebase 환경변수 수정사항
+- **승인 요청 시점**: SSR 오류 해결 완료 후
+
 **담당자**: Agent 1 (프로젝트 총괄 관리자)

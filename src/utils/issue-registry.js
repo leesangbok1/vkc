@@ -9,7 +9,7 @@ import { autoWorkflow } from './auto-workflow-manager.js'
  */
 export function initializeAutoWorkflow() {
   // 개발 환경에서 자동 워크플로우 비활성화
-  if (import.meta.env.DEV) {
+  if (process.env.NODE_ENV === 'development') {
     console.log('🔧 개발 모드: 자동 워크플로우가 비활성화됨')
     return
   }
