@@ -17,7 +17,9 @@
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
     "db:generate": "tsx scripts/db/generate-mock-data.ts",
-    "db:reset": "tsx scripts/db/reset-database.ts"
+    "db:reset": "tsx scripts/db/reset-database.ts",
+    "github:auto": "node scripts/github-auto-issue.js",
+    "commit:agents": "node scripts/github-auto-issue.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
@@ -25,6 +27,7 @@
     "@typescript-eslint/eslint-plugin": "^8.44.0",
     "@typescript-eslint/parser": "^8.44.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
     "eslint": "^9.36.0",
     "eslint-plugin-react": "^7.37.5",

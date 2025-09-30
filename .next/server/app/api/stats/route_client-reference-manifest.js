@@ -1,0 +1,1 @@
+globalThis.__RSC_MANIFEST=(globalThis.__RSC_MANIFEST||{});globalThis.__RSC_MANIFEST["/api/stats/route"]={"moduleLoading":{"prefix":"/_next/"},"ssrModuleMapping":{},"edgeSSRModuleMapping":{},"clientModules":{},"entryCSSFiles":{"/Users/bk/Desktop/viet-kconnect/":[],"/Users/bk/Desktop/viet-kconnect/app/api/stats/route":[]},"rscModuleMapping":{},"edgeRscModuleMapping":{}}
