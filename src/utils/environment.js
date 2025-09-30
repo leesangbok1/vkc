@@ -3,44 +3,44 @@
  */
 
 // 환경 변수 확인
-export const isDevelopment = import.meta.env.DEV || import.meta.env.NODE_ENV === 'development'
-export const isProduction = import.meta.env.PROD || import.meta.env.NODE_ENV === 'production'
-export const isTest = import.meta.env.NODE_ENV === 'test'
+export const isDevelopment = process.env.NODE_ENV === 'development'
+export const isProduction = process.env.NODE_ENV === 'production'
+export const isTest = process.env.NODE_ENV === 'test'
 
 // 디버그 모드 설정
-export const isDebugMode = isDevelopment || import.meta.env.VITE_DEBUG === 'true'
+export const isDebugMode = isDevelopment || process.env.NEXT_PUBLIC_DEBUG === 'true'
 
 // API 설정
 export const API_CONFIG = {
   openai: {
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
     baseUrl: 'https://api.openai.com/v1',
-    model: import.meta.env.VITE_OPENAI_MODEL || 'gpt-3.5-turbo',
-    visionModel: import.meta.env.VITE_OPENAI_VISION_MODEL || 'gpt-4o'
+    model: process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-3.5-turbo',
+    visionModel: process.env.NEXT_PUBLIC_OPENAI_VISION_MODEL || 'gpt-4o'
   },
   github: {
-    token: import.meta.env.VITE_GITHUB_TOKEN
+    token: process.env.NEXT_PUBLIC_GITHUB_TOKEN
   },
   firebase: {
     // Firebase 설정은 별도 파일에서 관리
-    enabled: !!import.meta.env.VITE_FIREBASE_API_KEY
+    enabled: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY
   }
 }
 
 // 기능 플래그
 export const FEATURE_FLAGS = {
-  enableAutoRetry: import.meta.env.VITE_ENABLE_AUTO_RETRY !== 'false',
-  enableAnalytics: isProduction && import.meta.env.VITE_ENABLE_ANALYTICS !== 'false',
-  enableErrorReporting: import.meta.env.VITE_ENABLE_ERROR_REPORTING !== 'false',
-  enablePerformanceMonitoring: import.meta.env.VITE_ENABLE_PERFORMANCE !== 'false'
+  enableAutoRetry: process.env.NEXT_PUBLIC_ENABLE_AUTO_RETRY !== 'false',
+  enableAnalytics: isProduction && process.env.NEXT_PUBLIC_ENABLE_ANALYTICS !== 'false',
+  enableErrorReporting: process.env.NEXT_PUBLIC_ENABLE_ERROR_REPORTING !== 'false',
+  enablePerformanceMonitoring: process.env.NEXT_PUBLIC_ENABLE_PERFORMANCE !== 'false'
 }
 
 // 성능 설정
 export const PERFORMANCE_CONFIG = {
-  apiTimeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000,
-  retryAttempts: parseInt(import.meta.env.VITE_RETRY_ATTEMPTS) || 3,
-  cacheTimeout: parseInt(import.meta.env.VITE_CACHE_TIMEOUT) || 300000, // 5분
-  logLevel: import.meta.env.VITE_LOG_LEVEL || (isDevelopment ? 'DEBUG' : 'INFO')
+  apiTimeout: parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT) || 30000,
+  retryAttempts: parseInt(process.env.NEXT_PUBLIC_RETRY_ATTEMPTS) || 3,
+  cacheTimeout: parseInt(process.env.NEXT_PUBLIC_CACHE_TIMEOUT) || 300000, // 5분
+  logLevel: process.env.NEXT_PUBLIC_LOG_LEVEL || (isDevelopment ? 'DEBUG' : 'INFO')
 }
 
 // 환경별 설정
@@ -79,12 +79,12 @@ export function validateEnvironment() {
 
   // 필수 환경 변수 확인
   if (!API_CONFIG.openai.apiKey && !isDevelopment) {
-    errors.push('VITE_OPENAI_API_KEY is required for production')
+    errors.push('NEXT_PUBLIC_OPENAI_API_KEY is required for production')
   }
 
   // 선택적 환경 변수 확인
   if (!API_CONFIG.github.token) {
-    warnings.push('VITE_GITHUB_TOKEN is not set - GitHub features will be disabled')
+    warnings.push('NEXT_PUBLIC_GITHUB_TOKEN is not set - GitHub features will be disabled')
   }
 
   if (!API_CONFIG.firebase.enabled) {

@@ -215,6 +215,49 @@ npm run dev
 
 ---
 
+---
+
+## 🚨 **즉시 작업 시작 - Agent 1 지시 (2025-09-30 오후)**
+
+**현재 상황**: 개발 서버 정상, Header 문제 해결 완료
+**병렬 작업**: Agent 4, 5와 동시 진행 가능
+**브랜치**: `feature/issue-41-supabase` (통합 브랜치)
+
+### **최우선 작업 (3시간 이내)**
+
+#### **1단계: 필수 참조 문서 확인**
+⚠️ 작업 시작 전 다음 파일을 반드시 읽고 기준으로 삼을 것:
+- `/Users/bk/Desktop/viet-kconnect/docs/TECHNICAL_DOCS.md`
+- `/Users/bk/Desktop/viet-kconnect/docs/create-designs.md`
+
+#### **2단계: UI 최적화 핵심 구현**
+- **QuestionCard 컴포넌트**: 고급 디자인, 신뢰도 배지, 긴급도 표시
+- **shadcn/ui 통합**: 일관된 디자인 시스템 적용
+- **반응형 레이아웃**: 모바일/데스크톱 최적화
+- **접근성**: ARIA 라벨, 키보드 네비게이션
+
+#### **3단계: 컴포넌트 라이브러리 구축**
+- **Button 컴포넌트**: variant별 스타일 시스템
+- **Card 컴포넌트**: 다양한 용도의 카드 레이아웃
+- **Modal 컴포넌트**: Agent 5 LoginModal과 연동 가능
+- **Form 컴포넌트**: QuestionInput과 연동
+
+### **충돌 방지 규칙**
+- Agent 4는 `/lib/database/` 작업 → 충돌 없음
+- Agent 5는 `/components/auth/` 작업 → 충돌 없음
+- UI 컴포넌트 작업은 Agent 8 전담 (`/components/ui/`)
+
+### **완료 기준**
+- [ ] QuestionCard 고급 디자인 완성
+- [ ] shadcn/ui 컴포넌트 라이브러리 구축
+- [ ] 반응형 디자인 완성
+- [ ] Agent 5 LoginModal에서 UI 컴포넌트 사용 가능
+
+### **Agent 8 즉시 시작 지시**
+사용자가 제공한 상세한 UI 최적화 요구사항을 바탕으로 고급 UI 컴포넌트를 구현하고, 완료 시 이 파일에 상세한 보고서를 작성할 것.
+
+---
+
 ## 📊 **완료 후 보고 형식**
 
 ### **Agent 1에게 보고할 내용**

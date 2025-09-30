@@ -70,12 +70,6 @@ npm run build
 npm run deploy
 ```
 
-## 📚 문서
-
-- **[API 문서](docs/API.md)**: Supabase 및 OpenAI API 사용법
-- **[사용자 가이드](docs/USER_GUIDE.md)**: 플랫폼 사용 방법
-- **[기술 문서](docs/TECHNICAL_DOCS.md)**: 상세 기술 정보
-
 ## 🔧 주요 기능
 
 ### 사용자 기능

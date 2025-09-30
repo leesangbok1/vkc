@@ -1,7 +1,7 @@
 import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// Database types will be updated when schema is ready
+// Complete Database types matching Agent 4 schema implementation
 export type Database = {
   public: {
     Tables: {
@@ -9,27 +9,112 @@ export type Database = {
         Row: {
           id: string
           email: string
-          name: string | null
+          name: string
           avatar_url: string | null
+          bio: string | null
           provider: string | null
+          provider_id: string | null
+          visa_type: string | null
+          company: string | null
+          years_in_korea: number | null
+          region: string | null
+          preferred_language: string
+          is_verified: boolean
+          verification_date: string | null
+          trust_score: number
+          badges: Record<string, boolean>
+          question_count: number
+          answer_count: number
+          helpful_answer_count: number
+          last_active: string
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           email: string
-          name?: string | null
+          name: string
           avatar_url?: string | null
+          bio?: string | null
           provider?: string | null
+          provider_id?: string | null
+          visa_type?: string | null
+          company?: string | null
+          years_in_korea?: number | null
+          region?: string | null
+          preferred_language?: string
+          is_verified?: boolean
+          verification_date?: string | null
+          trust_score?: number
+          badges?: Record<string, boolean>
+          question_count?: number
+          answer_count?: number
+          helpful_answer_count?: number
+          last_active?: string
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           email?: string
-          name?: string | null
+          name?: string
           avatar_url?: string | null
+          bio?: string | null
           provider?: string | null
+          provider_id?: string | null
+          visa_type?: string | null
+          company?: string | null
+          years_in_korea?: number | null
+          region?: string | null
+          preferred_language?: string
+          is_verified?: boolean
+          verification_date?: string | null
+          trust_score?: number
+          badges?: Record<string, boolean>
+          question_count?: number
+          answer_count?: number
+          helpful_answer_count?: number
+          last_active?: string
+          updated_at?: string
+        }
+      }
+      categories: {
+        Row: {
+          id: number
+          name: string
+          slug: string
+          description: string | null
+          icon: string | null
+          color: string
+          parent_id: number | null
+          sort_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          slug: string
+          description?: string | null
+          icon?: string | null
+          color?: string
+          parent_id?: number | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          slug?: string
+          description?: string | null
+          icon?: string | null
+          color?: string
+          parent_id?: number | null
+          sort_order?: number
+          is_active?: boolean
           updated_at?: string
         }
       }
@@ -38,38 +123,88 @@ export type Database = {
           id: string
           title: string
           content: string
-          category: string
+          author_id: string
+          category_id: number
           tags: string[]
-          user_id: string
+          ai_category_confidence: number | null
+          ai_tags: string[]
+          urgency: string
+          matched_experts: string[]
+          expert_notifications_sent: boolean
+          view_count: number
+          answer_count: number
+          helpful_count: number
+          upvote_count: number
+          downvote_count: number
+          status: 'open' | 'closed' | 'resolved' | 'archived'
+          is_pinned: boolean
+          is_featured: boolean
+          is_reported: boolean
+          is_approved: boolean
+          moderated_by: string | null
+          moderated_at: string | null
           created_at: string
           updated_at: string
-          views: number
-          upvotes: number
-          status: 'open' | 'closed' | 'resolved'
+          last_activity_at: string
+          resolved_at: string | null
+          search_vector: unknown | null
         }
         Insert: {
           id?: string
           title: string
           content: string
-          category: string
+          author_id: string
+          category_id: number
           tags?: string[]
-          user_id: string
+          ai_category_confidence?: number | null
+          ai_tags?: string[]
+          urgency?: string
+          matched_experts?: string[]
+          expert_notifications_sent?: boolean
+          view_count?: number
+          answer_count?: number
+          helpful_count?: number
+          upvote_count?: number
+          downvote_count?: number
+          status?: 'open' | 'closed' | 'resolved' | 'archived'
+          is_pinned?: boolean
+          is_featured?: boolean
+          is_reported?: boolean
+          is_approved?: boolean
+          moderated_by?: string | null
+          moderated_at?: string | null
           created_at?: string
           updated_at?: string
-          views?: number
-          upvotes?: number
-          status?: 'open' | 'closed' | 'resolved'
+          last_activity_at?: string
+          resolved_at?: string | null
         }
         Update: {
           id?: string
           title?: string
           content?: string
-          category?: string
+          author_id?: string
+          category_id?: number
           tags?: string[]
+          ai_category_confidence?: number | null
+          ai_tags?: string[]
+          urgency?: string
+          matched_experts?: string[]
+          expert_notifications_sent?: boolean
+          view_count?: number
+          answer_count?: number
+          helpful_count?: number
+          upvote_count?: number
+          downvote_count?: number
+          status?: 'open' | 'closed' | 'resolved' | 'archived'
+          is_pinned?: boolean
+          is_featured?: boolean
+          is_reported?: boolean
+          is_approved?: boolean
+          moderated_by?: string | null
+          moderated_at?: string | null
           updated_at?: string
-          views?: number
-          upvotes?: number
-          status?: 'open' | 'closed' | 'resolved'
+          last_activity_at?: string
+          resolved_at?: string | null
         }
       }
       answers: {
@@ -77,28 +212,193 @@ export type Database = {
           id: string
           content: string
           question_id: string
-          user_id: string
+          author_id: string
+          parent_answer_id: string | null
+          is_accepted: boolean
+          accepted_at: string | null
+          accepted_by: string | null
+          upvote_count: number
+          downvote_count: number
+          helpful_count: number
+          is_reported: boolean
+          is_approved: boolean
+          moderated_by: string | null
+          moderated_at: string | null
+          ai_helpfulness_score: number | null
+          ai_sentiment: string | null
           created_at: string
           updated_at: string
-          upvotes: number
-          is_accepted: boolean
+          search_vector: unknown | null
         }
         Insert: {
           id?: string
           content: string
           question_id: string
-          user_id: string
+          author_id: string
+          parent_answer_id?: string | null
+          is_accepted?: boolean
+          accepted_at?: string | null
+          accepted_by?: string | null
+          upvote_count?: number
+          downvote_count?: number
+          helpful_count?: number
+          is_reported?: boolean
+          is_approved?: boolean
+          moderated_by?: string | null
+          moderated_at?: string | null
+          ai_helpfulness_score?: number | null
+          ai_sentiment?: string | null
           created_at?: string
           updated_at?: string
-          upvotes?: number
-          is_accepted?: boolean
         }
         Update: {
           id?: string
           content?: string
-          updated_at?: string
-          upvotes?: number
+          question_id?: string
+          author_id?: string
+          parent_answer_id?: string | null
           is_accepted?: boolean
+          accepted_at?: string | null
+          accepted_by?: string | null
+          upvote_count?: number
+          downvote_count?: number
+          helpful_count?: number
+          is_reported?: boolean
+          is_approved?: boolean
+          moderated_by?: string | null
+          moderated_at?: string | null
+          ai_helpfulness_score?: number | null
+          ai_sentiment?: string | null
+          updated_at?: string
+        }
+      }
+      votes: {
+        Row: {
+          id: string
+          user_id: string
+          target_id: string
+          target_type: string
+          vote_type: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          target_id: string
+          target_type: string
+          vote_type: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          target_id?: string
+          target_type?: string
+          vote_type?: string
+          updated_at?: string
+        }
+      }
+      comments: {
+        Row: {
+          id: string
+          content: string
+          target_id: string
+          target_type: string
+          author_id: string
+          parent_comment_id: string | null
+          upvote_count: number
+          downvote_count: number
+          is_reported: boolean
+          is_approved: boolean
+          moderated_by: string | null
+          moderated_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          content: string
+          target_id: string
+          target_type: string
+          author_id: string
+          parent_comment_id?: string | null
+          upvote_count?: number
+          downvote_count?: number
+          is_reported?: boolean
+          is_approved?: boolean
+          moderated_by?: string | null
+          moderated_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          content?: string
+          target_id?: string
+          target_type?: string
+          author_id?: string
+          parent_comment_id?: string | null
+          upvote_count?: number
+          downvote_count?: number
+          is_reported?: boolean
+          is_approved?: boolean
+          moderated_by?: string | null
+          moderated_at?: string | null
+          updated_at?: string
+        }
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          related_id: string | null
+          related_type: string | null
+          is_read: boolean
+          is_email_sent: boolean
+          is_push_sent: boolean
+          is_kakao_sent: boolean
+          channels: Record<string, any>
+          created_at: string
+          read_at: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          related_id?: string | null
+          related_type?: string | null
+          is_read?: boolean
+          is_email_sent?: boolean
+          is_push_sent?: boolean
+          is_kakao_sent?: boolean
+          channels?: Record<string, any>
+          created_at?: string
+          read_at?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string
+          related_id?: string | null
+          related_type?: string | null
+          is_read?: boolean
+          is_email_sent?: boolean
+          is_push_sent?: boolean
+          is_kakao_sent?: boolean
+          channels?: Record<string, any>
+          read_at?: string | null
+          sent_at?: string | null
         }
       }
     }
@@ -106,7 +406,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_moderator: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      is_question_author: {
+        Args: { question_id: string; user_id: string }
+        Returns: boolean
+      }
+      can_edit_content: {
+        Args: { content_type: string; content_id: string; user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

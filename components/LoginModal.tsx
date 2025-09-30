@@ -13,7 +13,7 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
-  const { signInWithGoogle, signInWithKakao } = useAuth()
+  const { signInWithGoogle, signInWithFacebook, signInWithKakao } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,11 +23,54 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
     try {
       await signInWithGoogle()
-      onClose()
+      // OAuth flow will redirect to callback, so we don't close modal here
+      // Modal will be closed by parent component when auth state changes
     } catch (error) {
-      setError('Google 로그인에 실패했습니다. 다시 시도해주세요.')
+      let errorMessage = 'Google 로그인에 실패했습니다.'
+
+      if (error instanceof Error) {
+        if (error.message.includes('popup_closed_by_user')) {
+          errorMessage = '로그인이 취소되었습니다.'
+        } else if (error.message.includes('network')) {
+          errorMessage = '네트워크 연결을 확인해주세요.'
+        } else if (error.message.includes('oauth')) {
+          errorMessage = 'OAuth 설정에 문제가 있습니다. 관리자에게 문의해주세요.'
+        } else {
+          errorMessage = `Google 로그인 실패: ${error.message}`
+        }
+      }
+
+      setError(errorMessage)
       console.error('Google login failed:', error)
-    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleFacebookLogin = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      await signInWithFacebook()
+      // OAuth flow will redirect to callback, so we don't close modal here
+      // Modal will be closed by parent component when auth state changes
+    } catch (error) {
+      let errorMessage = 'Facebook 로그인에 실패했습니다.'
+
+      if (error instanceof Error) {
+        if (error.message.includes('popup_closed_by_user')) {
+          errorMessage = '로그인이 취소되었습니다.'
+        } else if (error.message.includes('network')) {
+          errorMessage = '네트워크 연결을 확인해주세요.'
+        } else if (error.message.includes('oauth')) {
+          errorMessage = 'OAuth 설정에 문제가 있습니다. 관리자에게 문의해주세요.'
+        } else {
+          errorMessage = `Facebook 로그인 실패: ${error.message}`
+        }
+      }
+
+      setError(errorMessage)
+      console.error('Facebook login failed:', error)
       setIsLoading(false)
     }
   }
@@ -38,11 +81,25 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
     try {
       await signInWithKakao()
-      onClose()
+      // OAuth flow will redirect to callback, so we don't close modal here
+      // Modal will be closed by parent component when auth state changes
     } catch (error) {
-      setError('카카오 로그인에 실패했습니다. 다시 시도해주세요.')
+      let errorMessage = '카카오 로그인에 실패했습니다.'
+
+      if (error instanceof Error) {
+        if (error.message.includes('popup_closed_by_user')) {
+          errorMessage = '로그인이 취소되었습니다.'
+        } else if (error.message.includes('network')) {
+          errorMessage = '네트워크 연결을 확인해주세요.'
+        } else if (error.message.includes('oauth')) {
+          errorMessage = 'OAuth 설정에 문제가 있습니다. 관리자에게 문의해주세요.'
+        } else {
+          errorMessage = `카카오 로그인 실패: ${error.message}`
+        }
+      }
+
+      setError(errorMessage)
       console.error('Kakao login failed:', error)
-    } finally {
       setIsLoading(false)
     }
   }
@@ -92,6 +149,21 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               />
             </svg>
             {isLoading ? '로그인 중...' : 'Google로 계속하기'}
+          </Button>
+
+          {/* Facebook 로그인 */}
+          <Button
+            onClick={handleFacebookLogin}
+            disabled={isLoading}
+            className="w-full h-12 bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500"
+          >
+            <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+              />
+            </svg>
+            {isLoading ? '로그인 중...' : 'Facebook으로 계속하기'}
           </Button>
 
           {/* Kakao 로그인 */}

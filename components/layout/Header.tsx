@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ThemeToggle } from '@/components/theme-toggle'
 import LoginModal from '@/components/LoginModal'
 
-export function Header() {
+export default function Header() {
   const { user, profile, loading, signOut } = useAuth()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)

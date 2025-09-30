@@ -8,11 +8,6 @@
 
 이 문서는 Viet K-Connect 프로젝트의 기술적 설계와 구현 방법을 정리한 문서입니다.
 
-- **현재 상태**: 활성 개발 중 (2025년 9월)
-- **기술 스택**: React + Firebase + OpenAI  
-- **참조 문서**: `/docs/API.md`, `/docs/USER_GUIDE.md`
-- **목적**: 개발팀 기술 가이드 및 아키텍처 문서
-
 ---
 
 ## 🏗️ 시스템 아키텍처
@@ -871,14 +866,7 @@ const UI_METRICS = {
 - 기술적: 로딩 2초 이내, 에러율 1% 미만, AI 정확도 80%+
 - 비즈니스: 베타 사용자 50명+, 답변률 60%+, NPS 30+
 
----
-
-## 🔗 참고 문서
-
-- `PROJECT_OVERVIEW.md`: 프로젝트 개요
-- `PROJECT_PLAN.md`: 작업 계획 및 일정
-- `METHODOLOGY.md`: 개발 방법론
-- `create-designs.md`: 테마 시스템
+--
 
 ---
 

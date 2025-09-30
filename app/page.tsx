@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useAuth } from '../src/services/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
+import QuestionInput from '@/components/forms/QuestionInput'
 
 export default function HomePage() {
   const { user, profile, loading } = useAuth()
@@ -51,47 +52,31 @@ export default function HomePage() {
             비자, 생활정보, 취업, 교육 등 다양한 주제로 소통하세요
           </p>
 
-          {user ? (
-            <div className="bg-card border rounded-lg shadow-sm p-6 sm:p-8 max-w-2xl mx-auto animate-in fade-in-0 duration-700 delay-400">
-              <h2 className="text-xl sm:text-2xl font-semibold text-card-foreground mb-4">
-                환영합니다!
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                로그인이 완료되었습니다. 이제 질문을 올리고 답변을 받을 수 있습니다.
-              </p>
+          {/* 질문 입력 컴포넌트 - 모든 사용자에게 표시 */}
+          <div className="max-w-4xl mx-auto mb-12 animate-in fade-in-0 duration-700 delay-400">
+            <QuestionInput
+              onSubmit={(data) => {
+                console.log('질문 제출:', data)
+                // TODO: 실제 질문 제출 로직 구현
+                alert('질문이 성공적으로 등록되었습니다!')
+              }}
+            />
+          </div>
 
-              {profile && (
-                <div className="bg-muted/50 rounded-lg p-4 text-left mb-6">
-                  <h3 className="font-medium text-foreground mb-3">사용자 정보</h3>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <p><span className="font-medium text-foreground">이름:</span> {profile.name}</p>
-                    <p><span className="font-medium text-foreground">이메일:</span> {user.email}</p>
-                    <p><span className="font-medium text-foreground">로그인 방법:</span> {profile.provider}</p>
-                    <p><span className="font-medium text-foreground">가입일:</span> {new Date(profile.created_at).toLocaleDateString('ko-KR')}</p>
-                  </div>
+          {/* 사용자 정보 (로그인된 경우에만 표시) */}
+          {user && profile && (
+            <div className="bg-card border rounded-lg shadow-sm p-6 sm:p-8 max-w-2xl mx-auto mb-8 animate-in fade-in-0 duration-700 delay-600">
+              <h2 className="text-xl sm:text-2xl font-semibold text-card-foreground mb-4">
+                안녕하세요, {profile.name}님!
+              </h2>
+              <div className="bg-muted/50 rounded-lg p-4 text-left">
+                <h3 className="font-medium text-foreground mb-3">프로필 정보</h3>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p><span className="font-medium text-foreground">이메일:</span> {user.email}</p>
+                  <p><span className="font-medium text-foreground">로그인 방법:</span> {profile.provider}</p>
+                  <p><span className="font-medium text-foreground">가입일:</span> {new Date(profile.created_at).toLocaleDateString('ko-KR')}</p>
                 </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-4 sm:space-x-4 sm:space-y-0">
-                <button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
-                  질문하기
-                </button>
-                <button className="w-full sm:w-auto border border-gray-300 hover:border-gray-400 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors">
-                  질문 보기
-                </button>
               </div>
-            </div>
-          ) : (
-            <div className="bg-card border rounded-lg shadow-sm p-6 sm:p-8 max-w-2xl mx-auto animate-in fade-in-0 duration-700 delay-400">
-              <h2 className="text-xl sm:text-2xl font-semibold text-card-foreground mb-4">
-                시작하기
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                로그인하여 커뮤니티에 참여하고 질문과 답변을 나눠보세요.
-              </p>
-              <p className="text-muted-foreground text-sm">
-                오른쪽 상단의 로그인 버튼을 클릭해서 시작하세요
-              </p>
             </div>
           )}
         </div>
