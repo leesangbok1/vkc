@@ -6,13 +6,13 @@ import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
 // Firebase 설정 (환경 변수에서 로드) - 개발 시 모킹 모드 기본값
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || null,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || null,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || null,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || null,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || null,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || null,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || null
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || null,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || null,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || null,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || null,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || null,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || null
 };
 
 // Firebase 앱 초기화
@@ -32,7 +32,7 @@ if (hasValidFirebaseConfig) {
     storage = getStorage(app);
 
     // 개발 환경에서 에뮬레이터 사용 (환경 변수로 제어)
-    if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+    if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
       try {
         connectDatabaseEmulator(database, 'localhost', 9000);
         connectAuthEmulator(auth, 'http://localhost:9099');

@@ -32,7 +32,7 @@ class Logger {
   constructor() {
     // 환경별 로그 레벨 설정
     this.currentLevel = this.getLogLevel()
-    this.isDevelopment = import.meta.env.DEV || import.meta.env.NODE_ENV === 'development'
+    this.isDevelopment = process.env.NODE_ENV === 'development'
     this.logs = [] // 로그 히스토리
     this.maxLogs = 1000 // 최대 저장 로그 수
 

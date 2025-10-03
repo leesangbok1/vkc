@@ -27,12 +27,12 @@ export const database = getDatabase(app)
 export const storage = getStorage(app)
 
 // Analytics (프로덕션 환경에서만)
-export const analytics = typeof window !== 'undefined' && import.meta.env.PROD
+export const analytics = typeof window !== 'undefined' && process.env.NODE_ENV === 'production'
   ? getAnalytics(app)
   : null
 
 // 개발 환경에서 에뮬레이터 연결
-if (import.meta.env.DEV) {
+if (process.env.NODE_ENV === 'development') {
   const isEmulatorConnected = {
     auth: false,
     database: false,
@@ -96,11 +96,11 @@ export const checkFirebaseConnection = async () => {
 
 // 환경별 설정
 export const firebaseEnv = {
-  isDev: import.meta.env.DEV,
-  isProd: import.meta.env.PROD,
+  isDev: process.env.NODE_ENV === 'development',
+  isProd: process.env.NODE_ENV === 'production',
   projectId: firebaseConfig.projectId,
   databaseURL: firebaseConfig.databaseURL,
-  hasEmulators: import.meta.env.DEV
+  hasEmulators: process.env.NODE_ENV === 'development'
 }
 
 // 데이터베이스 참조 헬퍼
@@ -201,10 +201,10 @@ if (typeof window !== 'undefined') {
 }
 
 // 개발 환경에서 Firebase 상태 로그
-if (import.meta.env.DEV) {
+if (process.env.NODE_ENV === 'development') {
   console.log('🔥 Firebase initialized:', {
     projectId: firebaseConfig.projectId,
-    environment: import.meta.env.MODE,
+    environment: process.env.NODE_ENV,
     auth: !!auth,
     database: !!database,
     storage: !!storage,

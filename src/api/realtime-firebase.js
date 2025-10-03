@@ -389,13 +389,15 @@ async function updateSiteStats(statName, increment = 1) {
 
 // === 페이지 정리 시 리스너 정리 ===
 
-// 페이지 언로드 시 모든 리스너 정리
-window.addEventListener('beforeunload', () => {
-  listenerManager.removeAllListeners();
-});
+// 페이지 언로드 시 모든 리스너 정리 (클라이언트에서만 실행)
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    listenerManager.removeAllListeners();
+  });
+}
 
-// 개발 모드에서 디버깅 정보 제공
-if (import.meta.env.DEV) {
+// 개발 모드에서 디버깅 정보 제공 (클라이언트에서만 실행)
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   window.debugRealtimeListeners = {
     count: () => listenerManager.getActiveListenerCount(),
     list: () => Array.from(listenerManager.listeners.keys()),

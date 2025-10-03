@@ -588,10 +588,12 @@ class ChatSystem {
 // 싱글톤 인스턴스 생성
 export const chatSystem = new ChatSystem();
 
-// 페이지 언로드 시 정리
-window.addEventListener('beforeunload', () => {
-  chatSystem.cleanup();
-});
+// 페이지 언로드 시 정리 (클라이언트에서만)
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    chatSystem.cleanup();
+  });
+}
 
 // 전역에서 접근 가능하도록 설정 (디버깅용)
 if (typeof window !== 'undefined') {

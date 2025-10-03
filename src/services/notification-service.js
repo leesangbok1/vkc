@@ -35,16 +35,18 @@ export const NOTIFICATION_PRIORITY = {
 
 class NotificationService {
   constructor() {
-    this.isSupported = 'Notification' in window;
+    this.isSupported = typeof window !== 'undefined' && 'Notification' in window;
     this.permission = this.isSupported ? Notification.permission : 'denied';
     this.subscribers = new Map();
     this.unreadCount = 0;
     this.soundEnabled = true;
     this.vibrationEnabled = true;
 
-    // 알림음 로드
-    this.notificationSound = new Audio('/sounds/notification.mp3');
-    this.notificationSound.volume = 0.5;
+    // 알림음 로드 (클라이언트에서만)
+    this.notificationSound = typeof window !== 'undefined' ? new Audio('/sounds/notification.mp3') : null;
+    if (this.notificationSound) {
+      this.notificationSound.volume = 0.5;
+    }
 
     this.init();
   }
@@ -86,6 +88,7 @@ class NotificationService {
 
   async loadSettings() {
     try {
+      if (typeof window === 'undefined') return; // SSR에서는 실행하지 않음
       const saved = localStorage.getItem('notification-settings');
       if (saved) {
         const settings = JSON.parse(saved);
