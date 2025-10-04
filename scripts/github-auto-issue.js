@@ -8,6 +8,10 @@
 import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
+import { config } from 'dotenv'
+
+// .env 파일 로드
+config({ path: '/Users/bk/Desktop/viet-kconnect/.env' })
 
 // 환경 변수 확인
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.VITE_GITHUB_TOKEN
@@ -15,9 +19,8 @@ const REPO_OWNER = 'leesangbok1'
 const REPO_NAME = 'vkc'
 
 if (!GITHUB_TOKEN) {
-  console.error('❌ GITHUB_TOKEN 환경 변수가 설정되지 않음')
+  console.warn('⚠️ GITHUB_TOKEN 환경 변수가 설정되지 않음 (GitHub 기능 비활성화)')
   console.log('   export GITHUB_TOKEN=your_token_here')
-  process.exit(1)
 }
 
 /**

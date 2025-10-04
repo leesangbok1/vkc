@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useSafeAuth } from "@/components/providers/ClientProviders"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -13,7 +13,7 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
-  const { signInWithGoogle, signInWithFacebook, signInWithKakao } = useAuth()
+  const { signInWithGoogle, signInWithFacebook, signInWithKakao } = useSafeAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -127,7 +127,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           <Button
             onClick={handleGoogleLogin}
             disabled={isLoading}
-            variant="outline"
+            variant="primary-outline"
             className="w-full h-12"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -155,7 +155,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           <Button
             onClick={handleFacebookLogin}
             disabled={isLoading}
-            className="w-full h-12 bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500"
+            variant="primary"
+            className="w-full h-12"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
               <path
@@ -170,7 +171,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           <Button
             onClick={handleKakaoLogin}
             disabled={isLoading}
-            className="w-full h-12 bg-yellow-400 text-gray-900 hover:bg-yellow-500 focus:ring-yellow-500"
+            variant="primary-green"
+            className="w-full h-12"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
               <path

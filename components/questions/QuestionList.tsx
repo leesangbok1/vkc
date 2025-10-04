@@ -13,7 +13,6 @@ import { Alert } from '../ui/alert'
 type Question = Database['public']['Tables']['questions']['Row'] & {
   author: Database['public']['Tables']['users']['Row']
   category: Database['public']['Tables']['categories']['Row']
-  _count: { count: number }
 }
 
 interface QuestionListResponse {

@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useSafeAuth } from "@/components/providers/ClientProviders"
 import { Button } from '@/components/ui/button'
 
 interface SocialLoginButtonsProps {
@@ -10,7 +10,7 @@ interface SocialLoginButtonsProps {
 }
 
 export function SocialLoginButtons({ onLoginSuccess, disabled }: SocialLoginButtonsProps) {
-  const { signInWithGoogle, signInWithKakao, loading } = useAuth()
+  const { signInWithGoogle, signInWithKakao, loading } = useSafeAuth()
 
   const handleGoogleLogin = async () => {
     try {

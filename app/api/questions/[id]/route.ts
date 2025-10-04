@@ -7,9 +7,93 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient()
     const { id } = await params
     const questionId = id
+
+    // Mock mode check
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
+      console.log('Question detail API running in mock mode')
+
+      const mockQuestion = {
+        id: '1',
+        title: '한국에서 비자 연장하는 방법이 궁금합니다',
+        content: '베트남인이 한국에서 비자를 연장하려면 어떤 서류가 필요한지 알고 싶습니다. 특히 E-9 비자 소지자인데, 체류 기간이 곧 만료됩니다. 준비해야 할 서류와 절차에 대해 자세히 알고 싶습니다.',
+        author_id: 'user1',
+        category_id: 'visa',
+        tags: ['비자', '연장', '서류', 'E-9'],
+        status: 'open',
+        urgency: 'normal',
+        vote_score: 5,
+        view_count: 24,
+        answer_count: 3,
+        is_anonymous: false,
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        author: {
+          id: 'user1',
+          name: '강민수',
+          avatar_url: null,
+          trust_score: 75,
+          badges: { 'verified': true },
+          visa_type: 'E-9',
+          company: 'ABC 제조업체',
+          years_in_korea: 2,
+          region: '경기도',
+          question_count: 5,
+          answer_count: 12,
+          helpful_answer_count: 8,
+          created_at: '2023-03-15T00:00:00Z'
+        },
+        category: {
+          id: 'visa',
+          name: '비자/법률',
+          slug: 'visa',
+          icon: '📄',
+          color: '#3B82F6',
+          description: '비자, 체류 허가, 법률 관련 질문'
+        },
+        answers: [
+          {
+            id: '1',
+            content: '출입국 관리사무소에 방문하기 전에 먼저 온라인으로 체류 기간 연장 신청을 할 수 있습니다. Hi Korea 사이트를 이용하시면 됩니다.',
+            is_helpful: true,
+            vote_score: 15,
+            is_accepted: true,
+            created_at: '2024-01-15T12:00:00Z',
+            updated_at: '2024-01-15T12:00:00Z',
+            author: {
+              id: 'user3',
+              name: '박정민',
+              avatar_url: null,
+              trust_score: 92,
+              badges: { 'verified': true, 'expert': true }
+            }
+          }
+        ]
+      }
+
+      if (questionId === '1') {
+        return NextResponse.json({
+          data: mockQuestion,
+          message: 'Question retrieved successfully'
+        })
+      } else {
+        return NextResponse.json(
+          { error: 'Question not found' },
+          { status: 404 }
+        )
+      }
+    }
+
+    const supabase = await createClient()
+
+    // If supabase is null (mock mode), return error
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable' },
+        { status: 503 }
+      )
+    }
 
     // 질문 조회 (상세 정보 포함)
     const { data: question, error } = await supabase

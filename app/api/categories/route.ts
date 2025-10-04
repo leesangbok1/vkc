@@ -4,8 +4,115 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabase-serve
 // GET /api/categories - 카테고리 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
     const { searchParams } = new URL(request.url)
+
+    // Mock mode check
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
+      console.log('Categories API running in mock mode')
+
+      const mockCategories = [
+        {
+          id: 1,
+          name: '비자/법률',
+          slug: 'visa',
+          description: '비자 신청, 법률 상담, 행정 업무 관련 질문',
+          icon: '🛂',
+          color: '#4285F4',
+          parent_id: null,
+          sort_order: 1,
+          is_active: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z'
+        },
+        {
+          id: 2,
+          name: '주거/부동산',
+          slug: 'housing',
+          description: '집 구하기, 부동산, 임대 계약 관련 질문',
+          icon: '🏠',
+          color: '#9C27B0',
+          parent_id: null,
+          sort_order: 2,
+          is_active: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z'
+        },
+        {
+          id: 3,
+          name: '취업/직장',
+          slug: 'employment',
+          description: '취업, 면접, 직장 생활, 이직 관련 질문',
+          icon: '💼',
+          color: '#EA4335',
+          parent_id: null,
+          sort_order: 3,
+          is_active: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z'
+        },
+        {
+          id: 4,
+          name: '의료/건강',
+          slug: 'healthcare',
+          description: '건강보험, 병원, 의료비, 건강 관리 관련 질문',
+          icon: '🏥',
+          color: '#F44336',
+          parent_id: null,
+          sort_order: 4,
+          is_active: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z'
+        },
+        {
+          id: 5,
+          name: '생활/문화',
+          slug: 'life',
+          description: '일상 생활, 문화 차이, 쇼핑, 음식 관련 질문',
+          icon: '🍜',
+          color: '#4CAF50',
+          parent_id: null,
+          sort_order: 5,
+          is_active: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z'
+        }
+      ]
+
+      // 쿼리 파라미터 파싱
+      const includeInactive = searchParams.get('include_inactive') === 'true'
+      const parentId = searchParams.get('parent_id')
+
+      let filteredCategories = mockCategories
+
+      // 활성 카테고리만 조회 (기본값)
+      if (!includeInactive) {
+        filteredCategories = filteredCategories.filter(cat => cat.is_active)
+      }
+
+      // 특정 부모 카테고리의 하위 카테고리만 조회
+      if (parentId) {
+        if (parentId === 'null') {
+          filteredCategories = filteredCategories.filter(cat => cat.parent_id === null)
+        } else {
+          filteredCategories = filteredCategories.filter(cat => cat.parent_id === parseInt(parentId))
+        }
+      }
+
+      return NextResponse.json({
+        data: filteredCategories,
+        total: filteredCategories.length
+      })
+    }
+
+    const supabase = await createClient()
+
+    // If supabase is null (mock mode), return error
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable' },
+        { status: 503 }
+      )
+    }
 
     // 쿼리 파라미터 파싱
     const includeInactive = searchParams.get('include_inactive') === 'true'

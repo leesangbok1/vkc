@@ -1,0 +1,186 @@
+/* ===== CRITICAL CSS - Vietnam Theme Core ===== */
+
+/* Critical CSS Variables */
+:root {
+  /* New Blue/Green Theme */
+  --primary-blue: #2563EB;
+  --primary-green: #10B981;
+  --secondary-blue: #1D4ED8;
+  --secondary-green: #059669;
+
+  /* Primary Colors */
+  --primary: var(--primary-blue);
+  --primary-dark: var(--secondary-blue);
+
+  /* Trust System */
+  --trust-green: var(--primary-green);
+  --expert-gold: #F59E0B;
+
+  /* Gray Scale */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+}
+
+/* Critical Reset & Base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  line-height: 1.15;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--gray-900);
+  background-color: var(--gray-50);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Critical Layout Classes */
+.h-full { height: 100%; }
+.min-h-screen { min-height: 100vh; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.text-center { text-align: center; }
+.bg-gray-50 { background-color: var(--gray-50); }
+
+/* Primary Button */
+.btn-vietnam-primary {
+  background-color: var(--primary-blue);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-weight: 600;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.btn-vietnam-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+/* Loading Spinner */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Critical Typography */
+.text-lg { font-size: 1.125rem; }
+.text-sm { font-size: 0.875rem; }
+.font-bold { font-weight: 700; }
+.font-medium { font-weight: 500; }
+
+/* Skip Link for Accessibility */
+.skip-to-main {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-to-main:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  background: var(--vietnam-red);
+  color: white;
+  padding: 8px 16px;
+  text-decoration: none;
+  font-weight: 600;
+  z-index: 9999;
+}
+
+/* Enhanced Focus Styles */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--vietnam-red);
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .btn-vietnam-primary {
+    background-color: var(--gray-900);
+    border: 2px solid var(--gray-900);
+  }
+
+  .btn-vietnam-primary:hover {
+    background-color: var(--gray-700);
+    border-color: var(--gray-700);
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation: none;
+  }
+
+  * {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Screen Reader Only Content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ARIA Live Regions */
+.live-region {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Color Blind Safe Colors */
+.color-safe-red { background-color: #d73502; }
+.color-safe-green { background-color: #1f7a1f; }
+.color-safe-blue { background-color: #1f5582; }
+.color-safe-yellow { background-color: #b8860b; }
+
+/* Keyboard Navigation Enhancement */
+.keyboard-focus:focus-within {
+  box-shadow: 0 0 0 3px var(--vietnam-red);
+}

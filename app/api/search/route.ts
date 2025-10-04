@@ -7,6 +7,52 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { searchParams } = new URL(request.url)
 
+    // Mock mode check
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
+      console.log('Search API running in mock mode')
+      const q = searchParams.get('q')?.trim()
+
+      if (!q || q.length < 2) {
+        return NextResponse.json(
+          { error: 'Search query must be at least 2 characters' },
+          { status: 400 }
+        )
+      }
+
+      const mockResults = {
+        questions: {
+          data: [
+            {
+              id: '1',
+              title: '비자 연장 방법에 대해 알려주세요',
+              content: '비자가 곧 만료되는데 연장하려면 어떻게 해야 하나요?',
+              tags: ['비자', '연장'],
+              vote_score: 12,
+              answer_count: 3,
+              created_at: '2024-01-15T09:00:00Z',
+              author: { id: 'user1', name: '이지훈', avatar_url: null },
+              category: { id: 1, name: '비자/체류', slug: 'visa', icon: '📝' }
+            }
+          ],
+          count: 1
+        },
+        answers: {
+          data: [],
+          count: 0
+        },
+        users: {
+          data: [],
+          count: 0
+        }
+      }
+
+      return NextResponse.json({
+        query: q,
+        type: 'all',
+        results: mockResults
+      })
+    }
+
     // 쿼리 파라미터 파싱
     const q = searchParams.get('q')?.trim()
     const type = searchParams.get('type') || 'all' // 'questions', 'answers', 'users', 'all'

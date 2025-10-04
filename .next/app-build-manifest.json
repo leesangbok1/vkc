@@ -1,19 +1,16 @@
 {
   "pages": {
-    "/api/stats/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/stats/route.js"
-    ],
     "/api/questions/route": [
       "static/chunks/webpack.js",
+      "static/chunks/vendors.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/questions/route.js"
     ],
-    "/api/search/route": [
+    "/api/categories/route": [
       "static/chunks/webpack.js",
+      "static/chunks/vendors.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/search/route.js"
+      "static/chunks/app/api/categories/route.js"
     ]
   }
 }

@@ -10,6 +10,29 @@ export async function GET(
     const supabase = await createClient()
     const questionId = params.id
 
+    // Mock mode check
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
+      console.log('Question comments API running in mock mode')
+      const mockComments = [
+        {
+          id: '1',
+          content: '좋은 질문이네요!',
+          target_id: questionId,
+          target_type: 'question',
+          author_id: 'user3',
+          created_at: '2024-01-15T11:00:00Z',
+          author: {
+            id: 'user3',
+            name: '박민수',
+            avatar_url: null,
+            trust_score: 75
+          }
+        }
+      ]
+
+      return NextResponse.json({ data: mockComments })
+    }
+
     // 댓글 조회
     const { data: comments, error } = await supabase
       .from('comments')

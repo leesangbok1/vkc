@@ -434,20 +434,37 @@ export const createSupabaseClient = () => {
 }
 
 // Server client for server-side operations
-export const createSupabaseServerClient = () => {
-  const cookieStore = cookies()
+export const createSupabaseServerClient = async () => {
+  // Immediate mock mode check using multiple environment indicators
+  const isMockMode =
+    process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ||
+    process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co') ||
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+  if (isMockMode) {
+    console.log('Supabase server client running in mock mode')
+    return null
+  }
+
+  try {
+    const cookieStore = await cookies()
+
+    return createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
         },
-      },
-    }
-  )
+      }
+    )
+  } catch (error) {
+    console.warn('Supabase server client creation failed, falling back to mock mode:', error)
+    return null
+  }
 }
 
 // Read-only server client (doesn't need cookies)

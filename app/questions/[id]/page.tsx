@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '../../../contexts/AuthContext'
-import QuestionDetail from '../../../components/questions/QuestionDetail'
-import AnswerList from '../../../components/answers/AnswerList'
-import AnswerForm from '../../../components/answers/AnswerForm'
+import { useSafeAuth } from "@/components/providers/ClientProviders"
+import QuestionDetail from '@/components/questions/QuestionDetail'
+import AnswerList from '@/components/answers/AnswerList'
+import AnswerForm from '@/components/answers/AnswerForm'
 
 interface Question {
   id: string
@@ -65,7 +65,7 @@ interface Answer {
 export default function QuestionDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading } = useSafeAuth()
   const [question, setQuestion] = useState<Question | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

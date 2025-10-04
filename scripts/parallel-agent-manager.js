@@ -19,8 +19,7 @@ const REPO_OWNER = 'leesangbok1'
 const REPO_NAME = 'vkc'
 
 if (!GITHUB_TOKEN) {
-  console.error('❌ GITHUB_TOKEN 환경 변수가 설정되지 않음')
-  process.exit(1)
+  console.warn('⚠️ GITHUB_TOKEN 환경 변수가 설정되지 않음 (GitHub 기능 비활성화)')
 }
 
 /**

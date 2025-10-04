@@ -11,6 +11,49 @@ export async function GET(
     const questionId = params.id
     const { searchParams } = new URL(request.url)
 
+    // Mock mode check
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
+      console.log('Question answers API running in mock mode')
+      const page = parseInt(searchParams.get('page') || '1')
+      const limit = parseInt(searchParams.get('limit') || '20')
+
+      const mockAnswers = [
+        {
+          id: '1',
+          content: '비자 연장은 출입국관리소에서 가능합니다. 필요 서류를 미리 준비하세요.',
+          question_id: questionId,
+          author_id: 'user2',
+          is_accepted: true,
+          is_helpful: true,
+          vote_score: 15,
+          created_at: '2024-01-15T10:00:00Z',
+          author: {
+            id: 'user2',
+            name: '김영수',
+            avatar_url: null,
+            trust_score: 85,
+            visa_type: 'E-7',
+            company: 'LG전자',
+            years_in_korea: 3
+          },
+          comments: []
+        }
+      ]
+
+      return NextResponse.json({
+        data: mockAnswers,
+        question: { id: questionId, title: 'Mock Question' },
+        pagination: {
+          page,
+          limit,
+          total: mockAnswers.length,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false
+        }
+      })
+    }
+
     // 쿼리 파라미터 파싱
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')

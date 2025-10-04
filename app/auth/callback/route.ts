@@ -1,59 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { Database } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
 
+  // Check if we're in mock mode - return success immediately
+  if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
+    console.log('Auth callback running in mock mode')
+    const response = NextResponse.redirect(`${origin}${next}`)
+    response.cookies.set('auth-callback-success', 'true', {
+      maxAge: 5, // 5 seconds
+      httpOnly: false
+    })
+    return response
+  }
+
   if (code) {
-    const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
+    try {
+      // Dynamic import to avoid cookie issues in mock mode
+      const { createServerClient } = await import('@supabase/ssr')
+      const { Database } = await import('@/lib/supabase')
+
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return request.cookies.get(name)?.value
+            },
+            set(name: string, value: string, options: any) {
+              // Set cookie in response
+              const response = NextResponse.redirect(`${origin}${next}`)
+              response.cookies.set({
+                name,
+                value,
+                ...options,
+              })
+              return response
+            },
+            remove(name: string, options: any) {
+              const response = NextResponse.redirect(`${origin}${next}`)
+              response.cookies.set({
+                name,
+                value: '',
+                ...options,
+              })
+              return response
+            },
           },
-          set(name: string, value: string, options: any) {
-            // Set cookie in response
-            const response = NextResponse.redirect(`${origin}${next}`)
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            })
-            return response
-          },
-          remove(name: string, options: any) {
-            const response = NextResponse.redirect(`${origin}${next}`)
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            })
-            return response
-          },
-        },
+        }
+      )
+
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+      if (!error) {
+        const response = NextResponse.redirect(`${origin}${next}`)
+
+        // Set a success flag for the client to handle
+        response.cookies.set('auth-callback-success', 'true', {
+          maxAge: 5, // 5 seconds
+          httpOnly: false
+        })
+
+        return response
       }
-    )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-
-    if (!error) {
-      const response = NextResponse.redirect(`${origin}${next}`)
-
-      // Set a success flag for the client to handle
-      response.cookies.set('auth-callback-success', 'true', {
-        maxAge: 5, // 5 seconds
-        httpOnly: false
-      })
-
-      return response
+      console.error('OAuth callback error:', error)
+    } catch (error) {
+      console.error('Auth callback failed:', error)
     }
-
-    console.error('OAuth callback error:', error)
   }
 
   // Return the user to an error page or login with error

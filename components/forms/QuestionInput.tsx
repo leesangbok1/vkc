@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useSafeAuth } from "@/components/providers/ClientProviders"
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ interface QuestionInputProps {
 }
 
 export function QuestionInput({ onSubmit, className = '' }: QuestionInputProps) {
-  const { user } = useAuth()
+  const { user } = useSafeAuth()
   const [hasUserInteracted, setHasUserInteracted] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [formData, setFormData] = useState<QuestionFormData>({
@@ -186,7 +186,9 @@ export function QuestionInput({ onSubmit, className = '' }: QuestionInputProps) 
             <Button
               type="submit"
               disabled={!user || !isFormValid}
-              className="px-8 py-3 bg-primary hover:bg-primary/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              variant="primary"
+              className="px-8 py-3 touch-target hover-primary click-primary"
+              aria-label="질문 올리기"
             >
               <Send className="w-4 h-4" />
               질문 올리기

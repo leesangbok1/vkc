@@ -127,34 +127,35 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
   ]
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-      <div className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">답변 작성</h3>
+    <div className="form-answer-container">
+      <div className="form-answer-header">
+        답변 작성
+      </div>
+      <div className="form-answer-content">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 sr-only">답변 작성</h3>
 
         <form onSubmit={handleSubmit}>
           {/* Formatting Toolbar */}
-          <div className="flex items-center gap-1 mb-3 p-2 bg-gray-50 rounded-lg">
+          <div className="form-answer-toolbar">
             {formatButtons.map((button, index) => (
               <button
                 key={index}
                 type="button"
                 onClick={button.action}
                 title={button.title}
-                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition-colors"
+                className="p-2 text-primary-blue hover:text-white hover:bg-primary-blue rounded transition-colors"
               >
                 <i className={button.icon}></i>
               </button>
             ))}
 
-            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+            <div className="separator"></div>
 
             <button
               type="button"
               onClick={() => setIsPreview(!isPreview)}
-              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                isPreview
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-200'
+              className={`form-answer-preview-btn ${
+                isPreview ? 'active' : ''
               }`}
             >
               {isPreview ? '편집' : '미리보기'}
@@ -164,7 +165,7 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
           {/* Content Area */}
           {isPreview ? (
             // Preview Mode
-            <div className="min-h-[200px] p-4 border border-gray-300 rounded-lg bg-gray-50">
+            <div className="form-answer-preview">
               <div className="prose max-w-none">
                 <div className="text-gray-900 whitespace-pre-wrap leading-relaxed">
                   {content || '미리보기할 내용이 없습니다.'}
@@ -179,7 +180,7 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="이 질문에 대한 답변을 작성해주세요.&#10;&#10;도움이 되는 답변을 위한 팁:&#10;• 구체적이고 명확한 설명을 제공하세요&#10;• 개인 경험이나 사례를 포함하면 더욱 도움이 됩니다&#10;• 관련 링크나 참고 자료를 추가해보세요&#10;• 정중하고 친근한 톤으로 작성해주세요"
-              className="w-full min-h-[200px] p-4 border border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="form-answer-textarea"
               disabled={isSubmitting}
             />
           )}
@@ -199,11 +200,9 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
 
           {/* Error Message */}
           {error && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center">
-                <i className="fas fa-exclamation-triangle text-red-500 mr-2"></i>
-                <span className="text-red-700">{error}</span>
-              </div>
+            <div className="form-primary-error">
+              <i className="fas fa-exclamation-triangle"></i>
+              <span>{error}</span>
             </div>
           )}
 
@@ -231,7 +230,7 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
               <button
                 type="submit"
                 disabled={isSubmitting || !content.trim() || content.length < 10}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                className="form-answer-submit px-6 py-2"
               >
                 {isSubmitting ? (
                   <>
@@ -250,12 +249,12 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
         </form>
 
         {/* Writing Guidelines */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h4 className="font-semibold text-blue-900 mb-2">
-            <i className="fas fa-lightbulb mr-2"></i>
+        <div className="form-primary-guidelines">
+          <h4>
+            <i className="fas fa-lightbulb"></i>
             좋은 답변을 위한 가이드라인
           </h4>
-          <ul className="text-sm text-blue-800 space-y-1">
+          <ul>
             <li>• 질문에 직접적으로 답변하되, 구체적인 방법이나 단계를 제시하세요</li>
             <li>• 개인적인 경험이나 실제 사례를 포함하면 더욱 도움이 됩니다</li>
             <li>• 관련 웹사이트, 문서, 또는 연락처 정보를 제공해주세요</li>

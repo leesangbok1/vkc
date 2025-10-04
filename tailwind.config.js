@@ -18,6 +18,20 @@ module.exports = {
     },
     extend: {
       colors: {
+        // Blue/Green Theme Colors
+        'primary-blue': 'var(--primary-blue)',
+        'primary-blue-dark': 'var(--primary-blue-dark)',
+        'primary-blue-light': 'var(--primary-blue-light)',
+        'primary-blue-pale': 'var(--primary-blue-pale)',
+        'primary-green': 'var(--primary-green)',
+        'primary-green-dark': 'var(--primary-green-dark)',
+        'primary-green-light': 'var(--primary-green-light)',
+        'primary-green-pale': 'var(--primary-green-pale)',
+        'primary-dark': 'var(--primary-dark)',
+        'trust': 'var(--trust-green)',
+        'expert': 'var(--expert-gold)',
+
+        // Shadcn UI Colors
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

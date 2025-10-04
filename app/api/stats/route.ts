@@ -6,6 +6,24 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
 
+    // Mock mode check
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
+      console.log('Stats API running in mock mode')
+      return NextResponse.json({
+        data: {
+          totalUsers: 150,
+          totalQuestions: 45,
+          totalAnswers: 89,
+          totalCategories: 5,
+          totalVotes: 234,
+          recentQuestions: 3,
+          recentAnswers: 7,
+          avgResponseTime: 2.5,
+          activeUsers: 23
+        }
+      })
+    }
+
     // 병렬로 모든 통계 쿼리 실행
     const [
       usersResult,

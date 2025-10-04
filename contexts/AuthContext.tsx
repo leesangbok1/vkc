@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 
 interface User {
   id: string
@@ -61,11 +61,70 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+
+  // Check if we're in mock mode
+  const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ||
+                     !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')
+
+  const supabase = React.useMemo(() => {
+    if (isMockMode) {
+      console.log('AuthProvider running in mock mode - Supabase disabled')
+      return null
+    }
+
+    // Check if required environment variables exist
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.warn('Missing Supabase environment variables, using mock mode')
+      return null
+    }
+
+    try {
+      const client = createSupabaseBrowserClient()
+      if (!client) {
+        console.warn('Supabase client creation returned null, using mock mode')
+        return null
+      }
+      return client
+    } catch (error) {
+      console.warn('Supabase client initialization failed:', error)
+      return null
+    }
+  }, [isMockMode])
 
   // Helper function to create or fetch user profile
   const handleUserSession = async (user: any) => {
     setUser(user as User)
+
+    if (!supabase) {
+      console.log('AuthProvider: Mock mode - skipping profile operations')
+      // In mock mode, create a basic profile from user data
+      const mockProfile = {
+        id: user.id,
+        email: user.email || '',
+        name: user.user_metadata?.name || user.user_metadata?.full_name || 'Mock User',
+        avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+        bio: null,
+        provider: user.app_metadata?.provider || 'mock',
+        provider_id: user.user_metadata?.sub || user.id,
+        visa_type: null,
+        company: null,
+        years_in_korea: null,
+        region: null,
+        preferred_language: 'ko',
+        is_verified: false,
+        verification_date: null,
+        trust_score: 10,
+        badges: {},
+        question_count: 0,
+        answer_count: 0,
+        helpful_answer_count: 0,
+        last_active: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      setProfile(mockProfile as Profile)
+      return
+    }
 
     try {
       // Try to fetch existing profile
@@ -127,6 +186,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   useEffect(() => {
+    if (!supabase) {
+      console.log('AuthProvider: Mock mode - no auth operations')
+      setLoading(false)
+      return
+    }
+
     // Get initial session
     const getInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -155,6 +220,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [supabase])
 
   const signInWithGoogle = async () => {
+    if (!supabase) {
+      console.log('AuthProvider: Mock mode - Google sign in not available')
+      throw new Error('Authentication not available in mock mode')
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -165,6 +234,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const signInWithFacebook = async () => {
+    if (!supabase) {
+      console.log('AuthProvider: Mock mode - Facebook sign in not available')
+      throw new Error('Authentication not available in mock mode')
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'facebook',
       options: {
@@ -175,6 +248,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const signInWithKakao = async () => {
+    if (!supabase) {
+      console.log('AuthProvider: Mock mode - Kakao sign in not available')
+      throw new Error('Authentication not available in mock mode')
+    }
     // Note: Kakao OAuth would need to be configured in Supabase
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'kakao',
@@ -186,6 +263,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const signOut = async () => {
+    if (!supabase) {
+      console.log('AuthProvider: Mock mode - sign out not available')
+      setUser(null)
+      setProfile(null)
+      return
+    }
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
