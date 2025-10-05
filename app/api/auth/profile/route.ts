@@ -72,6 +72,9 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -157,6 +160,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

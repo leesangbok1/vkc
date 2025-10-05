@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
+import { ValidationUtils } from '@/lib/validation'
 
 // GET /api/questions/[id]/comments - 질문의 댓글 목록 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const questionId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const questionId = id
 
     // Mock mode check
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
@@ -68,11 +73,15 @@ export async function GET(
 // POST /api/questions/[id]/comments - 질문에 댓글 추가
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const questionId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const questionId = id
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -88,7 +97,8 @@ export async function POST(
     const { content } = body
 
     // 입력값 검증
-    if (!content || !content.trim()) {
+    const sanitizedContent = ValidationUtils.sanitizeContent(content, 2000)
+    if (!sanitizedContent) {
       return NextResponse.json(
         { error: 'Content cannot be empty' },
         { status: 400 }
@@ -123,7 +133,7 @@ export async function POST(
         target_id: questionId,
         target_type: 'question',
         author_id: user.id,
-        content: content.trim(),
+        content: sanitizedContent,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }])

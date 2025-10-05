@@ -225,7 +225,7 @@ export function SearchBox({
             onFocus={() => query.length >= 2 && setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             placeholder={placeholder}
-            className="block w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="block w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
 
           {/* Clear button */}
@@ -272,7 +272,7 @@ export function SearchBox({
                 onClick={() => handleSuggestionClick(suggestion)}
                 className={cn(
                   "w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 last:border-b-0",
-                  selectedSuggestion === index && "bg-blue-50"
+                  selectedSuggestion === index && "bg-primary-100 text-primary-700"
                 )}
               >
                 <span className="text-lg">

@@ -5,6 +5,9 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabase-serve
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
 
     // Mock mode check
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {

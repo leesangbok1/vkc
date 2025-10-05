@@ -3,9 +3,26 @@
 import { useEffect, useState } from 'react'
 
 // Simplified Auth Context without external dependencies
+interface User {
+  id: string
+  email?: string
+  user_metadata?: {
+    name?: string
+    avatar_url?: string
+    [key: string]: any
+  }
+  [key: string]: any
+}
+
+interface Profile {
+  name?: string
+  avatar_url?: string
+  [key: string]: any
+}
+
 interface AuthContextType {
-  user: null
-  profile: null
+  user: User | null
+  profile: Profile | null
   loading: boolean
   signInWithGoogle: () => Promise<void>
   signInWithFacebook: () => Promise<void>

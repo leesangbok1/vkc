@@ -48,6 +48,7 @@ export interface IntegrationTestSuite {
 
 export class IntegrationTester {
   private projectRoot = '/Users/bk/Desktop/viet-kconnect'
+  private areaIsolation = AreaIsolationSystem.getInstance()
   private testResults: IntegrationTestSuite = {
     areaIsolation: [],
     agentInitialization: [],
@@ -124,7 +125,7 @@ export class IntegrationTester {
   private async testAreaIsolation(): Promise<void> {
     // Test 1: 영역 규칙 검증
     await this.runTest('areaIsolation', 'Area rules validation', async () => {
-      const status = areaIsolation.getAreaStatus()
+      const status = this.areaIsolation.getAreaStatus()
 
       if (status.areas.length !== 4) {
         throw new Error(`Expected 4 areas, got ${status.areas.length}`)
@@ -140,8 +141,8 @@ export class IntegrationTester {
     // Test 2: 파일 접근 권한 검증
     await this.runTest('areaIsolation', 'File access permissions', async () => {
       // Frontend 에이전트의 접근 권한 테스트
-      const frontendAccess = areaIsolation.validateAccess('ui-design-agent', 'components/test.tsx', 'read')
-      const backendAccess = areaIsolation.validateAccess('ui-design-agent', 'lib/api.ts', 'read')
+      const frontendAccess = this.areaIsolation.validateAccess('ui-design-agent', 'components/test.tsx', 'read')
+      const backendAccess = this.areaIsolation.validateAccess('ui-design-agent', 'lib/api.ts', 'read')
 
       if (!frontendAccess) {
         throw new Error('Frontend agent should access components/')
@@ -158,8 +159,8 @@ export class IntegrationTester {
     await this.runTest('areaIsolation', 'Violation detection', async () => {
       // 의도적 위반 시도
       try {
-        areaIsolation.validateAccess('ui-design-agent', 'lib/forbidden.ts', 'write')
-        const violations = areaIsolation.getRecentViolations(1)
+        this.areaIsolation.validateAccess('ui-design-agent', 'lib/forbidden.ts', 'write')
+        const violations = this.areaIsolation.getRecentViolations(1)
 
         if (violations.length === 0) {
           throw new Error('Violation should have been logged')
@@ -465,7 +466,7 @@ export class IntegrationTester {
 
       // 100번의 접근 권한 검증
       for (let i = 0; i < 100; i++) {
-        areaIsolation.validateAccess('test-agent', 'components/test.tsx', 'read')
+        this.areaIsolation.validateAccess('test-agent', 'components/test.tsx', 'read')
       }
 
       const endTime = Date.now()

@@ -9,7 +9,7 @@ import {
 
 import { logger } from './logger.js';
 import { commandProcessor } from './commands.js';
-import { iMessageService } from './imessage.js';
+import { iMessageServiceInstance as iMessageService } from './imessage.js';
 import { authService } from './auth.js';
 import { CONFIG } from './config.js';
 import { Command, CommandType, CommandStatus, MCPTool } from './types.js';

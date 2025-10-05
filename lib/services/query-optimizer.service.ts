@@ -3,7 +3,15 @@ import { cacheManager, CacheKeyGenerator } from './cache.service'
 
 // 쿼리 최적화 서비스
 export class QueryOptimizerService {
-  private supabase = await createSupabaseServerClient()
+  private supabase: any = null
+
+  constructor() {
+    this.initializeSupabase()
+  }
+
+  private async initializeSupabase() {
+    this.supabase = await createSupabaseServerClient()
+  }
 
   // 질문 목록 최적화된 조회
   async getOptimizedQuestions(options: {

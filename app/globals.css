@@ -1,47 +1,71 @@
 /* ===== VIET K-CONNECT CSS 디자인 시스템 ===== */
 
+/* Import Vietnamese-optimized fonts */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+
 /* Tailwind CSS */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Import Vietnamese-optimized fonts */
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
-
-/* ===== CSS VARIABLES - BLUE/GREEN THEME ===== */
+/* ===== CSS VARIABLES - GOOGLE MATERIAL DESIGN 3.0 ===== */
 :root {
-  /* Primary Blue Colors */
-  --primary-blue: #2563EB;
-  --primary-blue-dark: #1D4ED8;
-  --primary-blue-light: #3B82F6;
-  --primary-blue-pale: #EBF4FF;
+  /* Material Design 3.0 Primary Colors (Google Blue) */
+  --primary-500: #1976D2;
+  --primary-400: #42A5F5;
+  --primary-300: #90CAF9;
+  --primary-200: #BBDEFB;
+  --primary-100: #E3F2FD;
+  --primary-50: #F3F9FF;
+  --primary-600: #1565C0;
+  --primary-700: #0D47A1;
+  --primary-800: #0A3D8A;
+  --primary-900: #072E73;
 
-  /* Primary Green Colors */
-  --primary-green: #10B981;
-  --primary-green-dark: #059669;
-  --primary-green-light: #34D399;
-  --primary-green-pale: #D1FAE5;
+  /* Material Design Success Colors (Authentication Complete) */
+  --success-500: #4CAF50;
+  --success-400: #66BB6A;
+  --success-300: #81C784;
+  --success-200: #A5D6A7;
+  --success-100: #C8E6C9;
+  --success-50: #E8F5E8;
+  --success-600: #43A047;
+  --success-700: #388E3C;
 
-  /* Main Colors */
-  --primary: var(--primary-blue);
-  --primary-dark: var(--primary-blue-dark);
-  --primary-light: var(--primary-blue-light);
-  --primary-pale: var(--primary-blue-pale);
+  /* Material Design Warning Colors (Authentication Pending) */
+  --warning-500: #FF9800;
+  --warning-400: #FFA726;
+  --warning-300: #FFB74D;
+  --warning-200: #FFCC02;
+  --warning-100: #FFE0B2;
+  --warning-50: #FFF3E0;
+  --warning-600: #F57C00;
+  --warning-700: #EF6C00;
 
-  /* Secondary Colors */
-  --secondary: var(--primary-green);
-  --secondary-dark: var(--primary-green-dark);
-  --secondary-light: var(--primary-green-light);
-  --secondary-pale: var(--primary-green-pale);
+  /* Material Design Error Colors (Rejection/Error) */
+  --error-500: #F44336;
+  --error-400: #EF5350;
+  --error-300: #E57373;
+  --error-200: #EF9A9A;
+  --error-100: #FFCDD2;
+  --error-50: #FFEBEE;
+  --error-600: #E53935;
+  --error-700: #D32F2F;
 
-  /* Trust & Expert System */
-  --trust-green: #10B981;
-  --trust-green-light: #6ee7b7;
-  --trust-green-pale: #d1fae5;
-  --expert-gold: #F59E0B;
-  --expert-gold-light: #fbbf24;
-  --expert-gold-pale: #fef3c7;
+  /* Main Colors - Map to Primary */
+  --primary: var(--primary-500);
+  --primary-dark: var(--primary-600);
+  --primary-light: var(--primary-400);
+  --primary-pale: var(--primary-100);
+
+  /* Trust & Expert System - Map to Success/Warning */
+  --trust-green: var(--success-500);
+  --trust-green-light: var(--success-400);
+  --trust-green-pale: var(--success-100);
+  --expert-gold: var(--warning-500);
+  --expert-gold-light: var(--warning-400);
+  --expert-gold-pale: var(--warning-100);
 
   /* Urgency Level Colors (빨강→초록) */
   --urgency-1: #dc2626; /* 매우 긴급 - 빨강 */
@@ -59,10 +83,10 @@
   --category-healthcare: #00BCD4; /* 의료 - 청록 */
 
   /* Semantic Colors */
-  --success: var(--trust-green);
-  --warning: #f59e0b;
-  --error: var(--primary);
-  --info: #3b82f6;
+  --success: var(--success-500);
+  --warning: var(--warning-500);
+  --error: var(--error-500);
+  --info: var(--primary-500);
 
   /* Neutral Grays */
   --gray-50: #f9fafb;
@@ -176,6 +200,16 @@ body {
 .text-primary-green { color: var(--primary-green); }
 .border-primary-blue { border-color: var(--primary-blue); }
 .border-primary-green { border-color: var(--primary-green); }
+
+/* Material Design 3.0 Border Colors */
+.border-primary-300 { border-color: var(--primary-300); }
+.border-primary-200 { border-color: var(--primary-200); }
+.border-success-300 { border-color: var(--success-300); }
+.border-success-200 { border-color: var(--success-200); }
+.border-warning-300 { border-color: var(--warning-300); }
+.border-warning-200 { border-color: var(--warning-200); }
+.border-error-300 { border-color: var(--error-300); }
+.border-error-200 { border-color: var(--error-200); }
 
 /* Trust System Colors */
 .bg-trust { background-color: var(--trust-green); }
@@ -566,6 +600,37 @@ a:hover {
 .bg-gray-50 { background-color: var(--gray-50); }
 .bg-gray-100 { background-color: var(--gray-100); }
 .bg-gray-200 { background-color: var(--gray-200); }
+.bg-gray-400 { background-color: var(--gray-400); }
+.bg-gray-500 { background-color: var(--gray-500); }
+
+/* Material Design 3.0 Background Colors */
+.bg-primary-500 { background-color: var(--primary-500); }
+.bg-primary-400 { background-color: var(--primary-400); }
+.bg-primary-300 { background-color: var(--primary-300); }
+.bg-primary-200 { background-color: var(--primary-200); }
+.bg-primary-100 { background-color: var(--primary-100); }
+.bg-primary-50 { background-color: var(--primary-50); }
+
+.bg-success-500 { background-color: var(--success-500); }
+.bg-success-400 { background-color: var(--success-400); }
+.bg-success-300 { background-color: var(--success-300); }
+.bg-success-200 { background-color: var(--success-200); }
+.bg-success-100 { background-color: var(--success-100); }
+.bg-success-50 { background-color: var(--success-50); }
+
+.bg-warning-500 { background-color: var(--warning-500); }
+.bg-warning-400 { background-color: var(--warning-400); }
+.bg-warning-300 { background-color: var(--warning-300); }
+.bg-warning-200 { background-color: var(--warning-200); }
+.bg-warning-100 { background-color: var(--warning-100); }
+.bg-warning-50 { background-color: var(--warning-50); }
+
+.bg-error-500 { background-color: var(--error-500); }
+.bg-error-400 { background-color: var(--error-400); }
+.bg-error-300 { background-color: var(--error-300); }
+.bg-error-200 { background-color: var(--error-200); }
+.bg-error-100 { background-color: var(--error-100); }
+.bg-error-50 { background-color: var(--error-50); }
 
 /* Text Colors */
 .text-white { color: white; }

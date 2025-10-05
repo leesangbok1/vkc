@@ -356,10 +356,10 @@ export class CommunicationAgent {
     // 건강 상태 평가
     Object.keys(status).forEach(area => {
       const areaData = status[area as WorkArea]
-      if (areaData.violations && areaData.violations.length > 3) {
+      if ('violations' in areaData && areaData.violations && areaData.violations.length > 3) {
         areaData.health = 'warning'
       }
-      if (areaData.violations && areaData.violations.length > 5) {
+      if ('violations' in areaData && areaData.violations && areaData.violations.length > 5) {
         areaData.health = 'critical'
       }
     })

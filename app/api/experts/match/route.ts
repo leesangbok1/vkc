@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
-import { findExpertMatches } from '@/app/api/answers/route'
+import { findExpertMatches } from '@/lib/utils/expert-matching'
 
 // POST /api/experts/match - AI 전문가 매칭 시스템
 export async function POST(request: NextRequest) {

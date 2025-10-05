@@ -1,3 +1,5 @@
+import type { Database } from './supabase'
+
 // Conditional import system to avoid cookie issues in mock mode
 const isMockMode =
   process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ||
@@ -6,8 +8,8 @@ const isMockMode =
   !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // Only import Supabase and cookies if not in mock mode
-let createServerClient: any
-let cookies: any
+let createServerClient: typeof import('@supabase/ssr').createServerClient
+let cookies: typeof import('next/headers').cookies
 let Database: any
 
 if (!isMockMode) {

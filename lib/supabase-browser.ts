@@ -1,5 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
-import { Database } from './supabase'
+import type { Database } from './supabase'
 
 // Browser-side client for Client Components and user interactions
 export const createSupabaseBrowserClient = () => {

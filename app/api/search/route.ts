@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
+import { ValidationUtils } from '@/lib/validation'
 
 // GET /api/search - 통합 검색 (제목, 내용, 태그)
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
     const { searchParams } = new URL(request.url)
 
     // Mock mode check
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
       console.log('Search API running in mock mode')
-      const q = searchParams.get('q')?.trim()
+      const q = ValidationUtils.validateSearchQuery(searchParams.get('q'))
 
       if (!q || q.length < 2) {
         return NextResponse.json(
@@ -54,11 +58,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 쿼리 파라미터 파싱
-    const q = searchParams.get('q')?.trim()
+    const q = ValidationUtils.validateSearchQuery(searchParams.get('q'))
     const type = searchParams.get('type') || 'all' // 'questions', 'answers', 'users', 'all'
     const category = searchParams.get('category')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const { page, limit } = ValidationUtils.validatePagination(searchParams)
 
     if (!q || q.length < 2) {
       return NextResponse.json(

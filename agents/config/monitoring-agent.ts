@@ -1231,10 +1231,10 @@ jobs:
       if: failure()
       uses: 8398a7/action-slack@v3
       with:
-        status: ${{ job.status }}
+        status: \${{ job.status }}
         text: '🚨 VietKConnect is down! Please check immediately.'
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_URL: \${{ secrets.SLACK_WEBHOOK_URL }}
 `
   }
 
@@ -1680,10 +1680,10 @@ jobs:
       if: failure()
       uses: 8398a7/action-slack@v3
       with:
-        status: ${{ job.status }}
+        status: \${{ job.status }}
         text: '🔒 Security scan detected issues in VietKConnect'
       env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SECURITY_SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_URL: \${{ secrets.SECURITY_SLACK_WEBHOOK }}
 `
   }
 

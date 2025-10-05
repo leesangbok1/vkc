@@ -2,8 +2,19 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { Database } from './lib/supabase'
+import { addSecurityHeaders, validateCSRFToken } from '@/lib/middleware/security-headers'
 
 export async function middleware(request: NextRequest) {
+  // CSRF validation for API routes
+  if (request.nextUrl.pathname.startsWith('/api/') && !validateCSRFToken(request)) {
+    return addSecurityHeaders(
+      NextResponse.json(
+        { error: 'CSRF validation failed' },
+        { status: 403 }
+      )
+    )
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -101,7 +112,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  return response
+  // Add security headers to all responses
+  return addSecurityHeaders(response)
 }
 
 export const config = {

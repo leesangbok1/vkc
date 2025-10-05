@@ -316,10 +316,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js ${{ matrix.node-version }}
+    - name: Setup Node.js \${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: \${{ matrix.node-version }}
         cache: 'npm'
 
     - name: Install dependencies
@@ -342,7 +342,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: build-files-${{ matrix.node-version }}
+        name: build-files-\${{ matrix.node-version }}
         path: .next/
         retention-days: 1
 
@@ -374,7 +374,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: \${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
     - name: Checkout code
@@ -393,15 +393,15 @@ jobs:
       run: npm run build
       env:
         NEXT_PUBLIC_MOCK_MODE: false
-        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        NEXT_PUBLIC_SUPABASE_URL: \${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: \${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
     - name: Deploy to Vercel
       uses: amondnet/vercel-action@v25
       with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        vercel-token: \${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: \${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: \${{ secrets.VERCEL_PROJECT_ID }}
         working-directory: ./
         vercel-args: '--prod'
 

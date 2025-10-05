@@ -4,34 +4,14 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import VoteButtons from '../questions/VoteButtons'
 import CommentSection from './CommentSection'
+import { Database } from '@/lib/supabase'
 
-interface Answer {
-  id: string
-  content: string
+type Profile = Database['public']['Tables']['users']['Row']
+
+type Answer = Database['public']['Tables']['answers']['Row'] & {
+  author: Profile
   is_helpful: boolean
-  is_accepted: boolean
   vote_score: number
-  created_at: string
-  updated_at: string
-  author: {
-    id: string
-    name: string
-    avatar_url: string
-    trust_score: number
-    badges: Record<string, boolean>
-    visa_type: string
-    company: string
-    years_in_korea: number
-    region: string
-  }
-}
-
-interface Profile {
-  id: string
-  name: string
-  avatar_url: string | null
-  trust_score: number
-  badges: Record<string, boolean>
 }
 
 interface AnswerListProps {

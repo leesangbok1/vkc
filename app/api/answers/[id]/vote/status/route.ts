@@ -4,11 +4,15 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabase-serve
 // GET /api/answers/[id]/vote/status - 사용자의 답변 투표 상태 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const answerId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const answerId = id
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

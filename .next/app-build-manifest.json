@@ -1,16 +1,205 @@
 {
   "pages": {
-    "/api/questions/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/vendors.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/questions/route.js"
+    "/_not-found/page": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/_not-found/page-7927af3781dbd070.js"
+    ],
+    "/not-found": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/not-found-db7058432d6f04dd.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/css/4facf222794d82d3.css",
+      "static/chunks/app/layout-62d9145f563e03bb.js"
+    ],
+    "/error": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/error-a7f6f9f7dcc524dc.js"
+    ],
+    "/loading": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/loading-7927af3781dbd070.js"
+    ],
+    "/api/answers/[id]/accept/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/answers/[id]/accept/route-7927af3781dbd070.js"
+    ],
+    "/api/answers/[id]/helpful/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/answers/[id]/helpful/route-7927af3781dbd070.js"
+    ],
+    "/api/answers/[id]/vote/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/answers/[id]/vote/route-7927af3781dbd070.js"
+    ],
+    "/api/answers/[id]/comments/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/answers/[id]/comments/route-7927af3781dbd070.js"
+    ],
+    "/api/answers/[id]/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/answers/[id]/route-7927af3781dbd070.js"
+    ],
+    "/api/answers/[id]/vote/status/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/answers/[id]/vote/status/route-7927af3781dbd070.js"
+    ],
+    "/api/answers/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/answers/route-7927af3781dbd070.js"
+    ],
+    "/api/auth/profile/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/auth/profile/route-7927af3781dbd070.js"
+    ],
+    "/api/auth/social/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/auth/social/route-7927af3781dbd070.js"
     ],
     "/api/categories/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/vendors.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/categories/route.js"
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/categories/route-7927af3781dbd070.js"
+    ],
+    "/api/health/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/health/route-7927af3781dbd070.js"
+    ],
+    "/api/notifications/[id]/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/notifications/[id]/route-7927af3781dbd070.js"
+    ],
+    "/api/notifications/mark-all-read/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/notifications/mark-all-read/route-7927af3781dbd070.js"
+    ],
+    "/api/experts/match/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/experts/match/route-7927af3781dbd070.js"
+    ],
+    "/api/notifications/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/notifications/route-7927af3781dbd070.js"
+    ],
+    "/api/notifications/unread-count/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/notifications/unread-count/route-7927af3781dbd070.js"
+    ],
+    "/api/questions/[id]/answers/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/questions/[id]/answers/route-7927af3781dbd070.js"
+    ],
+    "/api/questions/[id]/comments/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/questions/[id]/comments/route-7927af3781dbd070.js"
+    ],
+    "/api/questions/[id]/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/questions/[id]/route-7927af3781dbd070.js"
+    ],
+    "/api/questions/[id]/vote/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/questions/[id]/vote/route-7927af3781dbd070.js"
+    ],
+    "/api/questions/[id]/vote/status/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/questions/[id]/vote/status/route-7927af3781dbd070.js"
+    ],
+    "/api/search/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/search/route-7927af3781dbd070.js"
+    ],
+    "/api/questions/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/questions/route-7927af3781dbd070.js"
+    ],
+    "/api/stats/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/api/stats/route-7927af3781dbd070.js"
+    ],
+    "/auth/callback/route": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/auth/callback/route-7927af3781dbd070.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/808-bb0a3bb7d4631e42.js",
+      "static/chunks/app/page-8f9c3a88530ea01b.js"
+    ],
+    "/questions/[id]/page": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/app/questions/[id]/page-558498cbe4a58829.js"
+    ],
+    "/questions/page": [
+      "static/chunks/webpack-b25c742073d0c4d3.js",
+      "static/chunks/vendors-9e16c3208b41ba3b.js",
+      "static/chunks/main-app-994049cb1c2f160d.js",
+      "static/chunks/808-bb0a3bb7d4631e42.js",
+      "static/chunks/app/questions/page-8c7b7f2f109a9e84.js"
     ]
   }
 }

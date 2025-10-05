@@ -86,13 +86,8 @@ export async function GET(
     }
 
     const supabase = await createClient()
-
-    // If supabase is null (mock mode), return error
     if (!supabase) {
-      return NextResponse.json(
-        { error: 'Service temporarily unavailable' },
-        { status: 503 }
-      )
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
     }
 
     // 질문 조회 (상세 정보 포함)
@@ -107,7 +102,7 @@ export async function GET(
           created_at
         ),
         category:categories!category_id(id, name, slug, icon, color, description),
-        answers(
+        answers!left(
           id, content, is_helpful, vote_score, is_accepted,
           created_at, updated_at,
           author:users!author_id(
@@ -166,11 +161,15 @@ export async function GET(
 // PUT /api/questions/[id] - 질문 수정 (소유자만)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const questionId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const questionId = id
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -285,11 +284,15 @@ export async function PUT(
 // DELETE /api/questions/[id] - 질문 삭제 (소유자만)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const questionId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const questionId = id
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

@@ -545,7 +545,7 @@ if (typeof window !== 'undefined') {
       `components/${component}.tsx`,
       `components/${component}/${component}.tsx`,
       `app/${component}/page.tsx`
-    ].filter(path => existsSync(path.join(this.projectRoot, path)))
+    ].filter(filePath => existsSync(path.join(this.projectRoot, filePath)))
   }
 
   private findEventRelatedFiles(eventType: string, target?: string): string[] {

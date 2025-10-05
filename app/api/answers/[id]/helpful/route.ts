@@ -4,11 +4,15 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabase-serve
 // POST /api/answers/[id]/helpful - 답변을 도움이 되는 답변으로 표시
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const answerId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const answerId = id
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

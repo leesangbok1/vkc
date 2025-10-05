@@ -310,7 +310,7 @@ export class DatabaseAgent {
   // Private 헬퍼 메서드들
 
   private detectTypeElements(content: string): string[] {
-    const elements = []
+    const elements: string[] = []
 
     if (content.includes('Database =')) elements.push('database-interface')
     if (content.includes('Tables =')) elements.push('tables-interface')
@@ -343,7 +343,7 @@ export class DatabaseAgent {
   }
 
   private analyzeConnectionOptimizations(content: string): string[] {
-    const optimizations = []
+    const optimizations: string[] = []
 
     if (!content.includes('pool')) optimizations.push('add-connection-pooling')
     if (!content.includes('timeout')) optimizations.push('add-connection-timeout')

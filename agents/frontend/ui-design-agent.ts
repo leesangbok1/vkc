@@ -279,7 +279,7 @@ export class UIDesignAgent {
   // Private 헬퍼 메서드들
 
   private detectVietnamThemeElements(content: string): string[] {
-    const themeElements = []
+    const themeElements: string[] = []
 
     if (content.includes('vietnam-red')) themeElements.push('vietnam-red')
     if (content.includes('vietnam-yellow')) themeElements.push('vietnam-yellow')
@@ -309,7 +309,7 @@ export class UIDesignAgent {
   }
 
   private analyzeAccessibility(content: string): string[] {
-    const issues = []
+    const issues: string[] = []
 
     if (!content.includes('aria-label')) issues.push('missing-aria-labels')
     if (!content.includes('role=')) issues.push('missing-roles')

@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
+import { ValidationUtils } from '@/lib/validation'
 
 // GET /api/answers/[id] - 특정 답변 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const answerId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const answerId = id
 
     // 답변 조회 (상세 정보 포함)
     const { data: answer, error } = await supabase
@@ -53,11 +58,15 @@ export async function GET(
 // PUT /api/answers/[id] - 답변 수정 (소유자만)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const answerId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const answerId = id
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -94,7 +103,8 @@ export async function PUT(
     }
 
     // 입력값 검증
-    if (!content || content.trim().length === 0) {
+    const sanitizedContent = ValidationUtils.sanitizeContent(content)
+    if (!sanitizedContent) {
       return NextResponse.json(
         { error: 'Content cannot be empty' },
         { status: 400 }
@@ -112,7 +122,7 @@ export async function PUT(
     const { data: updatedAnswer, error: updateError } = await supabase
       .from('answers')
       .update({
-        content: content.trim(),
+        content: sanitizedContent,
         updated_at: new Date().toISOString()
       })
       .eq('id', answerId)
@@ -148,11 +158,15 @@ export async function PUT(
 // DELETE /api/answers/[id] - 답변 삭제 (소유자만)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const answerId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const answerId = id
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

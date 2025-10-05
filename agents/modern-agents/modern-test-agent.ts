@@ -400,7 +400,7 @@ test.describe('${config.name}', () => {
   }
 
   private static generateCoverageRecommendations(coverage: any): string[] {
-    const recommendations = []
+    const recommendations: string[] = []
     
     if (coverage.total.lines.pct < 80) {
       recommendations.push('Overall test coverage is below 80%. Consider adding more unit tests.')

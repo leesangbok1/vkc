@@ -319,7 +319,7 @@ export class AuthSystemAgent {
   // Private 헬퍼 메서드들
 
   private analyzeSecurityLevel(content: string): { level: string, score: number, gaps: string[] } {
-    const gaps = []
+    const gaps: string[] = []
     let score = 100
 
     // CSRF 보호 확인
@@ -399,7 +399,7 @@ export class AuthSystemAgent {
   }
 
   private analyzeSessionOptimizations(content: string): string[] {
-    const optimizations = []
+    const optimizations: string[] = []
 
     if (!content.includes('refresh')) optimizations.push('add-token-refresh')
     if (!content.includes('expire')) optimizations.push('add-session-expiry')
@@ -440,7 +440,7 @@ export class AuthSystemAgent {
   }
 
   private analyzeSocialLoginFeatures(content: string): { providers: string[], securityScore: number } {
-    const providers = []
+    const providers: string[] = []
     let securityScore = 100
 
     if (content.includes('google')) providers.push('Google')

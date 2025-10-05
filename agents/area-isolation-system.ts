@@ -297,7 +297,7 @@ export class AreaIsolationSystem {
     const messageFile = `/Users/bk/Desktop/viet-kconnect/logs/area-messages.json`
 
     try {
-      let messages = []
+      let messages: any[] = []
       if (existsSync(messageFile)) {
         messages = JSON.parse(readFileSync(messageFile, 'utf8'))
       }

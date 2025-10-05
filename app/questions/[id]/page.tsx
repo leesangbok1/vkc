@@ -7,59 +7,21 @@ import { useSafeAuth } from "@/components/providers/ClientProviders"
 import QuestionDetail from '@/components/questions/QuestionDetail'
 import AnswerList from '@/components/answers/AnswerList'
 import AnswerForm from '@/components/answers/AnswerForm'
+import { Database } from '@/lib/supabase'
 
-interface Question {
-  id: string
-  title: string
-  content: string
-  category: {
-    id: string
-    name: string
-    slug: string
-    icon: string
-    color: string
-  }
-  author: {
-    id: string
-    name: string
-    avatar_url: string
-    trust_score: number
-    badges: Record<string, boolean>
-    visa_type: string
-    company: string
-    years_in_korea: number
-    region: string
-  }
-  view_count: number
-  answer_count: number
+type Profile = Database['public']['Tables']['users']['Row']
+
+type Question = Database['public']['Tables']['questions']['Row'] & {
+  category: Database['public']['Tables']['categories']['Row']
+  author: Profile
   vote_score: number
-  urgency: string
-  tags: string[]
-  status: string
-  created_at: string
-  updated_at: string
   answers: Answer[]
 }
 
-interface Answer {
-  id: string
-  content: string
+type Answer = Database['public']['Tables']['answers']['Row'] & {
+  author: Profile
   is_helpful: boolean
-  is_accepted: boolean
   vote_score: number
-  created_at: string
-  updated_at: string
-  author: {
-    id: string
-    name: string
-    avatar_url: string
-    trust_score: number
-    badges: Record<string, boolean>
-    visa_type: string
-    company: string
-    years_in_korea: number
-    region: string
-  }
 }
 
 export default function QuestionDetailPage() {
@@ -191,7 +153,7 @@ export default function QuestionDetailPage() {
         {/* Question Detail */}
         <QuestionDetail
           question={question}
-          currentUser={profile}
+          currentUser={profile as Profile | null}
           onVoteUpdate={handleVoteUpdate}
         />
 
@@ -231,7 +193,7 @@ export default function QuestionDetailPage() {
           <AnswerList
             answers={question.answers || []}
             questionAuthorId={question.author.id}
-            currentUser={profile}
+            currentUser={profile as Profile | null}
             onAnswerUpdate={handleNewAnswer}
           />
         </div>

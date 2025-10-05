@@ -7,6 +7,9 @@ import { Database } from '@/lib/supabase'
 import { Avatar } from '../ui/avatar'
 import { Badge } from '../ui/badge'
 import { cn } from '@/lib/utils'
+import TrustBadge from '../trust/TrustBadge'
+import VisaTypeDisplay from '../trust/VisaTypeDisplay'
+import SpecialtyTags from '../trust/SpecialtyTags'
 
 type Question = Database['public']['Tables']['questions']['Row'] & {
   author: Database['public']['Tables']['users']['Row']
@@ -139,15 +142,12 @@ export function QuestionCard({ question, className, compact = false }: QuestionC
 
           {/* Tags */}
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {tags.map((tag, index) => (
-                <Badge
-                  key={index}
-                  className="text-xs bg-gray-100 text-gray-700 hover:bg-primary-green hover:text-gray-900 cursor-pointer transition-colors"
-                >
-                  #{tag}
-                </Badge>
-              ))}
+            <div className="mb-4">
+              <SpecialtyTags
+                specialties={tags}
+                maxDisplay={4}
+                variant="compact"
+              />
             </div>
           )}
 
@@ -185,11 +185,18 @@ export function QuestionCard({ question, className, compact = false }: QuestionC
               ✓ 해결됨
             </Badge>
           )}
-          {author.badges?.verified && (
-            <div className="trust-badge trust-badge-verified">
-              🇰🇷 {author.residence_years || 5}년차
-            </div>
-          )}
+          <TrustBadge
+            user={{
+              residence_years: author.years_in_korea || undefined,
+              visa_type: author.visa_type || undefined,
+              company: author.company || undefined,
+              trust_score: author.trust_score || undefined,
+              verification_type: 'student' as any, // TODO: Add verification_type to DB schema
+              is_verified: author.badges?.verified || false,
+              specialties: [] // TODO: Add specialties to DB schema
+            }}
+            variant="compact"
+          />
           {answer_count > 0 && (
             <div className="text-xs text-tertiary">
               💬 {answer_count}개 답변
@@ -215,12 +222,17 @@ export function QuestionCard({ question, className, compact = false }: QuestionC
               >
                 {author.name}
               </Link>
-              <div className="flex items-center gap-2 text-xs text-tertiary">
-                <span className="trust-badge">
-                  ⭐ {author.trust_score}
-                </span>
-                {author.badges?.verified && (
-                  <span className="text-trust">✓ 인증됨</span>
+              <div className="flex items-center gap-2 mt-1">
+                <VisaTypeDisplay
+                  visaType={author.visa_type || undefined}
+                  yearsInKorea={author.years_in_korea || undefined}
+                  variant="compact"
+                  className="text-xs"
+                />
+                {author.trust_score && (
+                  <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
+                    ⭐ {author.trust_score}
+                  </span>
                 )}
               </div>
             </div>

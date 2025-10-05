@@ -195,7 +195,7 @@ async function insertInBatches<T>(
 // 메인 데이터 생성 함수
 async function generateMockData() {
   console.log('🚀 Starting Vietnamese K-Connect Mock Data Generation...')
-  console.log('=' * 60)
+  console.log('='.repeat(60))
 
   try {
     // 1. 카테고리 생성
@@ -498,7 +498,7 @@ async function generateMockData() {
     await insertInBatches('notifications', notifications)
 
     console.log('\n🎉 Mock data generation completed successfully!')
-    console.log('=' * 60)
+    console.log('='.repeat(60))
     console.log('📊 Generated Data Summary:')
     console.log(`📁 Categories: ${vietnamCategories.length}`)
     console.log(`👥 Users: ${users.length}`)
@@ -508,7 +508,7 @@ async function generateMockData() {
     console.log(`💭 Comments: ${comments.length}`)
     console.log(`🔖 Bookmarks: ${bookmarks.length}`)
     console.log(`🔔 Notifications: ${notifications.length}`)
-    console.log('=' * 60)
+    console.log('='.repeat(60))
 
   } catch (error) {
     console.error('❌ Error generating mock data:', error)

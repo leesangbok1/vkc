@@ -307,7 +307,7 @@ export class APIDevAgent {
   // Private 헬퍼 메서드들
 
   private detectAPIElements(content: string): string[] {
-    const elements = []
+    const elements: string[] = []
 
     if (content.includes('NextRequest')) elements.push('next-request')
     if (content.includes('NextResponse')) elements.push('next-response')
@@ -356,7 +356,7 @@ export class APIDevAgent {
   }
 
   private analyzeErrorHandling(content: string): { coverage: number, gaps: string[] } {
-    const gaps = []
+    const gaps: string[] = []
 
     if (!content.includes('try {')) gaps.push('missing-try-catch')
     if (!content.includes('400')) gaps.push('missing-400-status')
@@ -385,7 +385,7 @@ export class APIDevAgent {
   }
 
   private analyzePerformanceOptimizations(content: string): string[] {
-    const optimizations = []
+    const optimizations: string[] = []
 
     if (!content.includes('limit') && content.includes('supabase')) {
       optimizations.push('add-query-limits')

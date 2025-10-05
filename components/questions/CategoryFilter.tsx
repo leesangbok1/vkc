@@ -102,7 +102,7 @@ export function CategoryFilter({
           <DropdownMenuContent className="w-56">
             <DropdownMenuItem
               onClick={() => onCategoryChange('')}
-              className={cn(!selectedCategory && 'bg-blue-50')}
+              className={cn(!selectedCategory && 'bg-primary-100 text-primary-700')}
             >
               전체 카테고리
             </DropdownMenuItem>
@@ -112,7 +112,7 @@ export function CategoryFilter({
                   onClick={() => onCategoryChange(category.slug)}
                   className={cn(
                     'flex items-center gap-2',
-                    selectedCategory === category.slug && 'bg-blue-50'
+                    selectedCategory === category.slug && 'bg-primary-100 text-primary-700'
                   )}
                 >
                   <div
@@ -127,7 +127,7 @@ export function CategoryFilter({
                     onClick={() => onCategoryChange(child.slug)}
                     className={cn(
                       'flex items-center gap-2 pl-8',
-                      selectedCategory === child.slug && 'bg-blue-50'
+                      selectedCategory === child.slug && 'bg-primary-100 text-primary-700'
                     )}
                   >
                     <div
@@ -154,7 +154,7 @@ export function CategoryFilter({
           <span className="text-sm font-medium text-gray-700">선택된 카테고리:</span>
           <Badge
             variant="secondary"
-            className="flex items-center gap-2 bg-blue-100 text-blue-800"
+            className="flex items-center gap-2 bg-primary-100 text-primary-700"
           >
             <div
               className="w-2 h-2 rounded-full"
@@ -180,7 +180,7 @@ export function CategoryFilter({
           className={cn(
             "px-3 py-2 rounded-full border text-sm font-medium transition-colors",
             !selectedCategory
-              ? "bg-blue-600 text-white border-blue-600"
+              ? "bg-primary-500 text-white border-primary-500"
               : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
           )}
         >

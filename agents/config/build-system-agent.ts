@@ -389,7 +389,7 @@ module.exports = nextConfig`
   }
 
   private analyzeTypeScriptOptimizations(tsConfig: any): { score: number, improvements: string[] } {
-    const improvements = []
+    const improvements: string[] = []
     let score = 100
 
     // Strict mode 체크
@@ -466,9 +466,9 @@ module.exports = nextConfig`
     const total = Object.keys(dependencies).length
 
     // 간단한 분석 (실제로는 npm audit, npm outdated 등을 사용)
-    const outdated = [] // npm outdated 결과
-    const unused = [] // 사용되지 않는 패키지
-    const vulnerabilities = [] // npm audit 결과
+    const outdated: string[] = [] // npm outdated 결과
+    const unused: string[] = [] // 사용되지 않는 패키지
+    const vulnerabilities: string[] = [] // npm audit 결과
 
     return { total, outdated, unused, vulnerabilities }
   }

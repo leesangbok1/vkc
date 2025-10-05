@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
+import { ValidationUtils } from '@/lib/validation'
+import { applyRateLimit } from '@/lib/middleware/rate-limit'
 
 // GET /api/questions/[id]/answers - 특정 질문의 답변 목록 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const questionId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const questionId = id
     const { searchParams } = new URL(request.url)
 
     // Mock mode check
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
       console.log('Question answers API running in mock mode')
-      const page = parseInt(searchParams.get('page') || '1')
-      const limit = parseInt(searchParams.get('limit') || '20')
+      const { page, limit } = ValidationUtils.validatePagination(searchParams)
 
       const mockAnswers = [
         {
@@ -55,8 +60,7 @@ export async function GET(
     }
 
     // 쿼리 파라미터 파싱
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const { page, limit } = ValidationUtils.validatePagination(searchParams)
     const sort = searchParams.get('sort') || 'best'
 
     // 오프셋 계산
@@ -152,11 +156,15 @@ export async function GET(
 // POST /api/questions/[id]/answers - 새 답변 작성 (인증 필요)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const questionId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const questionId = id
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -167,12 +175,19 @@ export async function POST(
       )
     }
 
+    // Rate limiting 체크
+    const rateLimitResponse = await applyRateLimit(request, user.id, 'post')
+    if (rateLimitResponse) {
+      return rateLimitResponse
+    }
+
     // 요청 본문 파싱
     const body = await request.json()
     const { content, is_anonymous = false } = body
 
     // 입력값 검증
-    if (!content || content.trim().length === 0) {
+    const sanitizedContent = ValidationUtils.sanitizeContent(content)
+    if (!sanitizedContent) {
       return NextResponse.json(
         { error: 'Answer content is required' },
         { status: 400 }
@@ -235,7 +250,7 @@ export async function POST(
     const { data: answer, error: insertError } = await supabase
       .from('answers')
       .insert([{
-        content: content.trim(),
+        content: sanitizedContent,
         question_id: questionId,
         author_id: user.id,
         is_anonymous,

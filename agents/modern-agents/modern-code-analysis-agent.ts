@@ -434,8 +434,8 @@ export class ModernCodeAnalysisAgent {
   }
 
   private static extractDependencies(content: string): string[] {
-    const importMatches = content.match(/import\s+.*?from\s+['"]([^'"]+)['"]/g) || []
-    const requireMatches = content.match(/require\s*\(\s*['"]([^'"]+)['"]\s*\)/g) || []
+    const importMatches: string[] = content.match(/import\s+.*?from\s+['"]([^'"]+)['"]/g) || []
+    const requireMatches: string[] = content.match(/require\s*\(\s*['"]([^'"]+)['"]\s*\)/g) || []
     
     const dependencies = new Set<string>()
     

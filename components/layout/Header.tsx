@@ -15,6 +15,7 @@ import { LogIn, User, Settings, LogOut, MessageSquare } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ThemeToggle } from '@/components/theme-toggle'
 import LoginModal from '@/components/LoginModal'
+import { HeaderBanner } from '@/components/banners/ValuePropositionBanner'
 
 export default function Header() {
   const { user, profile, loading, signOut } = useSafeAuth()
@@ -148,6 +149,9 @@ export default function Header() {
           </div>
         </div>
       </header>
+
+      {/* Header Banner for guests */}
+      {!user && <HeaderBanner />}
 
       {/* Login Modal */}
       <LoginModal

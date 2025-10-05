@@ -42,11 +42,36 @@ export default function TrustBadge({
   }
 
   const getTrustLevel = (score: number) => {
-    if (score >= 800) return { level: '전문가', color: 'bg-expert text-white', icon: '👑' }
-    if (score >= 600) return { level: '신뢰', color: 'bg-trust text-white', icon: '⭐' }
-    if (score >= 400) return { level: '활성', color: 'bg-primary-green text-white', icon: '🌿' }
-    if (score >= 200) return { level: '일반', color: 'bg-gray-200 text-gray-700', icon: '🌱' }
-    return { level: '새싹', color: 'bg-gray-100 text-gray-600', icon: '🌰' }
+    if (score >= 800) return {
+      level: '전문가',
+      color: 'bg-warning-500 text-white',
+      icon: '👑',
+      bgClass: 'bg-warning-100 border-warning-300'
+    }
+    if (score >= 600) return {
+      level: '인증완료',
+      color: 'bg-success-500 text-white',
+      icon: '✅',
+      bgClass: 'bg-success-100 border-success-300'
+    }
+    if (score >= 400) return {
+      level: '문서인증',
+      color: 'bg-primary-500 text-white',
+      icon: '📄',
+      bgClass: 'bg-primary-100 border-primary-300'
+    }
+    if (score >= 200) return {
+      level: '기본회원',
+      color: 'bg-gray-500 text-white',
+      icon: '👤',
+      bgClass: 'bg-gray-100 border-gray-300'
+    }
+    return {
+      level: '미인증',
+      color: 'bg-gray-400 text-white',
+      icon: '❓',
+      bgClass: 'bg-gray-50 border-gray-200'
+    }
   }
 
   if (variant === 'compact') {

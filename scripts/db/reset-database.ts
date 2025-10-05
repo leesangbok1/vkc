@@ -41,7 +41,7 @@ async function resetDatabase() {
   console.log('🗑️  Starting database reset...')
   console.log('⚠️  This will delete ALL data from the following tables:')
   console.log(`   ${tablesToReset.join(', ')}`)
-  console.log('=' * 60)
+  console.log('='.repeat(60))
 
   try {
     for (const table of tablesToReset) {
@@ -72,11 +72,11 @@ async function resetDatabase() {
     }
 
     console.log('\n🎉 Database reset completed successfully!')
-    console.log('=' * 60)
+    console.log('='.repeat(60))
     console.log('✅ All tables have been cleared')
     console.log('✅ Database is ready for fresh data')
     console.log('💡 Run "npm run db:generate" to populate with mock data')
-    console.log('=' * 60)
+    console.log('='.repeat(60))
 
   } catch (error) {
     console.error('❌ Error resetting database:', error)

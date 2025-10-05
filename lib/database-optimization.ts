@@ -178,9 +178,9 @@ export function analyzeUserActivity(user: any) {
   const analysis = {
     activity_level: 'low',
     community_engagement: 0,
-    expertise_areas: [],
+    expertise_areas: [] as string[],
     trust_growth_potential: 0,
-    recommended_actions: []
+    recommended_actions: [] as string[]
   }
 
   // 활동 수준 분석

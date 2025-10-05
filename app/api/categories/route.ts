@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
+import { ValidationUtils } from '@/lib/validation'
 
 // GET /api/categories - 카테고리 목록 조회
 export async function GET(request: NextRequest) {
@@ -94,14 +95,18 @@ export async function GET(request: NextRequest) {
         if (parentId === 'null') {
           filteredCategories = filteredCategories.filter(cat => cat.parent_id === null)
         } else {
-          filteredCategories = filteredCategories.filter(cat => cat.parent_id === parseInt(parentId))
+          filteredCategories = filteredCategories.filter(cat => cat.parent_id === ValidationUtils.safeParseInt(parentId, 0, 0, 1000000))
         }
       }
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         data: filteredCategories,
         total: filteredCategories.length
       })
+
+      // Add cache headers for categories (rarely change)
+      response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=7200')
+      return response
     }
 
     const supabase = await createClient()
@@ -135,7 +140,7 @@ export async function GET(request: NextRequest) {
       if (parentId === 'null') {
         query = query.is('parent_id', null)
       } else {
-        query = query.eq('parent_id', parseInt(parentId))
+        query = query.eq('parent_id', ValidationUtils.safeParseInt(parentId, 0, 0, 1000000))
       }
     }
 
@@ -167,6 +172,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

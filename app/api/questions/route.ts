@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
+import { ValidationUtils } from '@/lib/validation'
+import { applyRateLimit } from '@/lib/middleware/rate-limit'
 
 // GET /api/questions - 질문 목록 조회 (페이지네이션, 필터링, 정렬)
 export async function GET(request: NextRequest) {
@@ -349,17 +351,16 @@ export async function GET(request: NextRequest) {
       ]
 
       // 쿼리 파라미터 파싱
-      const page = parseInt(searchParams.get('page') || '1')
-      const limit = parseInt(searchParams.get('limit') || '10')
+      const { page, limit } = ValidationUtils.validatePagination(searchParams)
       const category = searchParams.get('category')
       const tag = searchParams.get('tag')
       const sort = searchParams.get('sort') || 'created_at'
       const order = searchParams.get('order') || 'desc'
-      const search = searchParams.get('search')
+      const search = ValidationUtils.sanitizeFilterParam(searchParams.get('search'))
       const urgency = searchParams.get('urgency')
       const status = searchParams.get('status')
       const visa_type = searchParams.get('visa_type') // 베트남 특화: 비자 타입별 필터링
-      const residence_years = parseInt(searchParams.get('residence_years') || '0') // 거주 기간별 필터링
+      const residence_years = ValidationUtils.safeParseInt(searchParams.get('residence_years'), 0, 0, 50)
 
       // 필터링 적용
       let filteredQuestions = mockQuestions
@@ -470,23 +471,17 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient()
-
-    // If supabase is null (mock mode), return error
     if (!supabase) {
-      return NextResponse.json(
-        { error: 'Service temporarily unavailable' },
-        { status: 503 }
-      )
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
     }
 
     // 쿼리 파라미터 파싱
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const { page, limit } = ValidationUtils.validatePagination(searchParams)
     const category = searchParams.get('category')
     const tag = searchParams.get('tag')
     const sort = searchParams.get('sort') || 'created_at'
     const order = searchParams.get('order') || 'desc'
-    const search = searchParams.get('search')
+    const search = ValidationUtils.sanitizeFilterParam(searchParams.get('search'))
 
     // 오프셋 계산
     const offset = (page - 1) * limit
@@ -566,6 +561,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -574,6 +572,12 @@ export async function POST(request: NextRequest) {
         { error: 'Authentication required' },
         { status: 401 }
       )
+    }
+
+    // Rate limiting 체크
+    const rateLimitResponse = await applyRateLimit(request, user.id, 'post')
+    if (rateLimitResponse) {
+      return rateLimitResponse
     }
 
     // 요청 본문 파싱

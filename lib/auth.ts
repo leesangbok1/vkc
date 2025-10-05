@@ -25,7 +25,7 @@ export async function getUser(request: NextRequest): Promise<{ user: AuthUser | 
           id: 'mock-user-123',
           email: 'mock@example.com',
           name: 'Mock User',
-          avatar_url: null
+          avatar_url: undefined
         }
       }
     }

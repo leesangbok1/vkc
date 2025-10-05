@@ -4,11 +4,15 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabase-serve
 // POST /api/answers/[id]/accept - 답변 채택
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
-    const answerId = params.id
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
+    const answerId = id
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -37,7 +41,7 @@ export async function POST(
     }
 
     // 질문 작성자만 답변을 채택할 수 있음
-    if (answer.question.author_id !== user.id) {
+    if ((answer.question as any).author_id !== user.id) {
       return NextResponse.json(
         { error: 'Only the question author can accept answers' },
         { status: 403 }

@@ -20,7 +20,9 @@ export async function GET(request: NextRequest) {
     try {
       // Dynamic import to avoid cookie issues in mock mode
       const { createServerClient } = await import('@supabase/ssr')
-      const { Database } = await import('@/lib/supabase')
+      const { cookies } = await import('next/headers')
+
+      const cookieStore = await cookies()
 
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,26 +30,21 @@ export async function GET(request: NextRequest) {
         {
           cookies: {
             get(name: string) {
-              return request.cookies.get(name)?.value
+              return cookieStore.get(name)?.value
             },
             set(name: string, value: string, options: any) {
-              // Set cookie in response
-              const response = NextResponse.redirect(`${origin}${next}`)
-              response.cookies.set({
-                name,
-                value,
-                ...options,
-              })
-              return response
+              try {
+                cookieStore.set({ name, value, ...options })
+              } catch {
+                // Expected in server components
+              }
             },
             remove(name: string, options: any) {
-              const response = NextResponse.redirect(`${origin}${next}`)
-              response.cookies.set({
-                name,
-                value: '',
-                ...options,
-              })
-              return response
+              try {
+                cookieStore.set({ name, value: '', ...options })
+              } catch {
+                // Expected in server components
+              }
             },
           },
         }

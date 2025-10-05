@@ -3,45 +3,14 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import VoteButtons from './VoteButtons'
+import { Database } from '@/lib/supabase'
 
-interface Question {
-  id: string
-  title: string
-  content: string
-  category: {
-    id: string
-    name: string
-    slug: string
-    icon: string
-    color: string
-  }
-  author: {
-    id: string
-    name: string
-    avatar_url: string
-    trust_score: number
-    badges: Record<string, boolean>
-    visa_type: string
-    company: string
-    years_in_korea: number
-    region: string
-  }
-  view_count: number
-  answer_count: number
+type Profile = Database['public']['Tables']['users']['Row']
+
+type Question = Database['public']['Tables']['questions']['Row'] & {
+  category: Database['public']['Tables']['categories']['Row']
+  author: Profile
   vote_score: number
-  urgency: string
-  tags: string[]
-  status: string
-  created_at: string
-  updated_at: string
-}
-
-interface Profile {
-  id: string
-  name: string
-  avatar_url: string | null
-  trust_score: number
-  badges: Record<string, boolean>
 }
 
 interface QuestionDetailProps {
@@ -167,7 +136,7 @@ export default function QuestionDetail({
                 {question.category.name}
               </span>
               {question.urgency && getUrgencyBadge(question.urgency)}
-              {question.status !== 'active' && (
+              {question.status !== 'open' && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                   {question.status}
                 </span>
