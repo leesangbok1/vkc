@@ -1,7 +1,6 @@
-# POI 프로젝트 커스텀 서브에이전트 가이드
+#커스텀 서브에이전트 가이드
 
-## 개요
-이 디렉토리는 POI 프로젝트(Viet K-Connect Vanilla JS 프로토타입)를 위한 전문화된 커스텀 서브에이전트들을 포함합니다.
+
 
 ## 🚨 중요 제약사항
 
@@ -197,4 +196,3 @@ const CodeAnalysisAgent = require('./agents/code-analysis-agent');
 
 ---
 
-**⚠️ 중요**: 이 에이전트들은 POI 프로젝트(레거시 Vanilla JS 프로토타입)용입니다. 현재 개발 중인 Next.js 프로젝트(`/Users/bk/Desktop/viet-kconnect`)와는 별도입니다.

@@ -211,4 +211,4 @@ export class iMessageService {
   }
 }
 
-export const iMessageService = new iMessageService();
+export const iMessageServiceInstance = new iMessageService();

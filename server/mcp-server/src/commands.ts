@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import { Command, CommandType, CommandStatus, CommandResult } from './types.js';
 import { CONFIG } from './config.js';
 import { logger } from './logger.js';
-import { iMessageService } from './imessage.js';
+import { iMessageServiceInstance as iMessageService } from './imessage.js';
 
 const execAsync = promisify(exec);
 

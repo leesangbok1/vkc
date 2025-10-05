@@ -1,4 +1,0 @@
-iPhone 요청: 워크스페이스 이동
-시간: 2025. 9. 23. 오후 8:17:42
-워크스페이스: /Users/bk/Desktop/poi-main
-브랜치: no-git

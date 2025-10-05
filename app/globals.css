@@ -1,0 +1,1338 @@
+/* ===== VIET K-CONNECT CSS 디자인 시스템 ===== */
+
+/* Import Vietnamese-optimized fonts */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+
+/* Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== CSS VARIABLES - GOOGLE MATERIAL DESIGN 3.0 ===== */
+:root {
+  /* Material Design 3.0 Primary Colors (Google Blue) */
+  --primary-500: #1976D2;
+  --primary-400: #42A5F5;
+  --primary-300: #90CAF9;
+  --primary-200: #BBDEFB;
+  --primary-100: #E3F2FD;
+  --primary-50: #F3F9FF;
+  --primary-600: #1565C0;
+  --primary-700: #0D47A1;
+  --primary-800: #0A3D8A;
+  --primary-900: #072E73;
+
+  /* Material Design Success Colors (Authentication Complete) */
+  --success-500: #4CAF50;
+  --success-400: #66BB6A;
+  --success-300: #81C784;
+  --success-200: #A5D6A7;
+  --success-100: #C8E6C9;
+  --success-50: #E8F5E8;
+  --success-600: #43A047;
+  --success-700: #388E3C;
+
+  /* Material Design Warning Colors (Authentication Pending) */
+  --warning-500: #FF9800;
+  --warning-400: #FFA726;
+  --warning-300: #FFB74D;
+  --warning-200: #FFCC02;
+  --warning-100: #FFE0B2;
+  --warning-50: #FFF3E0;
+  --warning-600: #F57C00;
+  --warning-700: #EF6C00;
+
+  /* Material Design Error Colors (Rejection/Error) */
+  --error-500: #F44336;
+  --error-400: #EF5350;
+  --error-300: #E57373;
+  --error-200: #EF9A9A;
+  --error-100: #FFCDD2;
+  --error-50: #FFEBEE;
+  --error-600: #E53935;
+  --error-700: #D32F2F;
+
+  /* Main Colors - Map to Primary */
+  --primary: var(--primary-500);
+  --primary-dark: var(--primary-600);
+  --primary-light: var(--primary-400);
+  --primary-pale: var(--primary-100);
+
+  /* Trust & Expert System - Map to Success/Warning */
+  --trust-green: var(--success-500);
+  --trust-green-light: var(--success-400);
+  --trust-green-pale: var(--success-100);
+  --expert-gold: var(--warning-500);
+  --expert-gold-light: var(--warning-400);
+  --expert-gold-pale: var(--warning-100);
+
+  /* Urgency Level Colors (빨강→초록) */
+  --urgency-1: #dc2626; /* 매우 긴급 - 빨강 */
+  --urgency-2: #ea580c; /* 긴급 - 주황 */
+  --urgency-3: #d97706; /* 보통 - 노랑 */
+  --urgency-4: #65a30d; /* 낮음 - 연두 */
+  --urgency-5: #059669; /* 매우 낮음 - 초록 */
+
+  /* Category Colors */
+  --category-visa: #4285F4;     /* 비자 - 파랑 */
+  --category-life: #34A853;     /* 생활 - 초록 */
+  --category-education: #FBBC04; /* 교육 - 노랑 */
+  --category-employment: #EA4335; /* 취업 - 빨강 */
+  --category-housing: #9C27B0;   /* 주거 - 보라 */
+  --category-healthcare: #00BCD4; /* 의료 - 청록 */
+
+  /* Semantic Colors */
+  --success: var(--success-500);
+  --warning: var(--warning-500);
+  --error: var(--error-500);
+  --info: var(--primary-500);
+
+  /* Neutral Grays */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: var(--gray-50);
+  --bg-tertiary: var(--gray-100);
+
+  /* Text Colors */
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-700);
+  --text-tertiary: var(--gray-500);
+  --text-inverse: #ffffff;
+
+  /* Typography Scale */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+
+  /* Line Heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Spacing System (4px base) */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+  --space-16: 4rem;    /* 64px */
+  --space-20: 5rem;    /* 80px */
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;  /* 4px */
+  --radius-md: 0.5rem;   /* 8px */
+  --radius-lg: 0.75rem;  /* 12px */
+  --radius-xl: 1rem;     /* 16px */
+  --radius-2xl: 1.5rem;  /* 24px */
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* Transitions */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 200ms ease-in-out;
+  --transition-slow: 300ms ease-in-out;
+}
+
+/* ===== GLOBAL RESET ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ===== BASE STYLES ===== */
+body {
+  font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== VIETNAM THEME UTILITY CLASSES ===== */
+
+/* Layout & Containers */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+.container-sm { max-width: 640px; margin: 0 auto; padding: 0 var(--space-4); }
+.container-md { max-width: 768px; margin: 0 auto; padding: 0 var(--space-4); }
+.container-lg { max-width: 1024px; margin: 0 auto; padding: 0 var(--space-4); }
+.container-xl { max-width: 1280px; margin: 0 auto; padding: 0 var(--space-4); }
+
+/* Vietnam Theme Colors */
+.bg-primary-blue { background-color: var(--primary-blue); }
+.bg-primary-green { background-color: var(--primary-green); }
+.text-primary-blue { color: var(--primary-blue); }
+.text-primary-green { color: var(--primary-green); }
+.border-primary-blue { border-color: var(--primary-blue); }
+.border-primary-green { border-color: var(--primary-green); }
+
+/* Material Design 3.0 Border Colors */
+.border-primary-300 { border-color: var(--primary-300); }
+.border-primary-200 { border-color: var(--primary-200); }
+.border-success-300 { border-color: var(--success-300); }
+.border-success-200 { border-color: var(--success-200); }
+.border-warning-300 { border-color: var(--warning-300); }
+.border-warning-200 { border-color: var(--warning-200); }
+.border-error-300 { border-color: var(--error-300); }
+.border-error-200 { border-color: var(--error-200); }
+
+/* Trust System Colors */
+.bg-trust { background-color: var(--trust-green); }
+.text-trust { color: var(--trust-green); }
+.bg-expert { background-color: var(--expert-gold); }
+.text-expert { color: var(--expert-gold); }
+
+/* Urgency Level Classes */
+.urgency-1 {
+  background-color: var(--urgency-1);
+  color: white;
+  border-left: 4px solid var(--urgency-1);
+}
+.urgency-2 {
+  background-color: var(--urgency-2);
+  color: white;
+  border-left: 4px solid var(--urgency-2);
+}
+.urgency-3 {
+  background-color: var(--urgency-3);
+  color: white;
+  border-left: 4px solid var(--urgency-3);
+}
+.urgency-4 {
+  background-color: var(--urgency-4);
+  color: white;
+  border-left: 4px solid var(--urgency-4);
+}
+.urgency-5 {
+  background-color: var(--urgency-5);
+  color: white;
+  border-left: 4px solid var(--urgency-5);
+}
+
+/* Category Colors */
+.category-visa { color: var(--category-visa); }
+.category-life { color: var(--category-life); }
+.category-education { color: var(--category-education); }
+.category-employment { color: var(--category-employment); }
+.category-housing { color: var(--category-housing); }
+.category-healthcare { color: var(--category-healthcare); }
+
+/* Typography Classes */
+.text-xs { font-size: var(--text-xs); }
+.text-sm { font-size: var(--text-sm); }
+.text-base { font-size: var(--text-base); }
+.text-lg { font-size: var(--text-lg); }
+.text-xl { font-size: var(--text-xl); }
+.text-2xl { font-size: var(--text-2xl); }
+.text-3xl { font-size: var(--text-3xl); }
+.text-4xl { font-size: var(--text-4xl); }
+
+.leading-tight { line-height: var(--leading-tight); }
+.leading-normal { line-height: var(--leading-normal); }
+.leading-relaxed { line-height: var(--leading-relaxed); }
+
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+/* Layout Utilities */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
+.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+/* Spacing Classes */
+.p-1 { padding: var(--space-1); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+.p-6 { padding: var(--space-6); }
+.p-8 { padding: var(--space-8); }
+
+.px-1 { padding-left: var(--space-1); padding-right: var(--space-1); }
+.px-2 { padding-left: var(--space-2); padding-right: var(--space-2); }
+.px-4 { padding-left: var(--space-4); padding-right: var(--space-4); }
+.px-6 { padding-left: var(--space-6); padding-right: var(--space-6); }
+
+.py-1 { padding-top: var(--space-1); padding-bottom: var(--space-1); }
+.py-2 { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.py-4 { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+.py-6 { padding-top: var(--space-6); padding-bottom: var(--space-6); }
+
+.m-1 { margin: var(--space-1); }
+.m-2 { margin: var(--space-2); }
+.m-4 { margin: var(--space-4); }
+.m-6 { margin: var(--space-6); }
+
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-6 { margin-bottom: var(--space-6); }
+.mb-8 { margin-bottom: var(--space-8); }
+.mb-12 { margin-bottom: var(--space-12); }
+
+.mt-2 { margin-top: var(--space-2); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-6 { margin-top: var(--space-6); }
+.mt-8 { margin-top: var(--space-8); }
+
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+
+/* Size & Dimensions */
+.w-full { width: 100%; }
+.w-auto { width: auto; }
+.h-full { height: 100%; }
+.h-auto { height: auto; }
+.h-16 { height: 4rem; }
+.h-32 { height: 8rem; }
+.h-screen { height: 100vh; }
+.min-h-screen { min-height: 100vh; }
+
+.max-w-sm { max-width: 24rem; }
+.max-w-md { max-width: 28rem; }
+.max-w-lg { max-width: 32rem; }
+.max-w-xl { max-width: 36rem; }
+.max-w-2xl { max-width: 42rem; }
+.max-w-4xl { max-width: 56rem; }
+.max-w-6xl { max-width: 72rem; }
+
+.mx-auto { margin-left: auto; margin-right: auto; }
+
+/* Border & Shadow */
+.border { border: 1px solid var(--gray-300); }
+.border-none { border: none; }
+.border-gray-200 { border-color: var(--gray-200); }
+.border-gray-300 { border-color: var(--gray-300); }
+
+.rounded { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: var(--radius-xl); }
+.rounded-2xl { border-radius: var(--radius-2xl); }
+.rounded-full { border-radius: var(--radius-full); }
+
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-xl { box-shadow: var(--shadow-xl); }
+.shadow-2xl { box-shadow: var(--shadow-2xl); }
+.shadow-none { box-shadow: none; }
+
+/* Text Utilities */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+.text-justify { text-align: justify; }
+
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary { color: var(--text-tertiary); }
+.text-inverse { color: var(--text-inverse); }
+
+.resize-none { resize: none; }
+.cursor-pointer { cursor: pointer; }
+.cursor-default { cursor: default; }
+
+/* Position */
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+.sticky { position: sticky; }
+
+.top-0 { top: 0; }
+.right-0 { right: 0; }
+.bottom-0 { bottom: 0; }
+.left-0 { left: 0; }
+
+.z-10 { z-index: 10; }
+.z-20 { z-index: 20; }
+.z-30 { z-index: 30; }
+.z-40 { z-index: 40; }
+.z-50 { z-index: 50; }
+
+/* Overflow */
+.overflow-hidden { overflow: hidden; }
+.overflow-auto { overflow: auto; }
+.overflow-scroll { overflow: scroll; }
+
+/* Display */
+.block { display: block; }
+.inline { display: inline; }
+.inline-block { display: inline-block; }
+.hidden { display: none; }
+
+/* ===== VIETNAM THEME SPECIFIC COMPONENTS ===== */
+
+/* Trust Badge Components */
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background-color: var(--trust-green-pale);
+  color: var(--trust-green);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border: 1px solid var(--trust-green-light);
+}
+
+.trust-badge-expert {
+  background-color: var(--expert-gold-pale);
+  color: var(--expert-gold);
+  border-color: var(--expert-gold-light);
+}
+
+.trust-badge-verified {
+  background-color: var(--primary-pale);
+  color: var(--primary);
+  border-color: var(--primary-light);
+}
+
+/* Question Card Components */
+.question-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  overflow: hidden;
+}
+
+.question-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.question-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.question-card-content {
+  padding: var(--space-6);
+}
+
+.question-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--gray-100);
+  margin-top: var(--space-4);
+}
+
+/* Vietnamese Flag Pattern */
+.vietnam-flag-pattern {
+  background: linear-gradient(135deg,
+    var(--primary-blue) 0%,
+    var(--primary-blue) 50%,
+    var(--primary-green) 50%,
+    var(--primary-green) 100%);
+}
+
+/* Category Icons */
+.category-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  font-size: var(--text-lg);
+  background-color: var(--gray-100);
+}
+
+.category-icon-visa { background-color: rgba(66, 133, 244, 0.1); }
+.category-icon-life { background-color: rgba(52, 168, 83, 0.1); }
+.category-icon-education { background-color: rgba(251, 188, 4, 0.1); }
+.category-icon-employment { background-color: rgba(234, 67, 53, 0.1); }
+.category-icon-housing { background-color: rgba(156, 39, 176, 0.1); }
+.category-icon-healthcare { background-color: rgba(0, 188, 212, 0.1); }
+
+/* ===== HOVER & INTERACTION EFFECTS ===== */
+
+/* Vietnam Theme Hover Effects */
+.hover-primary-blue:hover {
+  background-color: var(--primary-blue);
+  color: white;
+  transform: translateY(-2px);
+  transition: all var(--transition-normal);
+}
+
+.hover-primary-green:hover {
+  background-color: var(--primary-green);
+  color: var(--gray-900);
+  transform: translateY(-2px);
+  transition: all var(--transition-normal);
+}
+
+.hover-trust:hover {
+  background-color: var(--trust-green);
+  color: white;
+  transition: all var(--transition-normal);
+}
+
+.hover-expert:hover {
+  background-color: var(--expert-gold);
+  color: white;
+  transition: all var(--transition-normal);
+}
+
+/* General Hover Effects */
+.hover-shadow:hover {
+  box-shadow: var(--shadow-lg);
+  transition: box-shadow var(--transition-normal);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  transition: transform var(--transition-normal);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+  transition: transform var(--transition-normal);
+}
+
+/* Button Hover States */
+.btn-vietnam-primary {
+  background-color: var(--primary-blue);
+  color: white;
+  border: none;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-vietnam-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-vietnam-secondary {
+  background-color: var(--primary-green);
+  color: var(--gray-900);
+  border: none;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-vietnam-secondary:hover {
+  background-color: var(--secondary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Link Hover Effects */
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+/* Background Colors */
+.bg-white { background-color: var(--bg-primary); }
+.bg-gray-50 { background-color: var(--gray-50); }
+.bg-gray-100 { background-color: var(--gray-100); }
+.bg-gray-200 { background-color: var(--gray-200); }
+.bg-gray-400 { background-color: var(--gray-400); }
+.bg-gray-500 { background-color: var(--gray-500); }
+
+/* Material Design 3.0 Background Colors */
+.bg-primary-500 { background-color: var(--primary-500); }
+.bg-primary-400 { background-color: var(--primary-400); }
+.bg-primary-300 { background-color: var(--primary-300); }
+.bg-primary-200 { background-color: var(--primary-200); }
+.bg-primary-100 { background-color: var(--primary-100); }
+.bg-primary-50 { background-color: var(--primary-50); }
+
+.bg-success-500 { background-color: var(--success-500); }
+.bg-success-400 { background-color: var(--success-400); }
+.bg-success-300 { background-color: var(--success-300); }
+.bg-success-200 { background-color: var(--success-200); }
+.bg-success-100 { background-color: var(--success-100); }
+.bg-success-50 { background-color: var(--success-50); }
+
+.bg-warning-500 { background-color: var(--warning-500); }
+.bg-warning-400 { background-color: var(--warning-400); }
+.bg-warning-300 { background-color: var(--warning-300); }
+.bg-warning-200 { background-color: var(--warning-200); }
+.bg-warning-100 { background-color: var(--warning-100); }
+.bg-warning-50 { background-color: var(--warning-50); }
+
+.bg-error-500 { background-color: var(--error-500); }
+.bg-error-400 { background-color: var(--error-400); }
+.bg-error-300 { background-color: var(--error-300); }
+.bg-error-200 { background-color: var(--error-200); }
+.bg-error-100 { background-color: var(--error-100); }
+.bg-error-50 { background-color: var(--error-50); }
+
+/* Text Colors */
+.text-white { color: white; }
+.text-gray-900 { color: var(--gray-900); }
+.text-gray-800 { color: var(--gray-800); }
+.text-gray-700 { color: var(--gray-700); }
+.text-gray-600 { color: var(--gray-600); }
+.text-gray-500 { color: var(--gray-500); }
+.text-gray-400 { color: var(--gray-400); }
+
+/* ===== RESPONSIVE DESIGN BREAKPOINTS ===== */
+
+/* Mobile First Approach (Vietnam Community Optimized) */
+
+/* Small Mobile: 360px - 479px */
+@media (max-width: 479px) {
+  .container {
+    padding: 0 var(--space-3);
+  }
+
+  .question-card-content {
+    padding: var(--space-4);
+  }
+
+  .text-responsive {
+    font-size: var(--text-sm);
+  }
+
+  .btn-mobile {
+    width: 100%;
+    padding: var(--space-4);
+    font-size: var(--text-base);
+  }
+}
+
+/* Mobile: 480px - 767px */
+@media (min-width: 480px) and (max-width: 767px) {
+  .grid-mobile-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tablet: 768px - 1023px */
+@media (min-width: 768px) {
+  .md\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .md\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .md\:flex-row { flex-direction: row; }
+  .md\:text-lg { font-size: var(--text-lg); }
+  .md\:p-6 { padding: var(--space-6); }
+  .md\:px-8 { padding-left: var(--space-8); padding-right: var(--space-8); }
+}
+
+/* Desktop: 1024px+ */
+@media (min-width: 1024px) {
+  .lg\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .lg\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .lg\:text-xl { font-size: var(--text-xl); }
+  .lg\:p-8 { padding: var(--space-8); }
+
+  /* Desktop Sidebar Layout */
+  .desktop-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: var(--space-8);
+  }
+}
+
+/* Large Desktop: 1440px+ */
+@media (min-width: 1440px) {
+  .xl\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .xl\:grid-cols-5 { grid-template-columns: repeat(5, 1fr); }
+  .xl\:text-2xl { font-size: var(--text-2xl); }
+
+  .desktop-layout {
+    grid-template-columns: 320px 1fr 280px;
+  }
+}
+
+/* ===== ANIMATION & TRANSITIONS ===== */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% { transform: translateY(0); }
+  40%, 43% { transform: translateY(-10px); }
+  70% { transform: translateY(-5px); }
+  90% { transform: translateY(-2px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-bounce {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+/* Loading Skeleton Animations */
+@keyframes skeleton-loading {
+  0% { background-color: var(--gray-200); }
+  50% { background-color: var(--gray-300); }
+  100% { background-color: var(--gray-200); }
+}
+
+.skeleton {
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ===== ACCESSIBILITY & FOCUS STATES ===== */
+
+/* Focus Ring for Accessibility */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(234, 67, 53, 0.3);
+  border-color: var(--primary-blue);
+}
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --text-primary: #000000;
+    --text-secondary: #1a1a1a;
+    --border-color: #333333;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .question-card {
+    break-inside: avoid;
+    border: 1px solid #ccc;
+    margin-bottom: 1rem;
+  }
+}
+
+/* ===== VIETNAM FORM STYLING ===== */
+
+/* Form Container */
+.form-vietnam-container {
+  background: white;
+  border-radius: var(--radius-xl);
+  border: 2px solid var(--gray-200);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+.form-vietnam-container:focus-within {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(234, 67, 53, 0.1);
+}
+
+/* Form Header with Vietnam Theme */
+.form-vietnam-header {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-green) 100%);
+  padding: var(--space-6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.vietnam-form-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+/* Form Content */
+.form-vietnam-content {
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Form Fields */
+.form-vietnam-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-vietnam-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Form Inputs */
+.form-vietnam-input {
+  width: 100%;
+  padding: var(--space-4);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
+  color: var(--gray-900);
+  background: white;
+  transition: all var(--transition-normal);
+}
+
+.form-vietnam-input:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(234, 67, 53, 0.1);
+}
+
+.form-vietnam-input:disabled {
+  background-color: var(--gray-50);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+/* Form Textarea */
+.form-vietnam-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: var(--space-4);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
+  color: var(--gray-900);
+  background: white;
+  resize: vertical;
+  transition: all var(--transition-normal);
+  font-family: inherit;
+}
+
+.form-vietnam-textarea:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(234, 67, 53, 0.1);
+}
+
+/* Form Helper Text */
+.form-vietnam-helper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-xs);
+  color: var(--gray-600);
+}
+
+.form-vietnam-counter {
+  font-weight: 500;
+  color: var(--primary-blue);
+}
+
+/* Category Selection */
+.form-vietnam-categories {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.form-vietnam-category {
+  padding: var(--space-3);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  background: white;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--gray-700);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.form-vietnam-category:hover {
+  border-color: var(--primary-blue);
+  background: var(--primary-blue);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.form-vietnam-category:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-vietnam-category-selected {
+  border-color: var(--primary-blue);
+  background: var(--primary-blue);
+  color: white;
+  box-shadow: 0 0 0 3px rgba(234, 67, 53, 0.1);
+}
+
+/* Submit Section */
+.form-vietnam-submit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--gray-200);
+  margin-top: var(--space-2);
+}
+
+/* Answer Form Styling */
+.form-answer-container {
+  background: white;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+.form-answer-container:focus-within {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(234, 67, 53, 0.1);
+}
+
+.form-answer-header {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-green) 100%);
+  color: white;
+  padding: var(--space-4);
+  font-weight: 600;
+}
+
+.form-answer-content {
+  padding: var(--space-6);
+}
+
+.form-answer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: rgba(234, 67, 53, 0.05);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-3);
+}
+
+.form-answer-toolbar button {
+  padding: var(--space-2);
+  color: var(--primary-blue);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.form-answer-toolbar button:hover {
+  color: white;
+  background: var(--primary-blue);
+}
+
+.form-answer-toolbar .separator {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--primary-blue);
+  opacity: 0.3;
+  margin: 0 var(--space-2);
+}
+
+.form-answer-preview-btn {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: all var(--transition-normal);
+}
+
+.form-answer-preview-btn.active {
+  background: var(--primary-blue);
+  color: white;
+}
+
+.form-answer-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: var(--space-4);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  resize: vertical;
+  font-family: inherit;
+  transition: all var(--transition-normal);
+}
+
+.form-answer-textarea:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(234, 67, 53, 0.1);
+}
+
+.form-answer-preview {
+  min-height: 200px;
+  padding: var(--space-4);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  background: var(--gray-50);
+}
+
+.form-answer-submit {
+  padding: var(--space-2);
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.form-answer-submit:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.form-answer-submit:disabled {
+  background: var(--gray-400);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Error Styling */
+.form-vietnam-error {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: #dc2626;
+  font-size: var(--text-sm);
+}
+
+/* Guidelines Box */
+.form-vietnam-guidelines {
+  margin-top: var(--space-6);
+  padding: var(--space-4);
+  background: rgba(234, 67, 53, 0.05);
+  border: 2px solid rgba(234, 67, 53, 0.2);
+  border-radius: var(--radius-lg);
+}
+
+.form-vietnam-guidelines h4 {
+  font-weight: 600;
+  color: var(--primary-blue);
+  margin-bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.form-vietnam-guidelines ul {
+  font-size: var(--text-sm);
+  color: rgba(234, 67, 53, 0.8);
+  list-style: none;
+  padding: 0;
+}
+
+.form-vietnam-guidelines li {
+  margin-bottom: var(--space-1);
+}
+
+/* ===== ACCESSIBILITY & UX IMPROVEMENTS ===== */
+
+/* Focus States */
+*:focus {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* Skip to main content for screen readers */
+.skip-to-main {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--primary-blue);
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 1000;
+  transition: top 0.3s;
+}
+
+.skip-to-main:focus {
+  top: 6px;
+}
+
+/* Touch Targets - 44px minimum */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Vietnam Theme Loading States */
+.loading-vietnam {
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-vietnam::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(234, 67, 53, 0.3),
+    transparent
+  );
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Vietnam Success/Error States */
+.success-vietnam {
+  background: linear-gradient(135deg, var(--trust-green) 0%, var(--trust-green-light) 100%);
+  color: white;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  animation: slideIn 0.3s ease-out;
+}
+
+.error-vietnam {
+  background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%);
+  color: white;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Vietnam Micro-interactions */
+.hover-vietnam {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-vietnam:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(234, 67, 53, 0.15);
+}
+
+.click-vietnam:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease-in-out;
+}
+
+/* Keyboard Navigation Indicators */
+.keyboard-nav:focus-visible {
+  outline: 3px solid var(--primary-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .form-vietnam-container {
+    border: 3px solid var(--gray-900);
+  }
+
+  .btn-vietnam-primary {
+    border: 2px solid var(--gray-900);
+  }
+
+  .form-vietnam-input:focus {
+    border-color: var(--gray-900);
+    box-shadow: 0 0 0 3px var(--gray-900);
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .hover-vietnam {
+    transition: none;
+  }
+
+  .hover-vietnam:hover {
+    transform: none;
+  }
+
+  .loading-vietnam::after {
+    animation: none;
+  }
+
+  .success-vietnam,
+  .error-vietnam {
+    animation: none;
+  }
+}
+
+/* Mobile Responsive Forms */
+@media (max-width: 768px) {
+  .form-vietnam-categories {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-vietnam-submit {
+    flex-direction: column;
+    gap: var(--space-4);
+    align-items: stretch;
+  }
+
+  .form-vietnam-header {
+    padding: var(--space-4);
+  }
+
+  .form-vietnam-content {
+    padding: var(--space-6);
+  }
+
+  .form-answer-content {
+    padding: var(--space-4);
+  }
+
+  /* Mobile-specific touch targets */
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Larger text for mobile */
+  .form-vietnam-input,
+  .form-vietnam-textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+  .md\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+}
