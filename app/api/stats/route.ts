@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // Mock mode check
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
       console.log('Stats API running in mock mode')
-      return NextResponse.json({
+      const response = NextResponse.json({
         data: {
           totalUsers: 150,
           totalQuestions: 45,
@@ -25,6 +25,11 @@ export async function GET(request: NextRequest) {
           activeUsers: 23
         }
       })
+
+      // Cache stats for 5 minutes (frequently updated)
+      response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=600')
+      response.headers.set('ETag', `stats-${Math.floor(Date.now() / 300000)}`)
+      return response
     }
 
     // 병렬로 모든 통계 쿼리 실행
@@ -211,10 +216,15 @@ export async function GET(request: NextRequest) {
       generatedBy: 'viet-kconnect-api'
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       data: stats,
       message: 'Statistics retrieved successfully'
     })
+
+    // Cache stats for 5 minutes (frequently updated)
+    response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=600')
+    response.headers.set('ETag', `stats-${Math.floor(Date.now() / 300000)}`)
+    return response
 
   } catch (error) {
     console.error('Stats API error:', error)

@@ -1,4 +1,9 @@
-/* ===== VIET K-CONNECT CSS 디자인 시스템 ===== */
+/* ===== VIET K-CONNECT MATERIAL DESIGN 3.0 시스템 ===== */
+
+/* 🎨 시니어 UI/UX 디자이너 설계: 프로페셔널 디자인 토큰 시스템 */
+
+/* Import Design System */
+@import '../styles/design-system.css';
 
 /* Import Vietnamese-optimized fonts */
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css');
@@ -405,6 +410,19 @@ body {
 .overflow-hidden { overflow: hidden; }
 .overflow-auto { overflow: auto; }
 .overflow-scroll { overflow: scroll; }
+.overflow-x-auto { overflow-x: auto; }
+
+/* Scrollbar Hide - Mobile Optimized */
+.scrollbar-hide {
+  /* Firefox */
+  scrollbar-width: none;
+  /* Safari and Chrome */
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
 
 /* Display */
 .block { display: block; }

@@ -74,10 +74,10 @@ export function AccessibleToast({
 
   const getTypeClass = () => {
     switch (type) {
-      case 'success': return 'color-safe-green'
-      case 'error': return 'color-safe-red'
-      case 'warning': return 'color-safe-yellow'
-      default: return 'color-safe-blue'
+      case 'success': return 'bg-trust text-white'
+      case 'error': return 'bg-error text-white'
+      case 'warning': return 'bg-warning-500 text-primary'
+      default: return 'bg-primary-blue text-white'
     }
   }
 
@@ -87,21 +87,7 @@ export function AccessibleToast({
         ref={toastRef}
         role="alert"
         aria-live="assertive"
-        className={`toast ${getTypeClass()}`}
-        style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          padding: '16px',
-          borderRadius: '8px',
-          color: 'white',
-          maxWidth: '400px',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-        }}
+        className={`fixed top-5 right-5 p-4 rounded-lg max-w-sm z-50 flex items-center gap-2 shadow-lg transition-normal ${getTypeClass()}`}
       >
         <span aria-hidden="true">{getIcon()}</span>
         <span>{message}</span>
@@ -109,16 +95,7 @@ export function AccessibleToast({
           <button
             onClick={onClose}
             aria-label="알림 닫기"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'white',
-              fontSize: '20px',
-              cursor: 'pointer',
-              marginLeft: 'auto',
-              padding: '0 4px',
-              lineHeight: 1
-            }}
+            className="bg-transparent border-none text-white text-xl cursor-pointer ml-auto px-1 leading-none hover:opacity-75 transition-normal focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-1"
           >
             ×
           </button>

@@ -23,12 +23,13 @@ export async function POST(
       )
     }
 
-    // 답변 정보 조회
+    // 답변 정보 조회 (상세 정보 포함)
     const { data: answer, error: answerError } = await supabase
       .from('answers')
       .select(`
         id, question_id, author_id, is_accepted,
-        question:questions!question_id(id, author_id)
+        question:questions!question_id(id, title, author_id),
+        author:users!author_id(id, name, email, trust_score)
       `)
       .eq('id', answerId)
       .single()
@@ -41,7 +42,7 @@ export async function POST(
     }
 
     // 질문 작성자만 답변을 채택할 수 있음
-    if ((answer.question as any).author_id !== user.id) {
+    if ((answer.question as { author_id: string }).author_id !== user.id) {
       return NextResponse.json(
         { error: 'Only the question author can accept answers' },
         { status: 403 }
@@ -107,6 +108,7 @@ export async function POST(
         updated_at: new Date().toISOString()
       })
       .eq('id', answer.author_id)
+
 
     return NextResponse.json({
       data: updatedAnswer,

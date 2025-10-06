@@ -1,7 +1,7 @@
 import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// Complete Database types matching Agent 4 schema implementation
+// Complete Database types matching 4-tier permission system
 export type Database = {
   public: {
     Tables: {
@@ -14,11 +14,25 @@ export type Database = {
           bio: string | null
           provider: string | null
           provider_id: string | null
+
+          // 4-Tier Permission System
+          role: 'guest' | 'user' | 'verified' | 'admin'
+          verification_status: 'none' | 'pending' | 'approved' | 'rejected' | 'expired'
+          verification_type: 'student' | 'work' | 'family' | 'resident' | 'other' | null
+
+          // Profile Info (verification에 사용)
           visa_type: string | null
           company: string | null
           years_in_korea: number | null
           region: string | null
+          specialty_areas: string[] | null
           preferred_language: string
+
+          // Verification Timestamps
+          verified_at: string | null
+          verification_expires_at: string | null
+
+          // Legacy Compatibility
           is_verified: boolean
           verification_date: string | null
           trust_score: number
@@ -38,11 +52,25 @@ export type Database = {
           bio?: string | null
           provider?: string | null
           provider_id?: string | null
+
+          // 4-Tier Permission System
+          role?: 'guest' | 'user' | 'verified' | 'admin'
+          verification_status?: 'none' | 'pending' | 'approved' | 'rejected' | 'expired'
+          verification_type?: 'student' | 'work' | 'family' | 'resident' | 'other' | null
+
+          // Profile Info
           visa_type?: string | null
           company?: string | null
           years_in_korea?: number | null
           region?: string | null
+          specialty_areas?: string[] | null
           preferred_language?: string
+
+          // Verification Timestamps
+          verified_at?: string | null
+          verification_expires_at?: string | null
+
+          // Legacy Compatibility
           is_verified?: boolean
           verification_date?: string | null
           trust_score?: number
@@ -435,16 +463,9 @@ export const createSupabaseClient = () => {
 
 // Server client for server-side operations
 export const createSupabaseServerClient = async () => {
-  // Immediate mock mode check using multiple environment indicators
-  const isMockMode =
-    process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ||
-    process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co') ||
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (isMockMode) {
-    console.log('Supabase server client running in mock mode')
-    return null
+  // Validate required environment variables
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error('Missing required Supabase environment variables')
   }
 
   try {
@@ -462,8 +483,8 @@ export const createSupabaseServerClient = async () => {
       }
     )
   } catch (error) {
-    console.warn('Supabase server client creation failed, falling back to mock mode:', error)
-    return null
+    console.error('Supabase server client creation failed:', error)
+    throw error
   }
 }
 

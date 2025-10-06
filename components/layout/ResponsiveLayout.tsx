@@ -17,7 +17,7 @@ export default function ResponsiveLayout({
   showBottomNav = true
 }: ResponsiveLayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-secondary">
       {/* Header - 모든 디바이스 */}
       <Header />
 
@@ -64,7 +64,7 @@ export function MinimalLayout({ children }: { children: ReactNode }) {
 // 홈페이지 전용 레이아웃
 export function HomeLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-blue/5 via-white to-primary-green/5">
+    <div className="min-h-screen bg-gradient-to-br from-primary-blue/5 via-primary to-trust/5">
       <Header />
 
       <div className="flex">
@@ -72,7 +72,7 @@ export function HomeLayout({ children }: { children: ReactNode }) {
 
         <main className="flex-1">
           {/* 히어로 섹션 */}
-          <section className="bg-gradient-to-r from-primary-blue to-primary-green text-white py-12 lg:py-16">
+          <section className="bg-gradient-to-r from-primary-blue to-trust text-white py-12 lg:py-16">
             <div className="container mx-auto px-4">
               <div className="max-w-4xl mx-auto text-center">
                 <h1 className="text-3xl lg:text-5xl font-bold mb-4">
@@ -83,14 +83,14 @@ export function HomeLayout({ children }: { children: ReactNode }) {
                 </p>
 
                 {/* 검색/질문 입력 박스 */}
-                <div className="max-w-2xl mx-auto bg-white rounded-xl p-2 shadow-xl">
+                <div className="max-w-2xl mx-auto bg-primary rounded-xl p-2 shadow-xl">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
                       placeholder="비자, 취업, 주거 등 궁금한 것을 물어보세요..."
-                      className="flex-1 px-4 py-3 text-gray-900 rounded-lg border-none outline-none"
+                      className="flex-1 px-4 py-3 text-primary rounded-lg border-none outline-none bg-primary"
                     />
-                    <button className="btn-primary-blue px-6 py-3 whitespace-nowrap">
+                    <button className="bg-primary-blue hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-normal whitespace-nowrap">
                       ✍️ 질문하기
                     </button>
                   </div>

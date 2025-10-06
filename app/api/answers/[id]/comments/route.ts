@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
 import { ValidationUtils } from '@/lib/validation'
+import { triggerAnswerCommentNotification } from '@/lib/services/notification-triggers'
+import { createServerLogger } from '@/lib/utils/server-logger'
 
 // GET /api/answers/[id]/comments - 답변의 댓글 목록 조회
 export async function GET(
@@ -70,6 +72,8 @@ export async function GET(
   }
 }
 
+const logger = createServerLogger('AnswerCommentsAPI', 'api')
+
 // POST /api/answers/[id]/comments - 답변에 댓글 추가
 export async function POST(
   request: NextRequest,
@@ -112,10 +116,13 @@ export async function POST(
       )
     }
 
-    // 답변 존재 확인
+    // 답변 정보 조회 (알림을 위한 상세 정보 포함)
     const { data: answer, error: answerError } = await supabase
       .from('answers')
-      .select('id')
+      .select(`
+        id, author_id,
+        question:questions!question_id(id, title, author_id)
+      `)
       .eq('id', answerId)
       .single()
 
@@ -146,11 +153,39 @@ export async function POST(
       .single()
 
     if (insertError) {
-      console.error('Comment creation error:', insertError)
+      logger.error('Comment creation error', insertError as Error, {
+        action: 'createAnswerComment',
+        answerId,
+        severity: 'medium'
+      })
       return NextResponse.json(
         { error: 'Failed to create comment' },
         { status: 500 }
       )
+    }
+
+    // 댓글 알림 전송 (백그라운드)
+    try {
+      await triggerAnswerCommentNotification(
+        comment,
+        answer,
+        answer.question as any,
+        comment.author as any
+      )
+
+      logger.info('Answer comment notification triggered', {
+        action: 'createAnswerComment',
+        commentId: comment.id,
+        answerId,
+        questionId: (answer.question as any)?.id
+      })
+    } catch (notificationError) {
+      // 알림 실패는 주요 기능에 영향을 주지 않음
+      logger.error('Failed to send answer comment notification', notificationError as Error, {
+        action: 'answerCommentNotification',
+        commentId: comment.id,
+        severity: 'low'
+      })
     }
 
     return NextResponse.json({
@@ -159,7 +194,10 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('Comment creation API error:', error)
+    logger.error('Comment creation API error', error as Error, {
+      action: 'createAnswerCommentAPI',
+      severity: 'high'
+    })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

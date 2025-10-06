@@ -1,11 +1,9 @@
-# Supabase Setup Guide for Viet K-Connect
+# 🗄️ Supabase 실제 프로젝트 설정 가이드
 
-This guide will help you set up your Supabase project to replace the mock environment with a real database.
+**Week 3 목표**: Mock 모드에서 실제 프로덕션 데이터베이스로 전환
 
-## Quick Start
-
-**Current Status**: ⚠️ Project is using MOCK mode
-**Goal**: Switch to real Supabase project for API functionality
+**Current Status**: ✅ Week 2 MVP 완료 → Week 3 베타 출시 준비
+**Goal**: 실제 Supabase 프로젝트로 베타 사용자 테스트 환경 구성
 
 ## Step 1: Create Supabase Project (5 minutes)
 

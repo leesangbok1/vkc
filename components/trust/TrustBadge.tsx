@@ -1,6 +1,8 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { UserRole, getRoleDisplayInfo } from '@/lib/utils/permissions'
+import { ExtendedUser } from '@/lib/types/permissions'
 
 interface TrustBadgeProps {
   user: {
@@ -11,6 +13,8 @@ interface TrustBadgeProps {
     verification_type?: 'student' | 'worker' | 'resident' | 'business'
     is_verified?: boolean
     specialties?: string[]
+    role?: UserRole
+    verification_status?: string
   }
   variant?: 'default' | 'compact' | 'detailed'
   className?: string
@@ -41,7 +45,19 @@ export default function TrustBadge({
     }
   }
 
-  const getTrustLevel = (score: number) => {
+  const getTrustLevel = (score: number, role?: UserRole) => {
+    // 4-tier 권한 시스템 우선 적용
+    if (role) {
+      const roleInfo = getRoleDisplayInfo(role)
+      return {
+        level: roleInfo.label,
+        color: roleInfo.badgeColor,
+        icon: roleInfo.icon,
+        bgClass: roleInfo.bgColor
+      }
+    }
+
+    // 기존 신뢰도 점수 기반 레벨 (하위 호환성)
     if (score >= 800) return {
       level: '전문가',
       color: 'bg-warning-500 text-white',
@@ -75,77 +91,120 @@ export default function TrustBadge({
   }
 
   if (variant === 'compact') {
+    const roleInfo = user.role ? getRoleDisplayInfo(user.role) : null
+
     return (
-      <div className={cn('trust-badge trust-badge-compact', className)}>
-        🇰🇷 {user.residence_years || 0}년차
+      <div
+        data-testid="trust-badge"
+        className={cn(
+          'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-normal',
+          roleInfo ? roleInfo.badgeColor : 'bg-secondary text-secondary',
+          className
+        )}
+      >
+        {roleInfo && (
+          <>
+            <span>{roleInfo.icon}</span>
+            <span>{roleInfo.label}</span>
+          </>
+        )}
+        <span className="text-xs opacity-75">
+          🇰🇷 {user.residence_years || 0}년차
+        </span>
         {user.is_verified && (
-          <span className="text-trust ml-1">✓</span>
+          <span className="text-xs">✓</span>
         )}
       </div>
     )
   }
 
   if (variant === 'detailed') {
-    const trustInfo = getTrustLevel(user.trust_score || 0)
+    const trustInfo = getTrustLevel(user.trust_score || 0, user.role)
+    const roleInfo = user.role ? getRoleDisplayInfo(user.role) : null
 
     return (
-      <div className={cn('bg-white rounded-xl p-4 border border-gray-200 shadow-sm', className)}>
-        {/* 레벨 표시 */}
-        <div className={cn('inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-3', trustInfo.color)}>
-          <span>{trustInfo.icon}</span>
-          <span>{trustInfo.level}</span>
-        </div>
+      <div className={cn('bg-primary rounded-lg p-6 border border-light shadow-md', className)}>
+        {/* 4-tier 역할 표시 (최우선) */}
+        {roleInfo && (
+          <div className={cn(
+            'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4',
+            roleInfo.badgeColor
+          )}>
+            <span className="text-lg">{roleInfo.icon}</span>
+            <span>{roleInfo.label}</span>
+            {user.trust_score && (
+              <span className="text-xs opacity-75">⭐{user.trust_score}</span>
+            )}
+          </div>
+        )}
 
         {/* 거주 정보 */}
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2">
             <span className="text-lg">🇰🇷</span>
-            <span className="font-medium text-gray-900">
+            <span className="font-medium text-primary">
               한국 {user.residence_years || 0}년차
             </span>
           </div>
 
           {user.visa_type && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>📄</span>
+            <div className="flex items-center gap-2 text-sm text-secondary">
+              <span>🛂</span>
               <span>{user.visa_type}</span>
-              {user.company && <span className="text-gray-400">• {user.company}</span>}
+              {user.company && <span className="text-tertiary">• {user.company}</span>}
             </div>
           )}
         </div>
 
         {/* 인증 정보 */}
-        {user.is_verified && (
-          <div className="trust-badge trust-badge-verified mb-3">
+        {(user.is_verified || user.role === UserRole.VERIFIED || user.role === UserRole.ADMIN) && (
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary rounded-full text-sm mb-3">
             <span>{getVerificationIcon(user.verification_type)}</span>
-            <span>{getVerificationLabel(user.verification_type)}</span>
+            <span className="text-primary">{getVerificationLabel(user.verification_type)}</span>
+            {user.verification_status === 'pending' && (
+              <span className="text-xs bg-warning-500 text-white px-2 py-1 rounded ml-2">
+                심사중
+              </span>
+            )}
           </div>
         )}
 
         {/* 신뢰도 점수 */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-gray-600">신뢰도</span>
-          <div className="flex items-center gap-1">
-            <span className="font-bold text-lg">{user.trust_score || 0}</span>
-            <span className="text-sm text-gray-500">점</span>
+        {user.trust_score && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-secondary">신뢰도</span>
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-lg text-primary">{user.trust_score}</span>
+                <span className="text-sm text-tertiary">점</span>
+              </div>
+            </div>
+
+            {/* 신뢰도 진행바 */}
+            <div className="w-full bg-tertiary rounded-full h-2">
+              <div
+                className="bg-trust h-2 rounded-full transition-all"
+                style={{ width: `${Math.min((user.trust_score / 1000) * 100, 100)}%` }}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 전문 분야 */}
         {user.specialties && user.specialties.length > 0 && (
           <div>
-            <span className="text-sm text-gray-600 block mb-2">전문 분야</span>
+            <span className="text-sm text-secondary block mb-2">전문 분야</span>
             <div className="flex flex-wrap gap-1">
               {user.specialties.slice(0, 3).map((specialty, index) => (
                 <span
                   key={index}
-                  className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                  className="text-xs bg-tertiary text-primary px-2 py-1 rounded-full"
                 >
                   #{specialty}
                 </span>
               ))}
               {user.specialties.length > 3 && (
-                <span className="text-xs text-gray-500">+{user.specialties.length - 3}</span>
+                <span className="text-xs text-tertiary">+{user.specialties.length - 3}</span>
               )}
             </div>
           </div>
@@ -155,18 +214,31 @@ export default function TrustBadge({
   }
 
   // Default variant
+  const roleInfo = user.role ? getRoleDisplayInfo(user.role) : null
+
   return (
     <div className={cn('flex items-center gap-2', className)}>
+      {/* 4-tier 역할 배지 (최우선 표시) */}
+      {roleInfo && (
+        <div className={cn(
+          'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-normal',
+          roleInfo.badgeColor
+        )}>
+          <span>{roleInfo.icon}</span>
+          <span className="hidden sm:inline">{roleInfo.label}</span>
+        </div>
+      )}
+
       {/* 거주년차 */}
-      <div className="trust-badge">
-        🇰🇷 {user.residence_years || 0}년차
+      <div className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-full text-xs text-primary">
+        🇰🇷 <span className="hidden sm:inline">{user.residence_years || 0}년차</span>
       </div>
 
       {/* 인증 상태 */}
-      {user.is_verified && (
-        <div className="trust-badge trust-badge-verified">
+      {(user.is_verified || user.role === UserRole.VERIFIED || user.role === UserRole.ADMIN) && (
+        <div className="inline-flex items-center gap-1 px-2 py-1 bg-trust text-white rounded-full text-xs">
           {getVerificationIcon(user.verification_type)}
-          <span className="hidden sm:inline ml-1">
+          <span className="hidden sm:inline">
             {getVerificationLabel(user.verification_type)}
           </span>
         </div>
@@ -174,8 +246,8 @@ export default function TrustBadge({
 
       {/* 신뢰도 점수 */}
       {user.trust_score && (
-        <div className="trust-badge">
-          ⭐ {user.trust_score}
+        <div className="inline-flex items-center gap-1 px-2 py-1 bg-tertiary text-primary rounded-full text-xs">
+          ⭐ <span className="font-medium">{user.trust_score}</span>
         </div>
       )}
     </div>
@@ -197,14 +269,14 @@ export function ExpertCard({
   onViewProfile?: () => void
 }) {
   return (
-    <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-primary rounded-lg p-6 border border-light shadow-md hover:shadow-lg transition-shadow">
       {/* 매칭 점수 */}
       {matchScore && (
         <div className="flex justify-between items-center mb-4">
           <div className="bg-trust text-white px-3 py-1 rounded-full text-sm font-medium">
             매칭도 {matchScore}%
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-tertiary">
             {matchScore >= 90 ? '완벽' : matchScore >= 70 ? '높음' : '보통'}
           </div>
         </div>
@@ -212,19 +284,21 @@ export function ExpertCard({
 
       {/* 프로필 */}
       <div className="text-center mb-4">
-        <div className="w-20 h-20 mx-auto mb-3 bg-gray-200 rounded-full flex items-center justify-center text-2xl">
+        <div className="w-20 h-20 mx-auto mb-3 bg-secondary rounded-full flex items-center justify-center text-2xl">
           👤
         </div>
-        <h3 className="font-semibold text-gray-900">{expert.name}</h3>
+        <h3 className="font-semibold text-primary">{expert.name}</h3>
       </div>
 
       {/* 신뢰도 정보 */}
-      <TrustBadge user={expert} variant="compact" className="justify-center mb-4" />
+      <div className="flex justify-center mb-4">
+        <TrustBadge user={expert} variant="compact" />
+      </div>
 
       {/* 매칭 이유 */}
       {matchReason && (
-        <div className="bg-gray-50 rounded-lg p-3 mb-4">
-          <p className="text-sm text-gray-700">{matchReason}</p>
+        <div className="bg-secondary rounded-lg p-3 mb-4">
+          <p className="text-sm text-secondary">{matchReason}</p>
         </div>
       )}
 
@@ -232,15 +306,15 @@ export function ExpertCard({
       <div className="grid grid-cols-3 gap-2 mb-4 text-center">
         <div>
           <div className="text-lg font-bold text-primary-blue">{expert.answer_count || 0}</div>
-          <div className="text-xs text-gray-500">답변</div>
+          <div className="text-xs text-tertiary">답변</div>
         </div>
         <div>
           <div className="text-lg font-bold text-trust">{expert.acceptance_rate || 0}%</div>
-          <div className="text-xs text-gray-500">채택률</div>
+          <div className="text-xs text-tertiary">채택률</div>
         </div>
         <div>
-          <div className="text-lg font-bold text-expert">{expert.avg_response_time || 0}h</div>
-          <div className="text-xs text-gray-500">응답</div>
+          <div className="text-lg font-bold text-warning-500">{expert.avg_response_time || 0}h</div>
+          <div className="text-xs text-tertiary">응답</div>
         </div>
       </div>
 
@@ -249,7 +323,7 @@ export function ExpertCard({
         {onSelect && (
           <button
             onClick={onSelect}
-            className="flex-1 btn-primary-blue text-sm py-2"
+            className="flex-1 bg-primary-blue hover:bg-primary-700 text-white text-sm py-2 px-4 rounded-lg transition-colors"
           >
             선택
           </button>
@@ -257,7 +331,7 @@ export function ExpertCard({
         {onViewProfile && (
           <button
             onClick={onViewProfile}
-            className="flex-1 btn-primary-green text-sm py-2"
+            className="flex-1 bg-trust hover:bg-secondary-600 text-white text-sm py-2 px-4 rounded-lg transition-colors"
           >
             프로필
           </button>

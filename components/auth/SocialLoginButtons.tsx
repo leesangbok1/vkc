@@ -1,7 +1,6 @@
 'use client'
 
-import React from 'react'
-import { useSafeAuth } from "@/components/providers/ClientProviders"
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
 interface SocialLoginButtonsProps {
@@ -10,25 +9,65 @@ interface SocialLoginButtonsProps {
 }
 
 export function SocialLoginButtons({ onLoginSuccess, disabled }: SocialLoginButtonsProps) {
-  const { signInWithGoogle, signInWithKakao, loading } = useSafeAuth()
+  const [loading, setLoading] = useState(false)
 
   const handleGoogleLogin = async () => {
+    if (loading || disabled) return
+
     try {
-      await signInWithGoogle()
-      onLoginSuccess?.()
+      setLoading(true)
+
+      const response = await fetch('/api/auth/social?provider=google', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error(data.error || 'Google 로그인 URL 생성 실패')
+      }
     } catch (error) {
       console.error('Google 로그인 실패:', error)
       alert('로그인에 실패했습니다. 다시 시도해주세요.')
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleKakaoLogin = async () => {
+    if (loading || disabled) return
+
     try {
-      await signInWithKakao()
-      onLoginSuccess?.()
+      setLoading(true)
+
+      const response = await fetch('/api/auth/social', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: 'kakao',
+          returnTo: '/'
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.data?.auth_url) {
+        window.location.href = data.data.auth_url
+      } else {
+        throw new Error(data.error || 'Kakao 로그인 URL 생성 실패')
+      }
     } catch (error) {
       console.error('Kakao 로그인 실패:', error)
       alert('로그인에 실패했습니다. 다시 시도해주세요.')
+    } finally {
+      setLoading(false)
     }
   }
 

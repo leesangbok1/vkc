@@ -16,22 +16,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Mock mode check
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
-      console.log('Social login API running in mock mode')
-
-      // Mock 소셜 로그인 응답
-      const mockAuthUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?code=mock_${provider}_code&next=${encodeURIComponent(returnTo)}`
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          auth_url: mockAuthUrl,
-          provider,
-          message: `${provider} 로그인이 준비되었습니다`
-        }
-      })
-    }
 
     const supabase = await createClient()
 
@@ -107,14 +91,12 @@ export async function GET() {
       }
     ]
 
-    // Mock mode에서도 동일한 응답
     return NextResponse.json({
       success: true,
       data: {
         providers,
         total: providers.length,
         configuration: {
-          mock_mode: process.env.NEXT_PUBLIC_MOCK_MODE === 'true',
           callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
           supported_features: [
             'profile_creation',

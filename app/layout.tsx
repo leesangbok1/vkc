@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next'
 import './critical.css'
 import './globals.css'
-import { ClientProviders } from '@/components/providers/ClientProviders'
 import StructuredData from '@/components/StructuredData'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://vietkconnect.com'),
   title: 'VietKConnect - 한국 거주 베트남인을 위한 Q&A 플랫폼',
   description: '한국에서 생활하는 베트남인들을 위한 질문과 답변 커뮤니티. 비자, 생활정보, 취업, 교육 등 다양한 주제로 소통하세요.',
   keywords: ['베트남', '한국', '비자', '취업', '생활정보', 'Q&A', '커뮤니티', 'vietnamese', 'korea', 'visa', 'employment', 'community'],
@@ -112,16 +112,14 @@ export default function RootLayout({
         <a href="#main-content" className="skip-to-main">
           메인 콘텐츠로 건너뛰기
         </a>
-        <ClientProviders>
-          <div id="root" className="h-full">
-            <main id="main-content">
-              {children}
-            </main>
-          </div>
-        </ClientProviders>
+        <div id="root" className="h-full">
+          <main id="main-content">
+            {children}
+          </main>
+        </div>
 
-        {/* Structured Data */}
-        <StructuredData />
+        {/* Structured Data - temporarily disabled */}
+        {/* <StructuredData /> */}
 
         {/* 서비스 워커 등록 */}
         <script

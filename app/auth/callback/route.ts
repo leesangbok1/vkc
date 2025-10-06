@@ -5,59 +5,44 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
 
-  // Check if we're in mock mode - return success immediately
-  if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
-    console.log('Auth callback running in mock mode')
-    const response = NextResponse.redirect(`${origin}${next}`)
-    response.cookies.set('auth-callback-success', 'true', {
-      maxAge: 5, // 5 seconds
-      httpOnly: false
-    })
-    return response
-  }
 
   if (code) {
     try {
-      // Dynamic import to avoid cookie issues in mock mode
-      const { createServerClient } = await import('@supabase/ssr')
-      const { cookies } = await import('next/headers')
+      const supabase = await (await import('@/lib/supabase-server')).createSupabaseServerClient()
 
-      const cookieStore = await cookies()
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            get(name: string) {
-              return cookieStore.get(name)?.value
-            },
-            set(name: string, value: string, options: any) {
-              try {
-                cookieStore.set({ name, value, ...options })
-              } catch {
-                // Expected in server components
-              }
-            },
-            remove(name: string, options: any) {
-              try {
-                cookieStore.set({ name, value: '', ...options })
-              } catch {
-                // Expected in server components
-              }
-            },
-          },
+      if (!error && data.user) {
+        // 사용자 프로필 생성 또는 업데이트
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single()
+
+        if (!existingUser) {
+          await supabase
+            .from('users')
+            .insert({
+              id: data.user.id,
+              email: data.user.email!,
+              name: data.user.user_metadata.full_name || data.user.user_metadata.name || 'New User',
+              avatar_url: data.user.user_metadata.avatar_url || data.user.user_metadata.picture,
+              role: 'user',
+              verification_status: 'unverified',
+              visa_type: null,
+              years_in_korea: null,
+              region: null,
+              is_active: true,
+              trust_score: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
         }
-      )
 
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
-
-      if (!error) {
         const response = NextResponse.redirect(`${origin}${next}`)
-
-        // Set a success flag for the client to handle
         response.cookies.set('auth-callback-success', 'true', {
-          maxAge: 5, // 5 seconds
+          maxAge: 5,
           httpOnly: false
         })
 

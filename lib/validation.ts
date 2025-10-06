@@ -33,6 +33,11 @@ export class ValidationUtils {
     return cleaned.slice(0, maxLength).trim()
   }
 
+  // Alias method for backward compatibility
+  static sanitizeInput(value: string | null, maxLength: number = 1000): string {
+    return this.safeString(value, maxLength)
+  }
+
   // Validate pagination parameters
   static validatePagination(searchParams: URLSearchParams) {
     return {

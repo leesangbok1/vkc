@@ -3,8 +3,11 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { Database } from './lib/supabase'
 import { addSecurityHeaders, validateCSRFToken } from '@/lib/middleware/security-headers'
+import { systemMetrics } from '@/lib/monitoring/system-metrics'
 
 export async function middleware(request: NextRequest) {
+  const start = Date.now()
+
   // CSRF validation for API routes
   if (request.nextUrl.pathname.startsWith('/api/') && !validateCSRFToken(request)) {
     return addSecurityHeaders(
@@ -111,6 +114,29 @@ export async function middleware(request: NextRequest) {
   if (isAuthRoute && session) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
+
+  // Record API metrics
+  const responseTime = Date.now() - start
+
+  systemMetrics.recordApiCall({
+    endpoint: request.nextUrl.pathname,
+    method: request.method,
+    status_code: response.status || 200,
+    response_time: responseTime,
+    timestamp: new Date().toISOString()
+  })
+
+  // Record user activity for page views
+  if (request.method === 'GET' && !request.nextUrl.pathname.startsWith('/api')) {
+    const sessionId = request.headers.get('x-forwarded-for') ||
+                     request.headers.get('x-real-ip') ||
+                     'anonymous'
+    systemMetrics.recordUserActivity(sessionId, request.nextUrl.pathname)
+  }
+
+  // Add monitoring headers
+  response.headers.set('X-Response-Time', `${responseTime}ms`)
+  response.headers.set('X-Request-ID', `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
 
   // Add security headers to all responses
   return addSecurityHeaders(response)

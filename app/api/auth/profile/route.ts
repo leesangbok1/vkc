@@ -4,71 +4,9 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabase-serve
 // GET /api/auth/profile - 사용자 프로필 조회
 export async function GET(request: NextRequest) {
   try {
-    // Mock mode check
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
-      console.log('Profile API running in mock mode')
-
-      // Mock 사용자 데이터 (베트남 사용자 특화)
-      const mockProfile = {
-        id: 'user_mock_123',
-        email: 'letuan@example.com',
-        name: '레투안',
-        avatar_url: '',
-        bio: '한국 거주 3년차 베트남인입니다. IT 업계에서 일하고 있으며, 비자와 취업 관련 정보를 공유하고 있습니다.',
-        provider: 'google',
-        provider_id: 'google_123456',
-
-        // 베트남 특화 정보
-        visa_type: 'E-7',
-        company: '삼성전자',
-        years_in_korea: 3,
-        region: '서울시 강남구',
-        preferred_language: 'ko',
-
-        // 커뮤니티 정보
-        is_verified: true,
-        verification_date: '2023-06-15T10:00:00Z',
-        trust_score: 324,
-        badges: {
-          verified: true,
-          expert: false,
-          helpful: true,
-          early_adopter: true
-        },
-
-        // 활동 통계
-        question_count: 8,
-        answer_count: 15,
-        helpful_answer_count: 12,
-        last_active: new Date().toISOString(),
-
-        // 전문 분야
-        specialties: ['IT', '취업', 'E-7비자'],
-        interests: ['프로그래밍', '한국문화', '요리'],
-
-        // 언어 능력
-        languages: {
-          vietnamese: 'native',
-          korean: 'advanced',
-          english: 'intermediate'
-        },
-
-        // 알림 설정
-        notification_settings: {
-          email_notifications: true,
-          answer_notifications: true,
-          expert_match_notifications: true,
-          weekly_digest: true
-        },
-
-        created_at: '2023-01-15T10:00:00Z',
-        updated_at: new Date().toISOString()
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: mockProfile
-      })
+    // Mock mode 체크 (테스트 환경)
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      return getMockProfile()
     }
 
     const supabase = await createClient()
@@ -117,47 +55,12 @@ export async function GET(request: NextRequest) {
 // PUT /api/auth/profile - 사용자 프로필 업데이트
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
-
-    // Mock mode check
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
-      console.log('Profile update API running in mock mode')
-
-      // 업데이트 가능한 필드 검증
-      const allowedFields = [
-        'name', 'bio', 'visa_type', 'company', 'years_in_korea',
-        'region', 'preferred_language', 'specialties', 'interests',
-        'languages', 'notification_settings'
-      ]
-
-      const updateData = Object.keys(body)
-        .filter(key => allowedFields.includes(key))
-        .reduce((obj, key) => {
-          obj[key] = body[key]
-          return obj
-        }, {} as any)
-
-      // Trust Score 업데이트 로직 (프로필 완성도 기반)
-      let trustBonus = 0
-      if (updateData.bio && updateData.bio.length > 50) trustBonus += 10
-      if (updateData.visa_type) trustBonus += 15
-      if (updateData.company) trustBonus += 10
-      if (updateData.specialties && updateData.specialties.length > 0) trustBonus += 20
-      if (updateData.languages && Object.keys(updateData.languages).length >= 2) trustBonus += 15
-
-      const updatedProfile = {
-        ...updateData,
-        trust_score: Math.min(324 + trustBonus, 1000), // 기존 점수에 보너스 추가
-        updated_at: new Date().toISOString()
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: updatedProfile,
-        message: '프로필이 성공적으로 업데이트되었습니다',
-        trust_bonus: trustBonus > 0 ? `신뢰도 +${trustBonus}점 획득` : null
-      })
+    // Mock mode 체크 (테스트 환경)
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      return putMockProfile(request)
     }
+
+    const body = await request.json()
 
     const supabase = await createClient()
     if (!supabase) {
@@ -185,7 +88,7 @@ export async function PUT(request: NextRequest) {
       .reduce((obj, key) => {
         obj[key] = body[key]
         return obj
-      }, {} as any)
+      }, {} as Record<string, unknown>)
 
     updateData.updated_at = new Date().toISOString()
 
@@ -216,6 +119,170 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
+    )
+  }
+}
+
+// Mock 함수들 (테스트 환경용)
+function getMockProfile() {
+  const mockProfile = {
+    id: 'user_mock_123',
+    email: 'letuan@example.com',
+    name: '레투안',
+    avatar_url: null,
+    bio: '소프트웨어 개발자로 한국에서 3년째 근무중입니다. 비자 연장과 정착 과정에서 얻은 경험을 나누고 싶습니다.',
+    provider: 'email',
+    provider_id: 'email_123',
+    role: 'user',
+    verification_status: 'approved',
+    verification_type: 'work',
+    visa_type: 'E-7',
+    company: '테크 코리아',
+    years_in_korea: 3,
+    region: '서울',
+    specialty_areas: ['웹개발', 'React', 'Node.js'],
+    preferred_language: 'ko',
+    verified_at: '2024-01-01T00:00:00Z',
+    verification_expires_at: '2025-01-01T00:00:00Z',
+    is_verified: true,
+    verification_date: '2024-01-01T00:00:00Z',
+    trust_score: 324,
+    badges: {
+      verified: true,
+      expert: false,
+      helpful: true
+    },
+    question_count: 5,
+    answer_count: 12,
+    helpful_answer_count: 8,
+    last_active: '2024-01-15T10:00:00Z',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z',
+    notification_settings: {
+      email_notifications: true,
+      push_notifications: false,
+      sms_notifications: false
+    },
+    languages: {
+      vietnamese: 'native',
+      korean: 'advanced',
+      english: 'intermediate'
+    },
+    interests: ['기술', '스타트업', '한국문화'],
+    specialties: ['React', 'Node.js', '웹개발']
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: mockProfile
+  })
+}
+
+async function putMockProfile(request: NextRequest) {
+  try {
+    const body = await request.json()
+
+    // 업데이트 가능한 필드만 필터링
+    const allowedFields = [
+      'name', 'bio', 'visa_type', 'company', 'years_in_korea',
+      'region', 'preferred_language', 'specialties', 'interests',
+      'languages', 'notification_settings'
+    ]
+
+    const updateData = Object.keys(body)
+      .filter(key => allowedFields.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = body[key]
+        return obj
+      }, {} as Record<string, unknown>)
+
+    // Trust score 보너스 계산
+    let trustBonus = 0
+    let trustBonusText = ''
+
+    if (updateData.bio && updateData.bio.length > 50) {
+      trustBonus += 10
+      trustBonusText += '+10 (긴 자기소개) '
+    }
+
+    if (updateData.specialties && updateData.specialties.length > 1) {
+      trustBonus += 5
+      trustBonusText += '+5 (전문 분야) '
+    }
+
+    if (updateData.languages && typeof updateData.languages === 'object') {
+      trustBonus += 5
+      trustBonusText += '+5 (언어 능력) '
+    }
+
+    // Mock 업데이트된 프로필 생성 (허용되지 않은 필드 제외)
+    const baseProfile = {
+      id: 'user_mock_123',
+      avatar_url: null,
+      provider: 'email',
+      provider_id: 'email_123',
+      role: 'user',
+      verification_status: 'approved',
+      verification_type: 'work',
+      verified_at: '2024-01-01T00:00:00Z',
+      verification_expires_at: '2025-01-01T00:00:00Z',
+      is_verified: true,
+      verification_date: '2024-01-01T00:00:00Z',
+      badges: {
+        verified: true,
+        expert: false,
+        helpful: true
+      },
+      question_count: 5,
+      answer_count: 12,
+      helpful_answer_count: 8,
+      last_active: new Date().toISOString(),
+      created_at: '2024-01-01T00:00:00Z'
+    }
+
+    const updatedProfile = {
+      ...baseProfile,
+      name: updateData.name || '레투안',
+      bio: updateData.bio || '소프트웨어 개발자로 한국에서 3년째 근무중입니다.',
+      visa_type: updateData.visa_type || 'E-7',
+      company: updateData.company || '테크 코리아',
+      years_in_korea: updateData.years_in_korea || 3,
+      region: updateData.region || '서울',
+      specialty_areas: updateData.specialties || ['웹개발', 'React', 'Node.js'],
+      preferred_language: updateData.preferred_language || 'ko',
+      trust_score: 324 + trustBonus,
+      updated_at: new Date().toISOString(),
+      notification_settings: updateData.notification_settings || {
+        email_notifications: true,
+        push_notifications: false,
+        sms_notifications: false
+      },
+      languages: updateData.languages || {
+        vietnamese: 'native',
+        korean: 'advanced',
+        english: 'intermediate'
+      },
+      interests: updateData.interests || ['기술', '스타트업', '한국문화'],
+      specialties: updateData.specialties || ['React', 'Node.js', '웹개발']
+    }
+
+    const response: Record<string, unknown> = {
+      success: true,
+      data: updatedProfile,
+      message: '프로필이 성공적으로 업데이트되었습니다'
+    }
+
+    // Trust bonus가 있으면 추가
+    if (trustBonus > 0) {
+      response.trust_bonus = trustBonusText.trim()
+    }
+
+    return NextResponse.json(response, { status: 200 })
+
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Invalid request body' },
+      { status: 400 }
     )
   }
 }

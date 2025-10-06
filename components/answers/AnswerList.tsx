@@ -5,6 +5,7 @@ import Link from 'next/link'
 import VoteButtons from '../questions/VoteButtons'
 import CommentSection from './CommentSection'
 import { Database } from '@/lib/supabase'
+import { useErrorLogger } from '@/lib/utils/error-logger'
 
 type Profile = Database['public']['Tables']['users']['Row']
 
@@ -32,6 +33,7 @@ export default function AnswerList({
   const [sortBy, setSortBy] = useState<SortOption>('accepted')
   const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set())
   const [showComments, setShowComments] = useState<Set<string>>(new Set())
+  const logger = useErrorLogger('AnswerList', 'ui')
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -149,10 +151,20 @@ export default function AnswerList({
       if (response.ok) {
         onAnswerUpdate()
       } else {
-        console.error('Failed to accept answer')
+        const errorData = await response.text()
+        logger.error('Failed to accept answer', undefined, {
+          action: 'acceptAnswer',
+          answerId,
+          statusCode: response.status,
+          responseData: errorData
+        })
       }
     } catch (error) {
-      console.error('Error accepting answer:', error)
+      logger.error('Error accepting answer', error as Error, {
+        action: 'acceptAnswer',
+        answerId,
+        severity: 'high'
+      })
     }
   }
 
@@ -170,10 +182,20 @@ export default function AnswerList({
       if (response.ok) {
         onAnswerUpdate()
       } else {
-        console.error('Failed to mark as helpful')
+        const errorData = await response.text()
+        logger.error('Failed to mark as helpful', undefined, {
+          action: 'markHelpful',
+          answerId,
+          statusCode: response.status,
+          responseData: errorData
+        })
       }
     } catch (error) {
-      console.error('Error marking as helpful:', error)
+      logger.error('Error marking as helpful', error as Error, {
+        action: 'markHelpful',
+        answerId,
+        severity: 'medium'
+      })
     }
   }
 

@@ -63,7 +63,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
   const [foundExperts, setFoundExperts] = useState(0)
   const [matchedExperts, setMatchedExperts] = useState<any[]>([])
   const [selectedExperts, setSelectedExperts] = useState<any[]>([])
-  const [timeRemaining, setTimeRemaining] = useState(24 * 60 * 60) // 24시간 (초)
+  // 타이머 제거됨
 
   useEffect(() => {
     // Step 1: 질문 분석
@@ -106,20 +106,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
     }
   }, [currentStep])
 
-  useEffect(() => {
-    // 24시간 타이머
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => Math.max(prev - 1, 0))
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [])
-
-  const formatTimeRemaining = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    return `${hours}시간 ${minutes}분`
-  }
+  // 타이머 관련 코드 제거됨
 
   const handleExpertSelect = (expert: any) => {
     setSelectedExperts(prev => {
@@ -236,7 +223,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
 
           <div className="ml-11">
             <p className="text-sm text-gray-600 mb-4">
-              선택하신 전문가들이 24시간 내에 답변해 드립니다.
+              선택하신 전문가들이 답변해 드립니다.
               최대 <span className="font-medium">5명</span>까지 선택 가능합니다.
             </p>
 
@@ -290,31 +277,13 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
         </div>
       )}
 
-      {/* 24시간 타이머 */}
+      {/* AI 매칭 완료 안내 */}
       <div className="bg-gradient-to-r from-primary-blue/10 to-primary-green/10 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="text-lg">⏰</div>
-            <div>
-              <div className="font-semibold text-gray-900">답변 보장</div>
-              <div className="text-sm text-gray-600">24시간 내 답변 또는 포인트 환불</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-primary-blue">
-              {formatTimeRemaining(timeRemaining)}
-            </div>
-            <div className="text-xs text-gray-500">남은 시간</div>
-          </div>
-        </div>
-
-        {/* 진행률 링 */}
-        <div className="mt-3">
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-gradient-to-r from-primary-blue to-primary-green h-2 rounded-full transition-all duration-1000"
-              style={{ width: `${((24 * 60 * 60 - timeRemaining) / (24 * 60 * 60)) * 100}%` }}
-            />
+        <div className="flex items-center gap-3">
+          <div className="text-lg">🤖</div>
+          <div>
+            <div className="font-semibold text-gray-900">AI 매칭 완료</div>
+            <div className="text-sm text-gray-600">전문가들이 질문을 확인하고 답변해 드립니다</div>
           </div>
         </div>
       </div>
