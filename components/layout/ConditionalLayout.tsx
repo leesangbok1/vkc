@@ -111,14 +111,14 @@ function renderBannerContent(
             <div className="flex-1">
               <h4 className="text-sm font-medium text-blue-900">
                 {userRole === UserRole.GUEST
-                  ? '🔐 신뢰할 수 있는 전문가 답변을 받아보세요'
-                  : '✨ 전문가 인증을 받고 더 많은 혜택을 누리세요'
+                  ? '🔐 신뢰할 수 있는 Certified User 답변을 받아보세요'
+                  : '✨ Certified User 인증을 받고 더 많은 혜택을 누리세요'
                 }
               </h4>
               <p className="text-xs text-blue-700 mt-1">
                 {userRole === UserRole.GUEST
-                  ? '베트남 생활 전문가들의 검증된 정보를 확인하세요'
-                  : '문서 인증을 통해 전문가 배지와 우선 답변 노출 혜택을 받으세요'
+                  ? '베트남 생활 Certified User들의 검증된 정보를 확인하세요'
+                  : '문서 인증을 통해 Certified User 배지와 우선 답변 노출 혜택을 받으세요'
                 }
               </p>
             </div>
@@ -140,14 +140,14 @@ function renderBannerContent(
             </div>
             <div className="flex-1">
               <h4 className="text-sm font-medium text-green-900">
-                🎓 전문가 네트워크에 오신 것을 환영합니다
+                🎓 Certified User 네트워크에 오신 것을 환영합니다
               </h4>
               <p className="text-xs text-green-700 mt-1">
-                검증된 전문성으로 커뮤니티에 기여하고 다른 전문가들과 네트워킹하세요
+                검증된 전문성으로 커뮤니티에 기여하고 다른 Certified User들과 네트워킹하세요
               </p>
             </div>
             <button className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 transition-colors">
-              전문가 매칭
+              Certified User 매칭
             </button>
           </div>
         </div>

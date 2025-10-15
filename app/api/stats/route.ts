@@ -105,7 +105,10 @@ export async function GET(request: NextRequest) {
     const avgAnswersPerQuestion = totalQuestions > 0 ? Math.round(totalAnswers / totalQuestions * 10) / 10 : 0
 
     // 카테고리별 통계
-    const categoryStats = (categoriesResult.data || []).reduce((acc: any, item: any) => {
+    interface CategoryStats {
+      [key: string]: { name: string; icon: string; count: number }
+    }
+    const categoryStats = (categoriesResult.data || []).reduce((acc: CategoryStats, item: { category: { slug: string; name: string; icon: string } | null }) => {
       if (item.category) {
         const key = item.category.slug
         if (!acc[key]) {
@@ -118,7 +121,7 @@ export async function GET(request: NextRequest) {
         acc[key].count++
       }
       return acc
-    }, {})
+    }, {} as CategoryStats)
 
     // 투표 통계
     const votes = votesResult.data || []
@@ -185,7 +188,7 @@ export async function GET(request: NextRequest) {
 
       // 카테고리별 통계
       categories: Object.entries(categoryStats)
-        .map(([slug, data]: [string, any]) => ({
+        .map(([slug, data]: [string, { name: string; icon: string; count: number }]) => ({
           slug,
           ...data
         }))

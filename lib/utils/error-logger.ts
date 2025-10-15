@@ -19,7 +19,7 @@ export interface ErrorContext {
   notificationId?: string
   notificationIds?: string[]
   notificationCount?: number
-  notificationData?: any
+  notificationData?: Record<string, unknown>
   statusCode?: number
   responseData?: string
   // API-specific context
@@ -32,15 +32,15 @@ export interface ErrorContext {
   voteType?: string
   // Service-specific context
   permission?: string
-  options?: any
-  digestData?: any
+  options?: Record<string, unknown>
+  digestData?: Record<string, unknown>
   userCount?: number
   mentionedUserId?: string
   // Notification service context
   type?: string
   isRead?: boolean
   priority?: string
-  expertId?: string
+  certifiedUserId?: string
   targetType?: string
   contentType?: string
   targetAuthorId?: string

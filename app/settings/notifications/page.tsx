@@ -284,7 +284,7 @@ export default function NotificationSettingsPage() {
               {/* 모바일 푸시 */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Smartphone className="h-5 w-5 text-purple-600" />
+                  <Smartphone className="h-5 w-5 text-blue-600" />
                   <div>
                     <Label htmlFor="push-notifications" className="text-sm font-medium">
                       모바일 푸시 알림
@@ -371,10 +371,10 @@ export default function NotificationSettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="expert-matches" className="text-sm font-medium">
-                      전문가 매칭 알림
+                      Certified User 매칭 알림
                     </Label>
                     <p className="text-xs text-gray-500">
-                      내 질문에 전문가가 매칭될 때
+                      내 질문에 Certified User가 매칭될 때
                     </p>
                   </div>
                   <Switch

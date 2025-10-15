@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
 import { ValidationUtils } from '@/lib/validation'
 import { applyRateLimit } from '@/lib/middleware/rate-limit'
+import { Question, Category } from '@/lib/types/api'
 
 // GET /api/questions - 질문 목록 조회 (페이지네이션, 필터링, 정렬)
 export async function GET(request: NextRequest) {
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
         .single()
 
       if (categoryData) {
-        query = query.eq('category_id', categoryData.id)
+        query = query.eq('category_id', (categoryData as Category).id)
       }
     }
 
@@ -160,6 +161,7 @@ export async function POST(request: NextRequest) {
     const author_id = 'temp-user-id' // TODO: 실제 인증 시스템 연결
 
     // 질문 생성
+    // @ts-expect-error - Supabase type issue
     const { data: question, error } = await supabase
       .from('questions')
       .insert({

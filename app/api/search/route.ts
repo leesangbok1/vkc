@@ -1,112 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { ValidationUtils } from '@/lib/validation'
 
-// GET /api/search - 기본 검색 (제목 + 내용)
+// 임시 mock 데이터 - 실제 DB 연결 시 교체
+const mockQuestions = [
+  {
+    id: '1',
+    title: '비자 연장 관련 질문입니다',
+    content: '현재 E-2 비자를 가지고 있는데 연장 신청을 어떻게 해야 하나요? 필요한 서류가 무엇인지 알고 싶습니다.',
+    category: { name: '비자', slug: 'visa' },
+    author: { name: '김민수' },
+    answer_count: 3,
+    view_count: 125,
+    created_at: '2024-01-15T09:30:00Z',
+    status: 'open'
+  },
+  {
+    id: '2', 
+    title: '한국에서 취업비자 신청 방법',
+    content: '대학 졸업 후 한국에서 취업하고 싶은데 어떤 비자를 신청해야 하나요?',
+    category: { name: '취업', slug: 'employment' },
+    author: { name: '박지영' },
+    answer_count: 7,
+    view_count: 234,
+    created_at: '2024-01-14T14:20:00Z',
+    status: 'resolved'
+  },
+  {
+    id: '3',
+    title: '건강보험 가입 문의',
+    content: '외국인도 국민건강보험에 가입할 수 있나요? 절차가 어떻게 되는지 궁금합니다.',
+    category: { name: '의료', slug: 'healthcare' },
+    author: { name: '레투안' },
+    answer_count: 5,
+    view_count: 189,
+    created_at: '2024-01-13T11:45:00Z',
+    status: 'open'
+  }
+]
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const q = searchParams.get('q')
-    const category = searchParams.get('category')
-    const { page, limit } = ValidationUtils.validatePagination(searchParams)
+    const query = searchParams.get('q')
 
-    // 검색어 검증
-    if (!q || q.trim().length < 2) {
-      return NextResponse.json(
-        { error: 'Search query must be at least 2 characters' },
-        { status: 400 }
-      )
+    if (!query) {
+      return NextResponse.json({
+        success: false,
+        error: 'Search query is required'
+      }, { status: 400 })
     }
 
-    const supabase = await createSupabaseServerClient()
-
-    // 질문 검색 쿼리
-    let query = supabase
-      .from('questions')
-      .select(`
-        id, title, content, tags, view_count, answer_count,
-        created_at, updated_at,
-        author:users!questions_author_id_fkey(id, name, avatar_url),
-        category:categories!questions_category_id_fkey(id, name, slug, icon, color)
-      `)
-      .eq('is_approved', true)
-      .eq('status', 'open')
-
-    // 제목과 내용에서 검색
-    const searchQuery = q.trim()
-    query = query.or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`)
-
-    // 카테고리 필터
-    if (category) {
-      const { data: categoryData } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('slug', category)
-        .single()
-
-      if (categoryData) {
-        query = query.eq('category_id', categoryData.id)
-      }
-    }
-
-    // 정렬 및 페이지네이션
-    query = query
-      .order('created_at', { ascending: false })
-      .range((page - 1) * limit, page * limit - 1)
-
-    const { data: questions, error } = await query
-
-    if (error) {
-      console.error('Search error:', error)
-      return NextResponse.json(
-        { error: 'Search failed' },
-        { status: 500 }
-      )
-    }
-
-    // 전체 개수 조회
-    let countQuery = supabase
-      .from('questions')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_approved', true)
-      .eq('status', 'open')
-      .or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`)
-
-    if (category) {
-      const { data: categoryData } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('slug', category)
-        .single()
-
-      if (categoryData) {
-        countQuery = countQuery.eq('category_id', categoryData.id)
-      }
-    }
-
-    const { count } = await countQuery
-    const total = count || 0
-    const totalPages = Math.ceil(total / limit)
+    // 간단한 텍스트 검색 (실제로는 DB에서 LIKE 쿼리나 전문검색 사용)
+    const results = mockQuestions.filter(question => 
+      question.title.toLowerCase().includes(query.toLowerCase()) ||
+      question.content.toLowerCase().includes(query.toLowerCase()) ||
+      question.category.name.includes(query)
+    )
 
     return NextResponse.json({
       success: true,
-      query: searchQuery,
-      data: questions || [],
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
+      results: results,
+      query: query,
+      total: results.length
     })
 
   } catch (error) {
     console.error('Search API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      success: false,
+      error: 'Internal server error'
+    }, { status: 500 })
   }
 }

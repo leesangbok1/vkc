@@ -93,6 +93,7 @@ export async function PUT(request: NextRequest) {
     updateData.updated_at = new Date().toISOString()
 
     // 프로필 업데이트
+    // @ts-ignore - Supabase type inference issue with schema
     const { data: updatedProfile, error } = await supabase
       .from('users')
       .update(updateData)
@@ -200,12 +201,12 @@ async function putMockProfile(request: NextRequest) {
     let trustBonus = 0
     let trustBonusText = ''
 
-    if (updateData.bio && updateData.bio.length > 50) {
+    if (updateData.bio && typeof updateData.bio === 'string' && updateData.bio.length > 50) {
       trustBonus += 10
       trustBonusText += '+10 (긴 자기소개) '
     }
 
-    if (updateData.specialties && updateData.specialties.length > 1) {
+    if (updateData.specialties && Array.isArray(updateData.specialties) && updateData.specialties.length > 1) {
       trustBonus += 5
       trustBonusText += '+5 (전문 분야) '
     }

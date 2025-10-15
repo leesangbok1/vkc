@@ -59,7 +59,7 @@ export default function TrustBadge({
 
     // 기존 신뢰도 점수 기반 레벨 (하위 호환성)
     if (score >= 800) return {
-      level: '전문가',
+      level: 'Certified User',
       color: 'bg-warning-500 text-white',
       icon: '👑',
       bgClass: 'bg-warning-100 border-warning-300'
@@ -97,8 +97,9 @@ export default function TrustBadge({
       <div
         data-testid="trust-badge"
         className={cn(
-          'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium transition-normal',
-          roleInfo ? roleInfo.badgeColor : 'bg-secondary text-secondary',
+          'inline-flex items-center gap-2 rounded-full text-body-small font-medium transition-fast',
+          'px-3 py-1',
+          roleInfo ? roleInfo.badgeColor : 'badge-user',
           className
         )}
       >
@@ -108,11 +109,11 @@ export default function TrustBadge({
             <span>{roleInfo.label}</span>
           </>
         )}
-        <span className="text-xs opacity-75">
+        <span className="text-label-small opacity-75">
           🇰🇷 {user.residence_years || 0}년차
         </span>
         {user.is_verified && (
-          <span className="text-xs">✓</span>
+          <span className="text-label-small">✓</span>
         )}
       </div>
     )
@@ -254,7 +255,7 @@ export default function TrustBadge({
   )
 }
 
-// 전문가 카드 컴포넌트
+// Certified User 카드 컴포넌트
 export function ExpertCard({
   expert,
   matchScore,

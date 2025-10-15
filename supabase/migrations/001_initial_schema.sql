@@ -1,77 +1,63 @@
--- =====================================================
--- Viet K-Connect Initial Migration
--- Created by Agent 4 - Database Schema Implementation
--- Date: 2025-09-30
--- =====================================================
+-- Viet K-Connect 초기 데이터베이스 스키마
+-- 베트남인 한국생활 Q&A 플랫폼
 
--- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "unaccent";
+-- 1. 카테고리 테이블
+CREATE TABLE IF NOT EXISTS categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  slug VARCHAR(50) UNIQUE NOT NULL,
+  description TEXT,
+  icon VARCHAR(10),
+  color VARCHAR(7) DEFAULT '#000000',
+  parent_id INTEGER REFERENCES categories(id),
+  sort_order INTEGER DEFAULT 1,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
--- =====================================================
--- SCHEMA CREATION
--- =====================================================
-
--- 1. Users table (Enhanced)
+-- 2. 사용자 테이블 (4계층 권한 시스템)
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(100) NOT NULL,
   avatar_url TEXT,
   bio TEXT,
-
-  -- OAuth Provider Info
-  provider VARCHAR(50),
+  provider VARCHAR(50), -- 'google', 'kakao' 등
   provider_id VARCHAR(255),
 
-  -- K-Connect Specific Fields
-  visa_type VARCHAR(20),
-  company VARCHAR(100),
+  -- 4계층 권한 시스템
+  role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('guest', 'user', 'verified', 'admin')),
+  verification_status VARCHAR(20) DEFAULT 'none' CHECK (verification_status IN ('none', 'pending', 'approved', 'rejected', 'expired')),
+  verification_type VARCHAR(20) CHECK (verification_type IN ('student', 'work', 'family', 'resident', 'other')),
+
+  -- 베트남 특화 프로필 정보
+  visa_type VARCHAR(10), -- 'D-2', 'E-7', 'F-2', 'F-5' 등
+  company VARCHAR(200),
   years_in_korea INTEGER CHECK (years_in_korea >= 0 AND years_in_korea <= 50),
-  region VARCHAR(50),
-  preferred_language VARCHAR(10) DEFAULT 'ko',
+  region VARCHAR(50), -- '서울', '부산', '대구' 등
+  specialty_areas TEXT[], -- ['visa', 'employment', 'housing'] 등
+  preferred_language VARCHAR(5) DEFAULT 'ko',
 
-  -- Trust & Verification System
+  -- 인증 관련 타임스탬프
+  verified_at TIMESTAMP WITH TIME ZONE,
+  verification_expires_at TIMESTAMP WITH TIME ZONE,
+
+  -- 레거시 호환성
   is_verified BOOLEAN DEFAULT false,
-  verification_date TIMESTAMPTZ,
+  verification_date TIMESTAMP WITH TIME ZONE,
   trust_score INTEGER DEFAULT 0,
-
-  -- Community Badges
-  badges JSONB DEFAULT '{
-    "senior": false,
-    "expert": false,
-    "verified": false,
-    "helper": false,
-    "moderator": false
-  }'::jsonb,
-
-  -- Activity Tracking
+  badges JSONB DEFAULT '{}',
   question_count INTEGER DEFAULT 0,
   answer_count INTEGER DEFAULT 0,
   helpful_answer_count INTEGER DEFAULT 0,
-  last_active TIMESTAMPTZ DEFAULT NOW(),
+  last_active TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
 
-  -- Metadata
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. Categories table
-CREATE TABLE IF NOT EXISTS categories (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL UNIQUE,
-  slug VARCHAR(100) NOT NULL UNIQUE,
-  description TEXT,
-  icon VARCHAR(50),
-  color VARCHAR(7) DEFAULT '#EA4335',
-  parent_id INTEGER REFERENCES categories(id),
-  sort_order INTEGER DEFAULT 0,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 3. Questions table (Enhanced)
+-- 3. 질문 테이블
 CREATE TABLE IF NOT EXISTS questions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(200) NOT NULL,
@@ -80,340 +66,208 @@ CREATE TABLE IF NOT EXISTS questions (
   category_id INTEGER NOT NULL REFERENCES categories(id),
   tags TEXT[] DEFAULT '{}',
 
-  -- AI Classification
-  ai_category_confidence FLOAT CHECK (ai_category_confidence >= 0 AND ai_category_confidence <= 1),
+  -- AI 관련 필드
+  ai_category_confidence DECIMAL(3,2),
   ai_tags TEXT[] DEFAULT '{}',
   urgency VARCHAR(20) DEFAULT 'normal' CHECK (urgency IN ('low', 'normal', 'high', 'urgent')),
-
-  -- Expert Matching
-  matched_experts UUID[] DEFAULT '{}',
+  matched_experts TEXT[] DEFAULT '{}',
   expert_notifications_sent BOOLEAN DEFAULT false,
 
-  -- Engagement Metrics
+  -- 통계 및 상태
   view_count INTEGER DEFAULT 0,
   answer_count INTEGER DEFAULT 0,
   helpful_count INTEGER DEFAULT 0,
   upvote_count INTEGER DEFAULT 0,
   downvote_count INTEGER DEFAULT 0,
-
-  -- Status Management
   status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'closed', 'resolved', 'archived')),
+
+  -- 관리 관련
   is_pinned BOOLEAN DEFAULT false,
   is_featured BOOLEAN DEFAULT false,
-
-  -- Moderation
   is_reported BOOLEAN DEFAULT false,
   is_approved BOOLEAN DEFAULT true,
   moderated_by UUID REFERENCES users(id),
-  moderated_at TIMESTAMPTZ,
+  moderated_at TIMESTAMP WITH TIME ZONE,
 
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  last_activity_at TIMESTAMPTZ DEFAULT NOW(),
-  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  last_activity_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  resolved_at TIMESTAMP WITH TIME ZONE,
 
-  -- Search vector
+  -- 전문 검색용
   search_vector tsvector
 );
 
--- 4. Answers table (Enhanced)
+-- 4. 답변 테이블
 CREATE TABLE IF NOT EXISTS answers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   content TEXT NOT NULL,
   question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  parent_answer_id UUID REFERENCES answers(id),
+  parent_answer_id UUID REFERENCES answers(id), -- 대댓글용
 
-  -- Status
+  -- 채택 관련
   is_accepted BOOLEAN DEFAULT false,
-  accepted_at TIMESTAMPTZ,
+  accepted_at TIMESTAMP WITH TIME ZONE,
   accepted_by UUID REFERENCES users(id),
 
-  -- Engagement Metrics
+  -- 투표 및 평가
   upvote_count INTEGER DEFAULT 0,
   downvote_count INTEGER DEFAULT 0,
   helpful_count INTEGER DEFAULT 0,
 
-  -- Moderation
+  -- 관리 관련
   is_reported BOOLEAN DEFAULT false,
   is_approved BOOLEAN DEFAULT true,
   moderated_by UUID REFERENCES users(id),
-  moderated_at TIMESTAMPTZ,
+  moderated_at TIMESTAMP WITH TIME ZONE,
 
-  -- AI Analysis
-  ai_helpfulness_score FLOAT CHECK (ai_helpfulness_score >= 0 AND ai_helpfulness_score <= 1),
-  ai_sentiment VARCHAR(20) CHECK (ai_sentiment IN ('positive', 'neutral', 'negative')),
+  -- AI 관련
+  ai_helpfulness_score DECIMAL(3,2),
+  ai_sentiment VARCHAR(20),
 
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
 
-  -- Search vector
+  -- 전문 검색용
   search_vector tsvector
 );
 
--- 5. Votes table
+-- 5. 투표 테이블
 CREATE TABLE IF NOT EXISTS votes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  target_id UUID NOT NULL,
-  target_type VARCHAR(20) NOT NULL CHECK (target_type IN ('question', 'answer', 'comment')),
-  vote_type VARCHAR(10) NOT NULL CHECK (vote_type IN ('up', 'down', 'helpful')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  target_id UUID NOT NULL, -- questions.id 또는 answers.id
+  target_type VARCHAR(20) NOT NULL CHECK (target_type IN ('question', 'answer')),
+  vote_type VARCHAR(10) NOT NULL CHECK (vote_type IN ('upvote', 'downvote', 'helpful')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
 
-  -- Ensure one vote per user per target
-  UNIQUE(user_id, target_id, target_type, vote_type)
+  -- 사용자는 같은 대상에 대해 한 번만 투표 가능
+  UNIQUE(user_id, target_id, target_type)
 );
 
--- 6. Comments table
+-- 6. 댓글 테이블
 CREATE TABLE IF NOT EXISTS comments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   content TEXT NOT NULL,
-  target_id UUID NOT NULL,
+  target_id UUID NOT NULL, -- questions.id 또는 answers.id
   target_type VARCHAR(20) NOT NULL CHECK (target_type IN ('question', 'answer')),
   author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  parent_comment_id UUID REFERENCES comments(id),
+  parent_comment_id UUID REFERENCES comments(id), -- 대댓글용
 
-  -- Engagement
   upvote_count INTEGER DEFAULT 0,
   downvote_count INTEGER DEFAULT 0,
-
-  -- Moderation
   is_reported BOOLEAN DEFAULT false,
   is_approved BOOLEAN DEFAULT true,
   moderated_by UUID REFERENCES users(id),
-  moderated_at TIMESTAMPTZ,
+  moderated_at TIMESTAMP WITH TIME ZONE,
 
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. Notifications table
+-- 7. 알림 테이블
 CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-
-  -- Notification Details
-  type VARCHAR(50) NOT NULL CHECK (type IN (
-    'new_answer', 'answer_accepted', 'question_commented',
-    'answer_commented', 'expert_matched', 'question_upvoted',
-    'answer_upvoted', 'weekly_digest', 'mention'
-  )),
+  type VARCHAR(50) NOT NULL, -- 'new_answer', 'question_commented', etc.
   title VARCHAR(200) NOT NULL,
   message TEXT NOT NULL,
+  related_id UUID, -- 관련 질문/답변 ID
+  related_type VARCHAR(20), -- 'question', 'answer', etc.
 
-  -- Related Content
-  related_id UUID,
-  related_type VARCHAR(20) CHECK (related_type IN ('question', 'answer', 'comment', 'user')),
-
-  -- Delivery Status
   is_read BOOLEAN DEFAULT false,
   is_email_sent BOOLEAN DEFAULT false,
   is_push_sent BOOLEAN DEFAULT false,
   is_kakao_sent BOOLEAN DEFAULT false,
+  channels JSONB DEFAULT '{}', -- 알림 채널별 설정
 
-  -- Channel Preferences
-  channels JSONB DEFAULT '["in_app"]'::jsonb,
-
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  read_at TIMESTAMPTZ,
-  sent_at TIMESTAMPTZ
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  read_at TIMESTAMP WITH TIME ZONE,
+  sent_at TIMESTAMP WITH TIME ZONE
 );
 
--- =====================================================
--- INDEXES
--- =====================================================
-
--- Users table indexes
+-- 인덱스 생성
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_provider ON users(provider, provider_id);
-CREATE INDEX IF NOT EXISTS idx_users_verification ON users(is_verified, trust_score);
-CREATE INDEX IF NOT EXISTS idx_users_activity ON users(last_active);
-CREATE INDEX IF NOT EXISTS idx_users_location ON users(region, years_in_korea);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_verification_status ON users(verification_status);
+CREATE INDEX IF NOT EXISTS idx_users_visa_type ON users(visa_type);
 
--- Questions table indexes
-CREATE INDEX IF NOT EXISTS idx_questions_author ON questions(author_id);
-CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category_id);
-CREATE INDEX IF NOT EXISTS idx_questions_status ON questions(status, is_approved);
-CREATE INDEX IF NOT EXISTS idx_questions_activity ON questions(last_activity_at DESC);
-CREATE INDEX IF NOT EXISTS idx_questions_engagement ON questions(upvote_count DESC, answer_count DESC);
-CREATE INDEX IF NOT EXISTS idx_questions_tags ON questions USING GIN(tags);
-CREATE INDEX IF NOT EXISTS idx_questions_search ON questions USING GIN(search_vector);
-CREATE INDEX IF NOT EXISTS idx_questions_urgency ON questions(urgency, created_at);
+CREATE INDEX IF NOT EXISTS idx_questions_author_id ON questions(author_id);
+CREATE INDEX IF NOT EXISTS idx_questions_category_id ON questions(category_id);
+CREATE INDEX IF NOT EXISTS idx_questions_status ON questions(status);
+CREATE INDEX IF NOT EXISTS idx_questions_created_at ON questions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_questions_search_vector ON questions USING gin(search_vector);
 
--- Answers table indexes
-CREATE INDEX IF NOT EXISTS idx_answers_question ON answers(question_id);
-CREATE INDEX IF NOT EXISTS idx_answers_author ON answers(author_id);
-CREATE INDEX IF NOT EXISTS idx_answers_accepted ON answers(is_accepted, accepted_at);
-CREATE INDEX IF NOT EXISTS idx_answers_engagement ON answers(upvote_count DESC, helpful_count DESC);
-CREATE INDEX IF NOT EXISTS idx_answers_search ON answers USING GIN(search_vector);
-CREATE INDEX IF NOT EXISTS idx_answers_created ON answers(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_answers_question_id ON answers(question_id);
+CREATE INDEX IF NOT EXISTS idx_answers_author_id ON answers(author_id);
+CREATE INDEX IF NOT EXISTS idx_answers_is_accepted ON answers(is_accepted);
+CREATE INDEX IF NOT EXISTS idx_answers_created_at ON answers(created_at DESC);
 
--- Votes table indexes
+CREATE INDEX IF NOT EXISTS idx_votes_user_target ON votes(user_id, target_id, target_type);
 CREATE INDEX IF NOT EXISTS idx_votes_target ON votes(target_id, target_type);
-CREATE INDEX IF NOT EXISTS idx_votes_user ON votes(user_id);
-CREATE INDEX IF NOT EXISTS idx_votes_type ON votes(vote_type, created_at);
 
--- Comments table indexes
 CREATE INDEX IF NOT EXISTS idx_comments_target ON comments(target_id, target_type);
-CREATE INDEX IF NOT EXISTS idx_comments_author ON comments(author_id);
-CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_comment_id);
-CREATE INDEX IF NOT EXISTS idx_comments_created ON comments(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_comments_author_id ON comments(author_id);
 
--- Notifications table indexes
-CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
-CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type, created_at);
-CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, is_read, created_at) WHERE is_read = false;
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
 
--- Categories table indexes
-CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
-CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active, sort_order);
-CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
-
--- =====================================================
--- FUNCTIONS & TRIGGERS
--- =====================================================
-
--- Function to update search vectors
+-- 전문 검색 트리거
 CREATE OR REPLACE FUNCTION update_search_vector()
-RETURNS trigger AS $$
+RETURNS TRIGGER AS $$
 BEGIN
   IF TG_TABLE_NAME = 'questions' THEN
-    NEW.search_vector := to_tsvector('korean',
-      COALESCE(NEW.title, '') || ' ' ||
-      COALESCE(NEW.content, '') || ' ' ||
-      COALESCE(array_to_string(NEW.tags, ' '), '')
-    );
+    NEW.search_vector := 
+      setweight(to_tsvector('korean', COALESCE(NEW.title, '')), 'A') ||
+      setweight(to_tsvector('korean', COALESCE(NEW.content, '')), 'B') ||
+      setweight(to_tsvector('korean', COALESCE(array_to_string(NEW.tags, ' '), '')), 'C');
   ELSIF TG_TABLE_NAME = 'answers' THEN
     NEW.search_vector := to_tsvector('korean', COALESCE(NEW.content, ''));
   END IF;
-
-  NEW.updated_at := NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Triggers for search vector updates
-DROP TRIGGER IF EXISTS update_questions_search_vector ON questions;
 CREATE TRIGGER update_questions_search_vector
   BEFORE INSERT OR UPDATE ON questions
-  FOR EACH ROW
-  EXECUTE FUNCTION update_search_vector();
+  FOR EACH ROW EXECUTE FUNCTION update_search_vector();
 
-DROP TRIGGER IF EXISTS update_answers_search_vector ON answers;
 CREATE TRIGGER update_answers_search_vector
   BEFORE INSERT OR UPDATE ON answers
-  FOR EACH ROW
-  EXECUTE FUNCTION update_search_vector();
+  FOR EACH ROW EXECUTE FUNCTION update_search_vector();
 
--- Function to update question stats
-CREATE OR REPLACE FUNCTION update_question_stats()
-RETURNS trigger AS $$
+-- updated_at 자동 업데이트 함수
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
 BEGIN
-  IF TG_OP = 'INSERT' THEN
-    UPDATE questions
-    SET answer_count = answer_count + 1,
-        last_activity_at = NOW()
-    WHERE id = NEW.question_id;
-
-    UPDATE users
-    SET answer_count = answer_count + 1
-    WHERE id = NEW.author_id;
-
-  ELSIF TG_OP = 'DELETE' THEN
-    UPDATE questions
-    SET answer_count = answer_count - 1,
-        last_activity_at = NOW()
-    WHERE id = OLD.question_id;
-
-    UPDATE users
-    SET answer_count = answer_count - 1
-    WHERE id = OLD.author_id;
-  END IF;
-
-  RETURN COALESCE(NEW, OLD);
+  NEW.updated_at = timezone('utc'::text, now());
+  RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for question stats
-DROP TRIGGER IF EXISTS update_question_stats_trigger ON answers;
-CREATE TRIGGER update_question_stats_trigger
-  AFTER INSERT OR DELETE ON answers
-  FOR EACH ROW
-  EXECUTE FUNCTION update_question_stats();
+-- updated_at 트리거 생성
+CREATE TRIGGER update_categories_updated_at
+  BEFORE UPDATE ON categories
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Function to update vote counts
-CREATE OR REPLACE FUNCTION update_vote_counts()
-RETURNS trigger AS $$
-DECLARE
-  vote_change INTEGER;
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    vote_change := 1;
-  ELSIF TG_OP = 'DELETE' THEN
-    vote_change := -1;
-  ELSE
-    RETURN NEW;
-  END IF;
+CREATE TRIGGER update_users_updated_at
+  BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-  IF COALESCE(NEW.target_type, OLD.target_type) = 'question' THEN
-    IF COALESCE(NEW.vote_type, OLD.vote_type) = 'up' THEN
-      UPDATE questions
-      SET upvote_count = upvote_count + vote_change
-      WHERE id = COALESCE(NEW.target_id, OLD.target_id);
-    ELSIF COALESCE(NEW.vote_type, OLD.vote_type) = 'down' THEN
-      UPDATE questions
-      SET downvote_count = downvote_count + vote_change
-      WHERE id = COALESCE(NEW.target_id, OLD.target_id);
-    ELSIF COALESCE(NEW.vote_type, OLD.vote_type) = 'helpful' THEN
-      UPDATE questions
-      SET helpful_count = helpful_count + vote_change
-      WHERE id = COALESCE(NEW.target_id, OLD.target_id);
-    END IF;
-  ELSIF COALESCE(NEW.target_type, OLD.target_type) = 'answer' THEN
-    IF COALESCE(NEW.vote_type, OLD.vote_type) = 'up' THEN
-      UPDATE answers
-      SET upvote_count = upvote_count + vote_change
-      WHERE id = COALESCE(NEW.target_id, OLD.target_id);
-    ELSIF COALESCE(NEW.vote_type, OLD.vote_type) = 'down' THEN
-      UPDATE answers
-      SET downvote_count = downvote_count + vote_change
-      WHERE id = COALESCE(NEW.target_id, OLD.target_id);
-    ELSIF COALESCE(NEW.vote_type, OLD.vote_type) = 'helpful' THEN
-      UPDATE answers
-      SET helpful_count = helpful_count + vote_change
-      WHERE id = COALESCE(NEW.target_id, OLD.target_id);
-    END IF;
-  END IF;
+CREATE TRIGGER update_questions_updated_at
+  BEFORE UPDATE ON questions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-  RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql;
+CREATE TRIGGER update_answers_updated_at
+  BEFORE UPDATE ON answers
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Trigger for vote counts
-DROP TRIGGER IF EXISTS update_vote_counts_trigger ON votes;
-CREATE TRIGGER update_vote_counts_trigger
-  AFTER INSERT OR DELETE ON votes
-  FOR EACH ROW
-  EXECUTE FUNCTION update_vote_counts();
+CREATE TRIGGER update_votes_updated_at
+  BEFORE UPDATE ON votes
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- =====================================================
--- INITIAL DATA - CATEGORIES
--- =====================================================
-
-INSERT INTO categories (name, slug, description, icon, color, sort_order, is_active) VALUES
-('비자/법률', 'visa-legal', '비자, 체류, 법률 관련 질문', '🛂', '#EA4335', 1, true),
-('취업/창업', 'job-business', '취업, 창업, 사업 관련 질문', '💼', '#4285F4', 2, true),
-('생활정보', 'life-info', '일상생활, 쇼핑, 교통 관련 질문', '🏠', '#34A853', 3, true),
-('교육/언어', 'education-language', '한국어, 교육, 학습 관련 질문', '📚', '#FBBC04', 4, true),
-('의료/건강', 'health-medical', '병원, 보험, 건강 관련 질문', '🏥', '#FF6D01', 5, true),
-('금융/세금', 'finance-tax', '은행, 세금, 투자 관련 질문', '💰', '#9AA0A6', 6, true),
-('부동산', 'real-estate', '주택, 임대, 부동산 관련 질문', '🏢', '#AB47BC', 7, true),
-('문화/여행', 'culture-travel', '문화, 여행, 관광 관련 질문', '🎭', '#FF7043', 8, true),
-('기술/IT', 'tech-it', '기술, IT, 디지털 관련 질문', '💻', '#26C6DA', 9, true),
-('기타', 'others', '기타 분류되지 않은 질문', '❓', '#78909C', 10, true)
-ON CONFLICT (slug) DO NOTHING;
+CREATE TRIGGER update_comments_updated_at
+  BEFORE UPDATE ON comments
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

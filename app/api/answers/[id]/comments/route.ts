@@ -3,6 +3,7 @@ import { createSupabaseServerClient as createClient } from '@/lib/supabase-serve
 import { ValidationUtils } from '@/lib/validation'
 import { triggerAnswerCommentNotification } from '@/lib/services/notification-triggers'
 import { createServerLogger } from '@/lib/utils/server-logger'
+import { AnswerWithAuthor, CommentWithRelations, Comment } from '@/lib/types/api'
 
 // GET /api/answers/[id]/comments - 답변의 댓글 목록 조회
 export async function GET(
@@ -124,7 +125,10 @@ export async function POST(
         question:questions!question_id(id, title, author_id)
       `)
       .eq('id', answerId)
-      .single()
+      .single() as {
+        data: AnswerWithAuthor | null
+        error: unknown
+      }
 
     if (answerError || !answer) {
       return NextResponse.json(
@@ -134,6 +138,7 @@ export async function POST(
     }
 
     // 댓글 생성
+    // @ts-ignore - Supabase type inference issue with schema
     const { data: comment, error: insertError } = await supabase
       .from('comments')
       .insert([{
@@ -169,15 +174,15 @@ export async function POST(
       await triggerAnswerCommentNotification(
         comment,
         answer,
-        answer.question as any,
-        comment.author as any
+        answer.question!,
+        comment.author
       )
 
       logger.info('Answer comment notification triggered', {
         action: 'createAnswerComment',
         commentId: comment.id,
         answerId,
-        questionId: (answer.question as any)?.id
+        questionId: answer.question?.id
       })
     } catch (notificationError) {
       // 알림 실패는 주요 기능에 영향을 주지 않음

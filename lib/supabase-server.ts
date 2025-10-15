@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from './supabase'
 
@@ -20,7 +20,7 @@ export const createSupabaseServerClient = async () => {
           get(name: string) {
             return cookieStore.get(name)?.value
           },
-          set(name: string, value: string, options: any) {
+          set(name: string, value: string, options: CookieOptions) {
             // API Routes에서는 쿠키 설정 가능
             try {
               cookieStore.set({ name, value, ...options })
@@ -28,7 +28,7 @@ export const createSupabaseServerClient = async () => {
               // Server Components에서는 쿠키 설정 불가 (예상된 동작)
             }
           },
-          remove(name: string, options: any) {
+          remove(name: string, options: CookieOptions) {
             try {
               cookieStore.set({ name, value: '', ...options })
             } catch {

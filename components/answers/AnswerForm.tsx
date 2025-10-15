@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
+import NotificationSetupModal from '@/components/modals/NotificationSetupModal'
 
 interface AnswerFormProps {
   questionId: string
@@ -12,6 +13,7 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPreview, setIsPreview] = useState(false)
+  const [showNotificationModal, setShowNotificationModal] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,37 +33,53 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
     setError(null)
 
     try {
-      const response = await fetch('/api/answers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          question_id: questionId,
-          content: content.trim()
-        })
-      })
+      // Mock implementation: Save to localStorage
+      const mockUser = JSON.parse(localStorage.getItem('mock_user') || '{}')
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to submit answer')
+      if (!mockUser.id) {
+        throw new Error('로그인이 필요합니다')
       }
+
+      const answersKey = `question_${questionId}_answers`
+      const existingAnswers = JSON.parse(localStorage.getItem(answersKey) || '[]')
+
+      const newAnswer = {
+        id: `answer_${Date.now()}`,
+        content: content.trim(),
+        question_id: questionId,
+        author_id: mockUser.id,
+        author_name: mockUser.name || mockUser.email,
+        author_email: mockUser.email,
+        author_role: mockUser.role || 'USER',
+        is_accepted: false,
+        upvote_count: 0,
+        downvote_count: 0,
+        helpful_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      const updatedAnswers = [...existingAnswers, newAnswer]
+      localStorage.setItem(answersKey, JSON.stringify(updatedAnswers))
+
+      // Update answer count in question
+      const questionsKey = 'mock_questions'
+      const questions = JSON.parse(localStorage.getItem(questionsKey) || '[]')
+      const updatedQuestions = questions.map((q: any) => {
+        if (q.id === questionId) {
+          return { ...q, answer_count: (q.answer_count || 0) + 1 }
+        }
+        return q
+      })
+      localStorage.setItem(questionsKey, JSON.stringify(updatedQuestions))
 
       // Success
       setContent('')
       setIsPreview(false)
       onAnswerSubmitted()
 
-      // Show success message briefly
-      const successMessage = document.createElement('div')
-      successMessage.className = 'fixed top-4 right-4 bg-green-100 border border-green-300 text-green-700 px-4 py-2 rounded-lg z-50'
-      successMessage.textContent = '답변이 성공적으로 등록되었습니다!'
-      document.body.appendChild(successMessage)
-
-      setTimeout(() => {
-        document.body.removeChild(successMessage)
-      }, 3000)
+      // Show notification setup modal
+      setShowNotificationModal(true)
 
     } catch (err) {
       console.error('Error submitting answer:', err)
@@ -263,6 +281,13 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
           </ul>
         </div>
       </div>
+
+      {/* Notification Setup Modal */}
+      <NotificationSetupModal
+        isOpen={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+        context="answer"
+      />
     </div>
   )
 }

@@ -23,7 +23,7 @@ export interface ServerErrorContext {
   type?: string
   isRead?: boolean
   priority?: string
-  expertId?: string
+  certifiedUserId?: string
   targetType?: string
   contentType?: string
   targetAuthorId?: string
@@ -35,13 +35,13 @@ export interface ServerErrorContext {
   notificationId?: string
   notificationIds?: string[]
   notificationCount?: number
-  notificationData?: any
+  notificationData?: Record<string, unknown>
   statusCode?: number
   responseData?: string
   // Service-specific context
   permission?: string
-  options?: any
-  digestData?: any
+  options?: Record<string, unknown>
+  digestData?: Record<string, unknown>
   userCount?: number
   mentionedUserId?: string
 }

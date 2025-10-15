@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { createContext, useContext } from 'react'
 
 // Simplified Auth Context without external dependencies
 interface User {
@@ -9,15 +9,15 @@ interface User {
   user_metadata?: {
     name?: string
     avatar_url?: string
-    [key: string]: any
+    [key: string]: unknown
   }
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface Profile {
   name?: string
   avatar_url?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface AuthContextType {
@@ -29,8 +29,6 @@ interface AuthContextType {
   signInWithKakao: () => Promise<void>
   signOut: () => Promise<void>
 }
-
-import { createContext, useContext } from 'react'
 
 const AuthContext = createContext<AuthContextType>({
   user: null,

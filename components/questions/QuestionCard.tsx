@@ -7,8 +7,6 @@ import { Database } from '@/lib/supabase'
 import { Avatar } from '../ui/avatar'
 import { Badge } from '../ui/badge'
 import { cn } from '@/lib/utils'
-import TrustBadge from '../trust/TrustBadge'
-import VisaTypeDisplay from '../trust/VisaTypeDisplay'
 import SpecialtyTags from '../trust/SpecialtyTags'
 import { UserRole, getRoleDisplayInfo } from '@/lib/utils/permissions'
 
@@ -70,13 +68,18 @@ export function QuestionCard({ question, className, compact = false }: QuestionC
     <article
       data-testid="question-card"
       className={cn(
-        // 🎨 디자인 토큰 기반 스타일링
-        'bg-primary border border-light rounded-lg transition-normal hover-lift',
-        'p-6', // var(--space-6) 적용
+        // 🎨 Material Design 3.0 디자인 토큰 기반 스타일링
+        'card interactive surface-1',
+        'rounded-lg border border-neutral-200 bg-neutral-0',
+        'transition-normal hover:shadow-md hover:border-neutral-300',
         is_pinned && 'ring-2 ring-primary-500 border-primary-500',
-        is_featured && 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white',
+        is_featured && 'bg-gradient-to-r from-primary-500 to-verified-color text-neutral-0',
         className
       )}
+      style={{
+        padding: 'var(--space-6)',
+        borderRadius: 'var(--radius-lg)'
+      }}
       role="article"
       aria-labelledby={`question-title-${id}`}
       aria-describedby={`question-content-${id}`}
@@ -150,14 +153,14 @@ export function QuestionCard({ question, className, compact = false }: QuestionC
           <h3
             id={`question-title-${id}`}
             className={cn(
-              'font-semibold text-primary mb-3',
-              compact ? 'text-base' : 'text-lg leading-tight'
+              'text-title-large font-semibold text-neutral-900 mb-3',
+              compact ? 'text-title-medium' : 'text-title-large'
             )}
             aria-describedby={`question-meta-${id}`}
           >
             <Link
               href={`/questions/${id}`}
-              className="hover:text-primary-blue transition-colors focus:outline-none focus:ring-2 focus:ring-primary-blue rounded"
+              className="hover:text-primary-500 transition-fast focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
             >
               {title}
             </Link>
@@ -167,7 +170,7 @@ export function QuestionCard({ question, className, compact = false }: QuestionC
           {!compact && (
             <p
               id={`question-content-${id}`}
-              className="text-secondary mb-4 leading-relaxed"
+              className="text-body-medium text-neutral-700 mb-4 leading-relaxed"
               aria-label="질문 내용 미리보기"
             >
               {truncatedContent}
@@ -219,27 +222,18 @@ export function QuestionCard({ question, className, compact = false }: QuestionC
         {/* 우측: 상태 영역 */}
         <div className="col-span-2 flex flex-col items-end space-y-2">
           {status === 'resolved' && (
-            <Badge className="bg-trust text-white">
-              ✓ 해결됨
-            </Badge>
+            <div className="verified-answer-badge">
+              <div className="verified-answer-icon">✅</div>
+              <div className="verified-answer-text">
+                <div className="verified-answer-label">검증된 답변</div>
+                <div className="verified-answer-sublabel">Certified User 답변 완료</div>
+              </div>
+            </div>
           )}
-          <TrustBadge
-            user={{
-              residence_years: author.years_in_korea || undefined,
-              visa_type: author.visa_type || undefined,
-              company: author.company || undefined,
-              trust_score: author.trust_score || undefined,
-              verification_type: 'student' as any, // TODO: Add verification_type to DB schema
-              is_verified: author.badges?.verified || false,
-              specialties: [], // TODO: Add specialties to DB schema
-              role: (author as any).role || UserRole.USER, // 4-tier 역할 시스템 적용
-              verification_status: (author as any).verification_status
-            }}
-            variant="compact"
-          />
           {answer_count > 0 && (
-            <div className="text-xs text-tertiary">
-              💬 {answer_count}개 답변
+            <div className="answer-count-badge">
+              <span className="answer-count-icon">💬</span>
+              <span className="answer-count-text">{answer_count}개 답변</span>
             </div>
           )}
         </div>
@@ -250,49 +244,23 @@ export function QuestionCard({ question, className, compact = false }: QuestionC
           id={`question-meta-${id}`}
           aria-label="질문 작성자 정보 및 통계"
         >
-          {/* Author info */}
-          <div className="flex items-center gap-3" role="group" aria-label="작성자 정보">
-            <div className="w-10 h-10 bg-primary-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-              {author.name?.charAt(0)?.toUpperCase() || '?'}
-            </div>
-            <div>
-              <Link
-                href={`/users/${author.id}`}
-                className="text-sm font-medium text-primary hover:text-primary-blue transition-colors focus:outline-none focus:ring-2 focus:ring-primary-blue rounded"
-                aria-label={`작성자 ${author.name}의 프로필 보기`}
-              >
-                {author.name}
-              </Link>
-              <div className="flex items-center gap-2 mt-1" aria-label="작성자 상세 정보">
-                <VisaTypeDisplay
-                  visaType={author.visa_type || undefined}
-                  yearsInKorea={author.years_in_korea || undefined}
-                  variant="compact"
-                  className="text-xs"
-                />
-                {author.trust_score && (
-                  <span
-                    className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full"
-                    aria-label={`신뢰도 점수: ${author.trust_score}점`}
-                  >
-                    ⭐ {author.trust_score}
-                  </span>
-                )}
-                {/* 4-tier 역할 배지 */}
-                {(author as any).role && (
-                  <span
-                    data-testid="user-badge"
-                    className={cn(
-                      'text-xs px-2 py-1 rounded-full font-medium',
-                      getRoleDisplayInfo((author as any).role).badgeColor
-                    )}
-                    aria-label={`사용자 역할: ${getRoleDisplayInfo((author as any).role).label}`}
-                  >
-                    {getRoleDisplayInfo((author as any).role).icon} {getRoleDisplayInfo((author as any).role).label}
-                  </span>
-                )}
-              </div>
-            </div>
+          {/* Author info - 간결한 형태 (프로필 사진 제거) */}
+          <div className="flex items-center gap-2" role="group" aria-label="작성자 정보">
+            <Link
+              href={`/users/${author.id}`}
+              className="text-sm font-medium text-primary hover:text-primary-blue transition-colors focus:outline-none focus:ring-2 focus:ring-primary-blue rounded"
+              aria-label={`작성자 ${author.name}의 프로필 보기`}
+            >
+              {author.name}
+            </Link>
+
+            {/* 인증 정보 박스: 일반/인증 사용자 구분 */}
+            <span className={`author-verification-box ${(author as any).role === 'verified' || (author as any).role === 'admin' ? 'verified' : ''}`} aria-label="작성자 인증 정보">
+              <span className="verification-text">
+                {author.visa_type || '( )'}
+                {author.years_in_korea ? `, 한국 ${author.years_in_korea}년차` : ''}
+              </span>
+            </span>
           </div>
 
           {/* Stats and timestamp */}

@@ -31,6 +31,11 @@ const nextConfig = {
 
   // 번들 최적화 - simplified for debugging
   webpack: (config, { dev, isServer }) => {
+    // Exclude HTML files from webpack processing
+    config.module.rules.push({
+      test: /\.html$/,
+      type: 'asset/resource',
+    })
     return config
   },
 

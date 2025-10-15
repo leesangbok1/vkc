@@ -318,7 +318,7 @@ export default function ProfilePage() {
                 <p className="text-sm text-gray-500">작성한 질문</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{profile.answer_count || 0}</div>
+                <div className="text-2xl font-bold text-blue-600">{profile.answer_count || 0}</div>
                 <p className="text-sm text-gray-500">작성한 답변</p>
               </div>
               <div className="text-center">

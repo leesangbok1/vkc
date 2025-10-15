@@ -16,10 +16,10 @@ export async function GET(request: NextRequest) {
         summary: {
           total_queries: Object.keys(monitor.getAllStats()).length,
           slow_queries: Object.entries(monitor.getAllStats())
-            .filter(([_, stats]: [string, any]) => stats && stats.avg > 500)
+            .filter(([_, stats]: [string, { avg: number; count: number; total: number }]) => stats && stats.avg > 500)
             .map(([name]) => name),
           fastest_queries: Object.entries(monitor.getAllStats())
-            .filter(([_, stats]: [string, any]) => stats && stats.avg < 100)
+            .filter(([_, stats]: [string, { avg: number; count: number; total: number }]) => stats && stats.avg < 100)
             .map(([name]) => name)
         }
       },

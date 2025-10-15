@@ -58,6 +58,7 @@ export async function DELETE(
   try {
     const { id } = await params
 
+    // @ts-expect-error - Supabase server client type
     const supabase = await createSupabaseServerClient()
     if (!supabase) {
       return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
           vote_score: 28,
           status: 'published',
           quality_score: 95, // 답변 품질 점수 추가
-          expertise_match: true, // 전문가 매칭 여부
+          expertise_match: true, // Certified User 매칭 여부
           response_time_hours: 2.5, // 응답 시간
           created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
           updated_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),

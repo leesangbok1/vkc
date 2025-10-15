@@ -1,124 +1,318 @@
 'use client'
 
-import { Suspense } from 'react'
-import QuestionForm from '@/components/questions/QuestionForm'
-import Header from '@/components/layout/Header'
-import { Button } from '@/components/ui/button'
-import { ArrowLeft, HelpCircle } from 'lucide-react'
-import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createBrowserClient } from '@supabase/ssr'
+import EmailCollectionModal from '@/components/modals/EmailCollectionModal'
+import { CATEGORIES } from '@/lib/data/categories-mock'
 
 export default function NewQuestionPage() {
-  const handleSuccess = () => {
-    // This will be called when question is successfully created
-    // The QuestionForm component will handle navigation to the question page
+  const router = useRouter()
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+
+  // 인증 확인 - Mock 세션 지원
+  useEffect(() => {
+    const checkAuth = async () => {
+      // 🎭 MOCK: localStorage에서 mock session 체크
+      const mockSession = localStorage.getItem('mock_session')
+      const mockUser = localStorage.getItem('mock_user')
+      const onboardingCompleted = localStorage.getItem('vietkconnect_onboarded')
+
+      if (mockSession === 'true' && mockUser && onboardingCompleted === 'true') {
+        // Mock 로그인 사용자 - 인증 완료
+        setIsAuthenticated(true)
+        return
+      }
+
+      // Real Supabase 인증 체크 (production용)
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        // 로그인 안 된 경우 홈으로 리다이렉트 (Header에서 모달 처리)
+        // 직접 URL 접근 방지용 백업 체크
+        console.warn('직접 URL 접근 감지 - 홈으로 리다이렉트')
+        router.push('/')
+      } else {
+        setIsAuthenticated(true)
+      }
+    }
+
+    checkAuth()
+  }, [router])
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [categoryId, setCategoryId] = useState('1') // 기본값: 첫 번째 카테고리
+  const [submitting, setSubmitting] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+
+  // 문자 카운터 업데이트
+  const updateCharCounter = (current: number, max: number) => {
+    return `${current} / ${max}`
   }
 
+  // 폼 유효성 검사
+  const isValid = title.trim().length >= 5 && content.trim().length >= 10
+
+  // 3일간 보지 않기 체크
+  const shouldShowEmailModal = () => {
+    const skipUntil = localStorage.getItem('vietkconnect_email_modal_skip_until')
+    if (skipUntil) {
+      const skipDate = new Date(skipUntil)
+      const now = new Date()
+      if (now < skipDate) {
+        return false // 아직 3일 기간 중
+      }
+    }
+
+    // 이미 이메일을 등록했는지 체크
+    const hasEmail = localStorage.getItem('vietkconnect_user_email')
+    if (hasEmail) {
+      return false
+    }
+
+    return true
+  }
+
+  // 제출 핸들러
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (title.trim().length < 5) {
+      alert('제목은 최소 5자 이상 작성해주세요')
+      return
+    }
+
+    if (content.trim().length < 10) {
+      alert('내용은 최소 10자 이상 작성해주세요')
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      const response = await fetch('/api/questions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          content: content.trim(),
+          category_id: categoryId,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+
+        // 질문 등록 성공 후 이메일 모달 표시 여부 확인
+        if (shouldShowEmailModal()) {
+          setShowEmailModal(true)
+        } else {
+          alert('질문이 성공적으로 등록되었습니다!')
+          router.push(`/questions/${data.id}`)
+        }
+      } else {
+        alert('질문 작성 중 오류가 발생했습니다.')
+      }
+    } catch (error) {
+      console.error('Question submission failed:', error)
+      alert('질문 작성 중 오류가 발생했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // 이메일 제출 핸들러
+  const handleEmailSubmit = async (email: string) => {
+    console.log('📧 이메일 등록:', email)
+
+    // localStorage에 이메일 저장
+    localStorage.setItem('vietkconnect_user_email', email)
+
+    // TODO: 실제 서버에 이메일 저장 API 호출
+    // await fetch('/api/users/email', {
+    //   method: 'POST',
+    //   body: JSON.stringify({ email })
+    // })
+
+    setShowEmailModal(false)
+    alert('질문이 성공적으로 등록되었습니다!\n답변 알림을 이메일로 받으실 수 있습니다.')
+    router.push('/questions')
+  }
+
+  // 모달 닫기 핸들러
+  const handleModalClose = () => {
+    setShowEmailModal(false)
+    alert('질문이 성공적으로 등록되었습니다!')
+    router.push('/questions')
+  }
+
+  // 취소 핸들러
   const handleCancel = () => {
-    // Navigate back to questions list
-    window.history.back()
+    router.push('/')
+  }
+
+  // 인증 확인 중일 때 로딩 표시
+  if (isAuthenticated === null) {
+    return (
+      <main className="main-layout question-form-loading-container">
+        <div className="question-form-loading-content">
+          <div className="question-form-loading-icon">🔐</div>
+          <p className="question-form-loading-text">인증 확인 중...</p>
+        </div>
+      </main>
+    )
   }
 
   return (
-    <>
-      <Header />
-      <div className="min-h-screen bg-gray-50">
-        {/* Page Header */}
-        <div className="bg-white border-b shadow-sm">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Link
-                  href="/questions"
-                  className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+    <main className="main-layout question-form-main-layout">
+      <div className="question-form-container">
+        <div className="question-form-column">
+          {/* Question Form */}
+          <form onSubmit={handleSubmit} className="question-form">
+            {/* Header */}
+            <div className="question-form-header">
+              <h1 className="question-form-title">무엇이든 물어보세요</h1>
+              <p className="question-form-subtitle">답변은 언제나 무료예요.</p>
+            </div>
+
+            {/* Content */}
+            <div className="question-form-content">
+              {/* Category Selection */}
+              <div className="question-field-group">
+                <label htmlFor="question-category" className="question-field-label">
+                  카테고리<span className="required">*</span>
+                </label>
+                <select
+                  id="question-category"
+                  className="question-field-input"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  required
                 >
-                  <ArrowLeft className="w-5 h-5 mr-2" />
-                  질문 목록으로
-                </Link>
-                <div className="flex items-center">
-                  <HelpCircle className="w-6 h-6 text-primary-500 mr-2" />
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    새 질문 작성
-                  </h1>
+                  {CATEGORIES.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.icon} {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Question Title */}
+              <div className="question-field-group">
+                <label htmlFor="question-title" className="question-field-label">
+                  질문 제목<span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="question-title"
+                  className="question-field-input"
+                  placeholder="간단하고 명확한 질문 제목을 작성해주세요"
+                  maxLength={80}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+                <div className={`question-char-counter ${title.length > 72 ? 'warning' : ''}`}>
+                  {updateCharCounter(title.length, 80)}
+                  {title.length > 0 && title.length < 5 && (
+                    <span className="validation-message">
+                      (최소 5자)
+                    </span>
+                  )}
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Guidelines */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-semibold text-blue-900 mb-3">
-            💡 좋은 질문을 위한 가이드라인
-          </h2>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-blue-800">
-            <div>
-              <h3 className="font-medium mb-2">✅ 이렇게 해주세요</h3>
-              <ul className="space-y-1">
-                <li>• 구체적인 상황을 설명해주세요</li>
-                <li>• 시도해본 것들을 알려주세요</li>
-                <li>• 궁금한 점을 명확히 적어주세요</li>
-                <li>• 관련 서류나 기관 정보를 포함해주세요</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">❌ 피해주세요</h3>
-              <ul className="space-y-1">
-                <li>• 너무 짧거나 모호한 질문</li>
-                <li>• 개인정보 노출 (여권번호, 주소 등)</li>
-                <li>• 중복된 질문 (검색 먼저 해보세요)</li>
-                <li>• 법적 조언이 필요한 복잡한 사안</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+              {/* Question Content */}
+              <div className="question-field-group">
+                <label htmlFor="question-content" className="question-field-label">
+                  질문 내용<span className="required">*</span>
+                </label>
+                <div className="question-textarea-container">
+                  <div className="question-formatting-toolbar">
+                    <button type="button" className="question-format-btn" title="이미지 첨부">📷</button>
+                    <button type="button" className="question-format-btn" title="목록">📝</button>
+                    <button type="button" className="question-format-btn" title="굵게"><strong>B</strong></button>
+                    <button type="button" className="question-format-btn" title="링크">🔗</button>
+                  </div>
+                  <textarea
+                    id="question-content"
+                    className="question-field-textarea"
+                    placeholder="구체적인 상황과 궁금한 점을 자세히 설명해주세요.
 
-        {/* Question Form */}
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-6">
-            <Suspense fallback={
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-                <span className="ml-3 text-gray-600">질문 작성 폼을 불러오는 중...</span>
+예시:
+- 현재 상황은 어떤가요?
+- 어떤 도움이 필요한가요?
+- 시도해본 방법이 있나요?"
+                    maxLength={10000}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className={`question-char-counter ${content.length > 9000 ? 'warning' : ''}`}>
+                  {updateCharCounter(content.length, 10000)}
+                  {content.length > 0 && content.length < 10 && (
+                    <span className="validation-message">
+                      (최소 10자)
+                    </span>
+                  )}
+                </div>
+                <div className="question-field-help">
+                  구체적이고 자세한 설명일수록 더 정확한 답변을 받을 수 있어요.
+                </div>
               </div>
-            }>
-              <QuestionForm
-                onSuccess={handleSuccess}
-                onCancel={handleCancel}
-              />
-            </Suspense>
-          </div>
+
+              {/* Form Actions */}
+              <div className="question-form-actions">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="question-btn-secondary"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={!isValid || submitting}
+                  className="question-btn-primary"
+                >
+                  {submitting ? '등록 중...' : '질문 등록'}
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
 
-        {/* Help Section */}
-        <div className="mt-8 bg-gray-100 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">
-            🆘 도움이 필요하신가요?
-          </h3>
-          <div className="grid md:grid-cols-2 gap-6 text-sm text-gray-700">
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">자주 묻는 질문들</h4>
-              <ul className="space-y-1">
-                <li>• <Link href="/questions?category=visa-legal" className="text-primary-600 hover:underline">비자 관련 질문들</Link></li>
-                <li>• <Link href="/questions?category=job-business" className="text-primary-600 hover:underline">취업/창업 관련</Link></li>
-                <li>• <Link href="/questions?category=life-info" className="text-primary-600 hover:underline">생활정보 관련</Link></li>
-                <li>• <Link href="/questions?category=education-language" className="text-primary-600 hover:underline">교육/언어 관련</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">커뮤니티 규칙</h4>
-              <ul className="space-y-1">
-                <li>• 서로 존중하고 도움이 되는 답변을 해주세요</li>
-                <li>• 정확하지 않은 정보는 피해주세요</li>
-                <li>• 개인적인 공격이나 차별은 금지입니다</li>
-                <li>• 궁금한 점은 언제든 문의해주세요</li>
-              </ul>
-            </div>
+        <div className="question-tips-column">
+          {/* Tips Section */}
+          <div className="question-tips-section">
+            <h3 className="question-tips-title">
+              💡 좋은 질문 작성 팁
+            </h3>
+            <ul className="question-tips-list">
+              <li>제목은 간단명료하게, 내용에서 구체적인 상황을 설명해주세요</li>
+              <li>개인정보는 포함하지 말고, 일반적인 상황으로 질문해주세요</li>
+              <li>관련된 토픽을 선택하면 해당 분야 Certified Users가 답변해드려요</li>
+              <li>이전에 시도해본 방법이나 참고한 자료가 있다면 함께 적어주세요</li>
+              <li>예의를 지켜주시면 더 많은 도움을 받을 수 있어요</li>
+            </ul>
           </div>
         </div>
       </div>
-      </div>
-    </>
+
+      {/* Email Collection Modal */}
+      <EmailCollectionModal
+        isOpen={showEmailModal}
+        onClose={handleModalClose}
+        onSubmit={handleEmailSubmit}
+      />
+    </main>
   )
 }

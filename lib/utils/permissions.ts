@@ -28,7 +28,7 @@ export const permissionChecker: PermissionChecker = {
     return role !== UserRole.GUEST
   },
 
-  canAccessExpertFeatures: (role: UserRole): boolean => {
+  canAccessCertifiedFeatures: (role: UserRole): boolean => {
     return role === UserRole.VERIFIED || role === UserRole.ADMIN
   },
 
@@ -44,6 +44,13 @@ export const permissionChecker: PermissionChecker = {
     const permissions = getRolePermissions(role)
     return permissions.includes(permission)
   }
+}
+
+/**
+ * Check if user can create posts (VERIFIED or ADMIN only)
+ */
+export function canCreatePost(role: UserRole): boolean {
+  return role === UserRole.VERIFIED || role === UserRole.ADMIN
 }
 
 /**
@@ -72,9 +79,9 @@ export function getRolePermissions(role: UserRole): string[] {
         'vote',
         'comment',
         'basic_profile',
-        'expert_badge',
+        'certified_badge',
         'priority_display',
-        'expert_network',
+        'certified_network',
         'verification_info'
       ]
 
@@ -86,9 +93,9 @@ export function getRolePermissions(role: UserRole): string[] {
         'vote',
         'comment',
         'basic_profile',
-        'expert_badge',
+        'certified_badge',
         'priority_display',
-        'expert_network',
+        'certified_network',
         'verification_info',
         'user_management',
         'verification_approval',
@@ -114,7 +121,7 @@ export function getLayoutConfig(role: UserRole): LayoutConfig {
       return {
         showGuestBanner: true,
         showVerificationCTA: role === UserRole.USER,
-        showExpertNetwork: false,
+        showCertifiedNetwork: false,
         showAdminPanel: false,
         bannerVariant: 'registration-cta',
         prioritizeContent: 'questions',
@@ -128,10 +135,10 @@ export function getLayoutConfig(role: UserRole): LayoutConfig {
       return {
         showGuestBanner: false,
         showVerificationCTA: false,
-        showExpertNetwork: true,
+        showCertifiedNetwork: true,
         showAdminPanel: false,
-        bannerVariant: 'expert-network',
-        prioritizeContent: 'experts',
+        bannerVariant: 'certified-network',
+        prioritizeContent: 'certified_users',
         label: roleInfo.label,
         icon: roleInfo.icon,
         badgeColor: roleInfo.badgeColor,
@@ -142,7 +149,7 @@ export function getLayoutConfig(role: UserRole): LayoutConfig {
       return {
         showGuestBanner: false,
         showVerificationCTA: false,
-        showExpertNetwork: true,
+        showCertifiedNetwork: true,
         showAdminPanel: true,
         bannerVariant: 'admin-tools',
         prioritizeContent: 'management',
@@ -157,7 +164,7 @@ export function getLayoutConfig(role: UserRole): LayoutConfig {
       return {
         showGuestBanner: true,
         showVerificationCTA: false,
-        showExpertNetwork: false,
+        showCertifiedNetwork: false,
         showAdminPanel: false,
         bannerVariant: 'registration-cta',
         prioritizeContent: 'questions',

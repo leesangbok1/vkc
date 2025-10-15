@@ -8,68 +8,101 @@ viet-kconnect/
 │   ├── page.tsx               # 홈페이지
 │   ├── admin/                 # 관리자 페이지
 │   ├── questions/             # 질문 관련 페이지
-│   ├── login/                 # 로그인 페이지
-│   ├── mobile/                # 모바일 전용 페이지
+│   ├── auth/                  # 인증 페이지
 │   └── api/                   # API 라우트
+│       ├── questions/         # 질문 API
+│       ├── answers/           # 답변 API
+│       ├── auth/              # 인증 API
+│       └── ...
 │
 ├── components/                 # React 컴포넌트
 │   ├── ui/                    # shadcn/ui 기본 컴포넌트
-│   ├── features/              # 기능별 컴포넌트
+│   ├── questions/             # 질문 관련 컴포넌트
+│   ├── answers/               # 답변 컴포넌트
 │   ├── layout/                # 레이아웃 컴포넌트
-│   ├── shared/                # 공유 컴포넌트
-│   └── mobile/                # 모바일 전용 컴포넌트
+│   ├── auth/                  # 인증 컴포넌트
+│   ├── trust/                 # 신뢰도 시스템
+│   └── providers/             # Context Providers
 │
 ├── lib/                        # 유틸리티 및 라이브러리
-│   ├── database/              # 데이터베이스 관련
 │   ├── services/              # 서비스 레이어
+│   │   ├── question.service.ts
+│   │   ├── answer.service.ts
+│   │   ├── auth.service.ts
+│   │   └── cache.service.ts
 │   ├── utils/                 # 유틸리티 함수
+│   │   ├── expert-matching.ts
+│   │   ├── error-logger.ts
+│   │   └── server-logger.ts
 │   ├── types.ts               # TypeScript 타입 정의
-│   └── mock-data.ts           # Mock 데이터
+│   ├── supabase.ts            # Supabase 클라이언트
+│   ├── supabase-server.ts     # 서버용 클라이언트
+│   ├── supabase-browser.ts    # 브라우저용 클라이언트
+│   └── auth.ts                # 인증 헬퍼
 │
 ├── hooks/                      # React 커스텀 훅
 │   ├── useAuth.tsx            # 인증 관련 훅
 │   └── useNotifications.tsx   # 알림 관련 훅
 │
+├── contexts/                   # React Context
+│   └── AuthContext.tsx        # 인증 Context
+│
 ├── public/                     # 정적 파일
 │   ├── icons/                 # 아이콘
-│   ├── images/                # 이미지
-│   └── manifest.json          # PWA 매니페스트
+│   ├── manifest.json          # PWA 매니페스트
+│   ├── sw.js                  # Service Worker
+│   └── offline.html           # 오프라인 페이지
 │
 ├── styles/                     # 스타일 파일
 │   └── globals.css            # 전역 스타일
 │
 ├── docs/                       # 문서
-│   ├── technical/             # 기술 문서
-│   │   └── CLAUDE.md          # Claude AI 가이드
-│   ├── business/              # 비즈니스 문서
-│   │   ├── Viet_K_Connect_Final_PRD_v2.0.md
-│   │   └── Viet_K_Connect_System_Architecture_v2.md
-│   └── guides/                # 사용자 가이드
+│   ├── README.md              # 문서 가이드
+│   ├── SUPABASE_COMPLETE_GUIDE.md  # Supabase 설정
+│   ├── MASTER_PROJECT_PLAN_2025.md # 메인 로드맵
+│   ├── API.md                 # API 명세서
+│   ├── project/               # 프로젝트 관리
+│   │   ├── PROJECT_STRUCTURE.md
+│   │   └── ISSUE_TRACKER.md
+│   ├── development/           # 개발 가이드
+│   └── archive/               # 과거 문서
 │
 ├── scripts/                    # 유틸리티 스크립트
-│   ├── agents/                # AI 에이전트 스크립트
-│   └── simple-site-test.js    # 테스트 스크립트
+│   ├── db/                    # DB 관련 스크립트
+│   ├── testing/               # 테스트 스크립트
+│   └── seed-data.ts           # 시드 데이터
 │
 ├── tests/                      # 테스트 파일
 │   ├── unit/                  # 단위 테스트
 │   ├── integration/           # 통합 테스트
-│   └── e2e/                   # E2E 테스트
-│
-├── messages/                   # 다국어 메시지
-│   ├── ko.json                # 한국어
-│   ├── vi.json                # 베트남어
-│   └── en.json                # 영어
+│   ├── e2e/                   # E2E 테스트 (Playwright)
+│   └── setup.ts               # 테스트 설정
 │
 ├── supabase/                   # Supabase 설정
-│   └── init.sql               # 데이터베이스 초기화
+│   └── migrations/            # DB 마이그레이션
+│       ├── 001_initial_schema.sql
+│       ├── 002_rls_policies.sql
+│       └── 002_seed_data.sql
 │
 └── [루트 설정 파일]
-    ├── package.json            # 패키지 정의
+    ├── package.json            # 패키지 정의 (npm 사용)
     ├── tsconfig.json           # TypeScript 설정
     ├── tailwind.config.js      # Tailwind CSS 설정
     ├── next.config.js          # Next.js 설정
-    ├── eslint.config.js        # ESLint 설정
-    └── README.md              # 프로젝트 README
+    ├── vitest.config.ts        # Vitest 설정
+    ├── playwright.config.ts    # Playwright 설정
+    ├── middleware.ts           # Next.js 미들웨어
+    ├── vercel.json             # Vercel 배포 설정
+    └── README.md               # 프로젝트 README
+```
+
+### ⚠️ 삭제된 폴더 (2025-10-11 정리)
+```
+❌ configs/              # 중복 설정 폴더 제거
+❌ messages/             # 다국어 지원 제거 (한국어만)
+❌ Dockerfile            # Docker 배포 미사용
+❌ docker-compose.yml    # Vercel 배포 사용
+❌ nginx.conf            # Nginx 미사용
 ```
 
 ## 📝 파일 명명 규칙
@@ -219,13 +252,30 @@ import styles from './Component.module.css'
 
 ## 📌 중요 참고사항
 
-1. **Next.js App Router**: 모든 페이지는 `app/` 디렉토리 사용
-2. **TypeScript 우선**: 모든 새 파일은 TypeScript로 작성
+### 기술 스택 (2025-10-11 확정)
+1. **Next.js 15 App Router**: 모든 페이지는 `app/` 디렉토리 사용
+2. **TypeScript 5.9**: 모든 새 파일은 TypeScript로 작성
 3. **Tailwind CSS**: 스타일링은 Tailwind 유틸리티 클래스 사용
 4. **shadcn/ui**: UI 컴포넌트는 shadcn/ui 기반
-5. **환경 변수**: 민감한 정보는 `.env.local` 사용
+5. **Supabase**: 백엔드 및 인증 (Firebase 제거됨)
+6. **Vercel**: 배포 플랫폼 (Docker 제거됨)
+7. **npm**: 패키지 관리자 (pnpm 제거됨)
+8. **한국어**: 단일 언어 (i18n 제거됨)
+
+### 환경 변수
+- `.env.local`: 개발 환경 (Git 제외)
+- `.env.example`: 템플릿 파일
+- `NEXT_PUBLIC_*`: 브라우저 접근 가능
+- `SUPABASE_SERVICE_ROLE_KEY`: 서버 전용
+
+### 패키지 관리
+- `npm install`: 패키지 설치
+- `npm run dev`: 개발 서버
+- `npm run build`: 프로덕션 빌드
+- `npm test`: 테스트 실행
 
 ---
 
-*마지막 업데이트: 2025-09-28*
+*마지막 업데이트: 2025-10-11*
 *작성자: Viet K-Connect 개발팀*
+*변경사항: 프로젝트 정리 반영, 기술 스택 명확화*

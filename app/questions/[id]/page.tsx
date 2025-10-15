@@ -1,58 +1,99 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { useSafeAuth } from "@/components/providers/ClientProviders"
-import QuestionDetail from '@/components/questions/QuestionDetail'
-import AnswerList from '@/components/answers/AnswerList'
-import AnswerForm from '@/components/answers/AnswerForm'
-import { Database } from '@/lib/supabase'
+import { useAuth } from '@/lib/hooks/useAuth'
+import BookmarkButton from '@/components/common/BookmarkButton'
+import ShareButton from '@/components/common/ShareButton'
+import Sidebar from '@/components/layout/Sidebar'
+import { MOCK_QUESTIONS, MOCK_ANSWERS, getAnswersByQuestionId, type Question, type Answer } from '@/lib/data/mockData'
+import { notifyAnswerAccepted } from '@/lib/utils/notification-manager'
 
-type Profile = Database['public']['Tables']['users']['Row']
-
-type Question = Database['public']['Tables']['questions']['Row'] & {
-  category: Database['public']['Tables']['categories']['Row']
-  author: Profile
-  vote_score: number
-  answers: Answer[]
-}
-
-type Answer = Database['public']['Tables']['answers']['Row'] & {
-  author: Profile
-  is_helpful: boolean
-  vote_score: number
+// Type for adapted question that combines API and mock data formats
+interface QuestionDisplay {
+  id: string
+  title: string
+  content: string
+  author: {
+    name: string
+    role?: string
+  }
+  view_count: number
+  upvote_count: number
+  answer_count: number
+  created_at: string
 }
 
 export default function QuestionDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { user, profile, loading: authLoading } = useSafeAuth()
-  const [question, setQuestion] = useState<Question | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
-
   const questionId = params.id as string
+  const { isLoggedIn, user } = useAuth()
+  const isAuthenticated = isLoggedIn
 
-  // Fetch question details
+  const [question, setQuestion] = useState<QuestionDisplay | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [answerText, setAnswerText] = useState('')
+  const [answers, setAnswers] = useState<Answer[]>([])
+  const [activeVotes, setActiveVotes] = useState<Set<string>>(new Set())
+  const [acceptedAnswerId, setAcceptedAnswerId] = useState<string | null>(null)
+
   useEffect(() => {
     const fetchQuestion = async () => {
       try {
-        setLoading(true)
-        setError(null)
-
         const response = await fetch(`/api/questions/${questionId}`)
-        const result = await response.json()
+        if (response.ok) {
+          const data = await response.json()
+          setQuestion(data.question)
 
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to fetch question')
+          // Get answers for this question from centralized mock data
+          const questionAnswers = getAnswersByQuestionId(questionId)
+          setAnswers(questionAnswers)
+        } else {
+          // API 실패 시 중앙집중식 Mock 데이터 사용
+          const mockQuestion = MOCK_QUESTIONS.find(q => q.id === questionId)
+          if (mockQuestion) {
+            // Adapt Question type to match expected format
+            setQuestion({
+              id: mockQuestion.id,
+              title: mockQuestion.title,
+              content: mockQuestion.content,
+              author: mockQuestion.author,
+              view_count: mockQuestion.views,
+              upvote_count: mockQuestion.votes,
+              answer_count: mockQuestion.answerCount,
+              created_at: mockQuestion.createdAt
+            })
+
+            // Get answers for this question from centralized mock data
+            const questionAnswers = getAnswersByQuestionId(questionId)
+            setAnswers(questionAnswers)
+          } else {
+            console.error('Question not found in mock data:', questionId)
+          }
         }
+      } catch (error) {
+        console.error('Failed to fetch question:', error)
+        // 에러 발생 시에도 중앙집중식 Mock 데이터 사용
+        const mockQuestion = MOCK_QUESTIONS.find(q => q.id === questionId)
+        if (mockQuestion) {
+          setQuestion({
+            id: mockQuestion.id,
+            title: mockQuestion.title,
+            content: mockQuestion.content,
+            author: mockQuestion.author,
+            view_count: mockQuestion.views,
+            upvote_count: mockQuestion.votes,
+            answer_count: mockQuestion.answerCount,
+            created_at: mockQuestion.createdAt
+          })
 
-        setQuestion(result.data)
-      } catch (err) {
-        console.error('Error fetching question:', err)
-        setError(err instanceof Error ? err.message : 'Something went wrong')
+          // Get answers for this question from centralized mock data
+          const questionAnswers = getAnswersByQuestionId(questionId)
+          setAnswers(questionAnswers)
+        } else {
+          console.error('Question not found in mock data:', questionId)
+        }
       } finally {
         setLoading(false)
       }
@@ -61,151 +102,355 @@ export default function QuestionDetailPage() {
     if (questionId) {
       fetchQuestion()
     }
-  }, [questionId, refreshKey])
+  }, [questionId])
 
-  // Handle new answer submission
-  const handleNewAnswer = () => {
-    setRefreshKey(prev => prev + 1)
+  // 답변 정렬 함수 - 항상 Certified User 우선
+  const sortAnswers = (answersToSort: Answer[]) => {
+    const sorted = [...answersToSort].sort((a, b) => {
+      const aTime = new Date(a.createdAt).getTime()
+      const bTime = new Date(b.createdAt).getTime()
+
+      // Certified User 답변은 항상 위로
+      if (a.isExpert && !b.isExpert) return -1
+      if (!a.isExpert && b.isExpert) return 1
+
+      // 같은 그룹 내에서는 최신순
+      return bTime - aTime
+    })
+    return sorted
   }
 
-  // Handle vote update
-  const handleVoteUpdate = (newVoteScore: number) => {
-    if (question) {
-      setQuestion(prev => prev ? { ...prev, vote_score: newVoteScore } : null)
+  // 투표 토글
+  const toggleHelpful = (answerId: string) => {
+    if (!isAuthenticated) {
+      router.push(`/auth/login?redirectTo=/questions/${questionId}`)
+      return
+    }
+    setAnswers(prev => prev.map(answer => {
+      if (answer.id === answerId) {
+        const isActive = activeVotes.has(answerId)
+        const newVotes = new Set(activeVotes)
+
+        if (isActive) {
+          newVotes.delete(answerId)
+          setActiveVotes(newVotes)
+          return { ...answer, helpful: answer.helpful - 1 }
+        } else {
+          newVotes.add(answerId)
+          setActiveVotes(newVotes)
+          return { ...answer, helpful: answer.helpful + 1 }
+        }
+      }
+      return answer
+    }))
+  }
+
+  // 답변 제출
+  const handleSubmitAnswer = async () => {
+    if (!isAuthenticated) {
+      router.push(`/auth/login?redirectTo=/questions/${questionId}`)
+      return
+    }
+
+    if (answerText.trim().length < 55) {
+      alert('답변은 최소 10자 이상 작성해주세요')
+      return
+    }
+
+    const newAnswer: Answer = {
+      id: `answer-${Date.now()}`,
+      questionId: questionId,
+      content: answerText.trim(),
+      author: {
+        id: user?.id || 'current-user',
+        name: user?.name || '나의 답변',
+        role: user?.role || 'user',
+        avatar: user?.name?.[0] || '나'
+      },
+      isExpert: user?.role === 'VERIFIED' || user?.role === 'ADMIN',
+      createdAt: new Date().toISOString(),
+      helpful: 0,
+      commentCount: 0
+    }
+
+    setAnswers(prev => [...prev, newAnswer])
+    setAnswerText('')
+    alert('답변이 등록되었습니다!')
+  }
+
+  // 답변 채택
+  const handleAcceptAnswer = (answerId: string) => {
+    if (!isAuthenticated || !user) {
+      alert('로그인이 필요합니다')
+      return
+    }
+
+    // Check if current user is the question author
+    // For mock, we'll allow any logged-in user to accept
+    const confirmed = window.confirm('이 답변을 채택하시겠습니까? 채택 후에는 변경할 수 없습니다.')
+
+    if (confirmed) {
+      setAcceptedAnswerId(answerId)
+
+      // Save to localStorage
+      localStorage.setItem(`question_${questionId}_accepted_answer`, answerId)
+
+      // Update question status to resolved
+      const questionsKey = 'mock_questions'
+      const questions = JSON.parse(localStorage.getItem(questionsKey) || '[]')
+      const updatedQuestions = questions.map((q: any) => {
+        if (q.id === questionId) {
+          return { ...q, status: 'resolved', accepted_answer_id: answerId }
+        }
+        return q
+      })
+      localStorage.setItem(questionsKey, JSON.stringify(updatedQuestions))
+
+      // Send notification to answer author
+      if (question) {
+        notifyAnswerAccepted(questionId, answerId, question.title)
+      }
+
+      alert('답변이 채택되었습니다! 🎉')
     }
   }
 
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">질문을 불러오는 중...</p>
-        </div>
-      </div>
-    )
-  }
+  const sortedAnswers = sortAnswers(answers)
+  const charCountNeeded = Math.max(0, 55 - answerText.length)
 
-  if (error) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <i className="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
-            <h2 className="text-xl font-semibold text-red-800 mb-2">오류가 발생했습니다</h2>
-            <p className="text-red-600 mb-4">{error}</p>
-            <div className="flex gap-2 justify-center">
-              <button
-                onClick={() => setRefreshKey(prev => prev + 1)}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                다시 시도
-              </button>
-              <Link href="/questions">
-                <button className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
-                  목록으로 돌아가기
-                </button>
-              </Link>
-            </div>
-          </div>
-        </div>
+      <div className="main-layout loading-container">
+        <div>로딩 중...</div>
       </div>
     )
   }
 
   if (!question) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto">
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-            <i className="fas fa-question-circle text-4xl text-gray-400 mb-4"></i>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">질문을 찾을 수 없습니다</h2>
-            <p className="text-gray-600 mb-4">요청하신 질문이 존재하지 않거나 삭제되었습니다.</p>
-            <Link href="/questions">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                목록으로 돌아가기
-              </button>
-            </Link>
-          </div>
-        </div>
+      <div className="main-layout error-container">
+        <h1 className="error-title">질문을 찾을 수 없습니다</h1>
+        <a href="/" className="btn-primary error-btn">
+          홈으로 돌아가기
+        </a>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Breadcrumb */}
-        <nav className="mb-6">
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Link href="/" className="hover:text-blue-600 transition-colors">
-              홈
-            </Link>
-            <i className="fas fa-chevron-right text-xs"></i>
-            <Link href="/questions" className="hover:text-blue-600 transition-colors">
-              질문과 답변
-            </Link>
-            <i className="fas fa-chevron-right text-xs"></i>
-            <span className="text-gray-900">{question.title}</span>
+    <main className="main-layout">
+      <div className="main-content">
+          {/* Breadcrumb */}
+          <nav className="breadcrumb">
+            <a href="/" className="breadcrumb-link">홈</a>
+            <span>›</span>
+            <a href="/" className="breadcrumb-link">질문</a>
+            <span>›</span>
+            <span>비자</span>
+          </nav>
+
+          {/* Question Header */}
+          <div className="question-header">
+            <h1 className="question-title">
+              {question.title}
+            </h1>
+            <div className="question-meta">
+              <span className="question-tag">
+                비자
+              </span>
+              <span className="question-stats">
+                답변 {answers.length}개
+              </span>
+            </div>
           </div>
-        </nav>
 
-        {/* Question Detail */}
-        <QuestionDetail
-          question={question}
-          currentUser={profile as Profile | null}
-          onVoteUpdate={handleVoteUpdate}
-        />
+          {/* Question Card */}
+          <div className="question-detail-card">
+            <div className="author-info">
+              <div className="author-avatar-small"></div>
+              <div className="author-details">
+                <h3>{question.author?.name || '익명'}</h3>
+                <p>
+                  {question.created_at ? new Date(question.created_at).toLocaleDateString('ko-KR') : '날짜 미상'}
+                </p>
+              </div>
+            </div>
 
-        {/* Answer Form (for authenticated users) */}
-        {user && profile && (
-          <div className="mt-8">
-            <AnswerForm
-              questionId={question.id}
-              onAnswerSubmitted={handleNewAnswer}
-            />
+            <div className="question-content">
+              {question.content}
+            </div>
+
+            <div className="question-actions">
+              <BookmarkButton
+                targetId={questionId}
+                type="question"
+                title={question.title}
+                content={question.content}
+                compact={true}
+              />
+              <ShareButton
+                url={`/questions/${questionId}`}
+                title={question.title}
+                compact={true}
+              />
+            </div>
           </div>
-        )}
 
-        {/* Login prompt for non-authenticated users */}
-        {!user && (
-          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-            <i className="fas fa-sign-in-alt text-3xl text-blue-600 mb-3"></i>
-            <h3 className="text-lg font-semibold text-blue-800 mb-2">답변을 작성하려면 로그인하세요</h3>
-            <p className="text-blue-600 mb-4">
-              이 질문에 도움이 되는 답변을 남겨주세요. 로그인 후 답변을 작성할 수 있습니다.
-            </p>
-            <button
-              onClick={() => {
-                // You would trigger the login modal here
-                // This would connect with the existing LoginModal component
-                console.log('Trigger login modal')
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              로그인하기
-            </button>
+          {/* Answer Form */}
+          {!isAuthenticated ? (
+            <div className="answer-form answer-form-login-compact">
+              <div className="answer-form-compact-content">
+                <div className="answer-form-icon-small">💬</div>
+                <div className="answer-form-text">
+                  <h3 className="answer-form-title-compact">
+                    이 질문에 답변해보세요
+                  </h3>
+                  <p className="answer-form-subtitle-compact">
+                    검증된 Certified User가 되어 커뮤니티에 기여하세요
+                  </p>
+                </div>
+                <button
+                  onClick={() => router.push(`/auth/login?redirectTo=/questions/${questionId}`)}
+                  className="google-login-btn-compact"
+                >
+                  <span className="google-icon-small"></span>
+                  Google로 계속하기
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="answer-form">
+              <h3 className="form-title">답변 작성하기</h3>
+
+            <div className="editor-container">
+              <div className="editor-toolbar">
+                <button type="button" className="toolbar-btn" title="굵게">B</button>
+                <button type="button" className="toolbar-btn" title="목록">☰</button>
+                <button type="button" className="toolbar-btn" title="이미지">🖼️</button>
+              </div>
+              <div className="editor-textarea-container">
+                <textarea
+                  className="editor-textarea"
+                  placeholder="답변의 지식을 공유해 보세요."
+                  value={answerText}
+                  onChange={(e) => setAnswerText(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="char-count">
+              {answerText.length >= 55 ? `${answerText.length}글자` : `${charCountNeeded}글자 더 써주세요.`}
+            </div>
+
+            <div className="answer-form-footer">
+              <div className="answer-count-info">
+                <span>🅰️</span>
+                <span>{answers.length}개의 답변이 있어요!</span>
+              </div>
+              <button
+                onClick={handleSubmitAnswer}
+                disabled={answerText.length < 55}
+                className="submit-btn"
+              >
+                답변하기
+              </button>
+            </div>
           </div>
-        )}
+          )}
 
-        {/* Answers List */}
-        <div className="mt-8">
-          <AnswerList
-            answers={question.answers || []}
-            questionAuthorId={question.author.id}
-            currentUser={profile as Profile | null}
-            onAnswerUpdate={handleNewAnswer}
-          />
+          {/* Answers Section */}
+          <div className="answers-section">
+            <h2 className="section-title">
+              답변 <span className="section-title-count">{answers.length}</span>개
+            </h2>
+
+            <div id="answers-container">
+              {sortedAnswers.map((answer) => (
+                <div
+                  key={answer.id}
+                  className={`answer-card ${answer.isExpert ? 'expert-answer' : ''} ${acceptedAnswerId === answer.id ? 'accepted-answer' : ''}`}
+                >
+                  {acceptedAnswerId === answer.id && (
+                    <div className="accepted-badge-corner">
+                      <span className="accepted-badge-icon">✅</span>
+                      채택된 답변
+                    </div>
+                  )}
+                  {answer.isExpert && !acceptedAnswerId && (
+                    <div className="expert-badge-corner">
+                      <span className="expert-badge-icon">✨</span>
+                      Certified User 답변
+                    </div>
+                  )}
+
+                  <div className="author-info">
+                    <div className="author-avatar-small"></div>
+                    <div className="author-details">
+                      <div className="author-name-row">
+                        <h3 className="author-name">{answer.author.name}</h3>
+                        {answer.isExpert && (
+                          <span className="expert-badge-inline" style={{ color: '#2563eb', background: 'transparent' }}>
+                            <span style={{ color: '#84cc16' }}>✅</span> Certified <span style={{ fontWeight: 700 }}>인증 완료</span>
+                          </span>
+                        )}
+                      </div>
+                      <p className="author-meta">
+                        {answer.author.role || '일반 회원'} • {new Date(answer.createdAt).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="answer-content">
+                    {answer.content}
+                  </div>
+
+                  <div className="question-actions">
+                    <button
+                      onClick={() => toggleHelpful(answer.id)}
+                      className={`action-btn ${activeVotes.has(answer.id) ? 'active' : ''}`}
+                    >
+                      <span>👍</span>
+                      <span>{answer.helpful}</span>
+                    </button>
+                    <button
+                      className="action-btn"
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          router.push(`/auth/login?redirectTo=/questions/${questionId}`)
+                          return
+                        }
+                        alert('댓글 기능 구현 예정')
+                      }}
+                    >
+                      <span>💬</span>
+                      <span>{answer.commentCount}</span>
+                    </button>
+                    <BookmarkButton
+                      targetId={answer.id}
+                      type="answer"
+                      title={`${question.title}의 답변`}
+                      content={answer.content}
+                      compact={true}
+                    />
+                    {isAuthenticated && !acceptedAnswerId && (
+                      <button
+                        className="action-btn btn-primary"
+                        onClick={() => handleAcceptAnswer(answer.id)}
+                        style={{ marginLeft: 'auto', fontWeight: 'bold' }}
+                      >
+                        <span>✅</span>
+                        <span>채택하기</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Related Questions (placeholder for future implementation) */}
-        <div className="mt-12 border-t pt-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">관련 질문</h3>
-          <div className="bg-gray-50 rounded-lg p-6 text-center">
-            <p className="text-gray-600">관련 질문 기능은 곧 추가될 예정입니다.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+        {/* Sidebar */}
+        <Sidebar />
+      </main>
+    )
+  }

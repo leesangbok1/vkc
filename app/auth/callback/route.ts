@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (!existingUser) {
+          // 신규 사용자 생성
           await supabase
             .from('users')
             .insert({
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
               avatar_url: data.user.user_metadata.avatar_url || data.user.user_metadata.picture,
               role: 'user',
               verification_status: 'unverified',
+              onboarding_completed: false,
               visa_type: null,
               years_in_korea: null,
               region: null,
@@ -38,15 +40,34 @@ export async function GET(request: NextRequest) {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
+
+          // 신규 사용자는 온보딩 페이지로
+          const response = NextResponse.redirect(`${origin}/onboarding`)
+          response.cookies.set('auth-callback-success', 'true', {
+            maxAge: 5,
+            httpOnly: false
+          })
+          return response
+        } else {
+          // 기존 사용자 체크: 온보딩 완료했는지 확인
+          if (existingUser.onboarding_completed === false || existingUser.onboarding_completed === null) {
+            // 온보딩 미완료 사용자는 온보딩 페이지로
+            const response = NextResponse.redirect(`${origin}/onboarding`)
+            response.cookies.set('auth-callback-success', 'true', {
+              maxAge: 5,
+              httpOnly: false
+            })
+            return response
+          } else {
+            // 온보딩 완료한 사용자는 홈으로
+            const response = NextResponse.redirect(`${origin}${next}`)
+            response.cookies.set('auth-callback-success', 'true', {
+              maxAge: 5,
+              httpOnly: false
+            })
+            return response
+          }
         }
-
-        const response = NextResponse.redirect(`${origin}${next}`)
-        response.cookies.set('auth-callback-success', 'true', {
-          maxAge: 5,
-          httpOnly: false
-        })
-
-        return response
       }
 
       console.error('OAuth callback error:', error)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
+import { Question, User } from '@/lib/types/api'
 
 // GET /api/questions/[id] - 특정 질문 조회 + 조회수 증가
 export async function GET(
@@ -59,7 +60,7 @@ export async function GET(
 
     // 답변을 생성 시간순으로 정렬 (채택된 답변이 있으면 맨 위로)
     if (question.answers) {
-      question.answers.sort((a: any, b: any) => {
+      question.answers.sort((a: { is_accepted: boolean; is_helpful: boolean; vote_score: number }, b: { is_accepted: boolean; is_helpful: boolean; vote_score: number }) => {
         // 채택된 답변이 맨 위
         if (a.is_accepted && !b.is_accepted) return -1
         if (!a.is_accepted && b.is_accepted) return 1
@@ -163,7 +164,7 @@ export async function PUT(
     }
 
     // 업데이트할 필드만 포함하는 객체 생성
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString()
     }
 
@@ -174,6 +175,7 @@ export async function PUT(
     if (urgency !== undefined) updateData.urgency = urgency
 
     // 질문 업데이트
+    // @ts-expect-error - Supabase type issue
     const { data: updatedQuestion, error: updateError } = await supabase
       .from('questions')
       .update(updateData)
@@ -234,7 +236,10 @@ export async function DELETE(
       .from('questions')
       .select('id, author_id, answer_count')
       .eq('id', questionId)
-      .single()
+      .single() as {
+        data: Question | null
+        error: unknown
+      }
 
     if (fetchError || !existingQuestion) {
       return NextResponse.json(
@@ -252,13 +257,13 @@ export async function DELETE(
 
     // 답변이 있는 질문은 삭제하지 않고 상태만 변경
     if (existingQuestion.answer_count > 0) {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase
         .from('questions')
         .update({
           status: 'deleted',
           updated_at: new Date().toISOString()
         })
-        .eq('id', questionId)
+        .eq('id', questionId) as { data: null, error: unknown })
 
       if (updateError) {
         console.error('Question soft delete error:', updateError)
@@ -288,13 +293,13 @@ export async function DELETE(
     }
 
     // 사용자 질문 카운트 감소
-    await supabase
+    await (supabase
       .from('users')
       .update({
         question_count: supabase.rpc('decrement_question_count'),
         updated_at: new Date().toISOString()
       })
-      .eq('id', user.id)
+      .eq('id', user.id) as { data: null, error: unknown })
 
     return NextResponse.json({
       message: 'Question deleted successfully'

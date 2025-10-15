@@ -59,10 +59,32 @@ export default function AnswerList({
   }
 
   const getTrustScoreColor = (score: number) => {
-    if (score >= 90) return 'text-green-600'
-    if (score >= 70) return 'text-blue-600'
-    if (score >= 50) return 'text-yellow-600'
-    return 'text-red-600'
+    if (score >= 90) return 'high'
+    if (score >= 70) return 'medium'
+    if (score >= 50) return 'low'
+    return 'very-low'
+  }
+
+  const renderExpertBadge = (role?: string) => {
+    if (role === 'verified') {
+      return (
+        <span className="expert-badge expert-badge-verified">
+          <span className="expert-badge-icon">✅</span>
+          <span>인증 Certified User</span>
+        </span>
+      )
+    }
+
+    if (role === 'admin') {
+      return (
+        <span className="expert-badge expert-badge-admin">
+          <span className="expert-badge-icon">👑</span>
+          <span>관리자</span>
+        </span>
+      )
+    }
+
+    return null
   }
 
   const renderBadges = (badges: Record<string, boolean>) => {
@@ -360,7 +382,7 @@ export default function AnswerList({
 
             {/* Author Info */}
             <div className="px-6 pb-6">
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="answer-author-info">
                 <div className="flex items-start gap-3">
                   <img
                     src={answer.author.avatar_url || '/default-avatar.png'}
@@ -368,18 +390,23 @@ export default function AnswerList({
                     className="w-10 h-10 rounded-full border-2 border-gray-200"
                   />
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="answer-author-header">
                       <Link
                         href={`/users/${answer.author.id}`}
-                        className="font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                        className="answer-author-name"
                       >
                         {answer.author.name}
                       </Link>
-                      <span className={`text-sm font-medium ${getTrustScoreColor(answer.author.trust_score)}`}>
+
+                      {/* Expert Badge - Prominent Display */}
+                      {renderExpertBadge(answer.author.role)}
+
+                      <span className={`answer-trust-score ${getTrustScoreColor(answer.author.trust_score)}`}>
                         신뢰도 {answer.author.trust_score}
                       </span>
                     </div>
 
+                    {/* Legacy badges (if needed) */}
                     {renderBadges(answer.author.badges)}
 
                     <div className="mt-2 text-sm text-gray-600">

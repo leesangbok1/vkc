@@ -127,9 +127,14 @@ export async function GET(request: NextRequest) {
 }
 
 // 성능 집계 데이터 업데이트 (메모리 기반 - 실제로는 Redis/DB)
-const performanceAggregates = new Map<string, any>()
+interface PerformanceAggregate {
+  samples: number
+  metrics: Record<string, { values: number[]; sum: number; count: number }>
+}
 
-async function updatePerformanceAggregates(metrics: any[]) {
+const performanceAggregates = new Map<string, PerformanceAggregate>()
+
+async function updatePerformanceAggregates(metrics: WebVitalsMetric[]) {
   try {
     const now = new Date()
     const hourKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`
@@ -143,6 +148,8 @@ async function updatePerformanceAggregates(metrics: any[]) {
     }
 
     const hourlyData = performanceAggregates.get(hourKey)
+    if (!hourlyData) return
+
     hourlyData.samples += metrics.length
 
     // 메트릭별 집계

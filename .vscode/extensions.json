@@ -1,5 +1,6 @@
 {
     "recommendations": [
-        "iganbold.yoyo-ai-versioning"
+        "iganbold.yoyo-ai-versioning",
+        "anthropic.claude-code"
     ]
 }

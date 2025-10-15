@@ -90,11 +90,17 @@ export type Database = {
           bio?: string | null
           provider?: string | null
           provider_id?: string | null
+          role?: 'guest' | 'user' | 'verified' | 'admin'
+          verification_status?: 'none' | 'pending' | 'approved' | 'rejected' | 'expired'
+          verification_type?: 'student' | 'work' | 'family' | 'resident' | 'other' | null
           visa_type?: string | null
           company?: string | null
           years_in_korea?: number | null
           region?: string | null
+          specialty_areas?: string[] | null
           preferred_language?: string
+          verified_at?: string | null
+          verification_expires_at?: string | null
           is_verified?: boolean
           verification_date?: string | null
           trust_score?: number
@@ -103,6 +109,7 @@ export type Database = {
           answer_count?: number
           helpful_answer_count?: number
           last_active?: string
+          notification_preferences?: Record<string, unknown> | null
           updated_at?: string
         }
       }
@@ -157,8 +164,8 @@ export type Database = {
           ai_category_confidence: number | null
           ai_tags: string[]
           urgency: string
-          matched_experts: string[]
-          expert_notifications_sent: boolean
+          matched_certified_users: string[]
+          certified_notifications_sent: boolean
           view_count: number
           answer_count: number
           helpful_count: number
@@ -187,8 +194,8 @@ export type Database = {
           ai_category_confidence?: number | null
           ai_tags?: string[]
           urgency?: string
-          matched_experts?: string[]
-          expert_notifications_sent?: boolean
+          matched_certified_users?: string[]
+          certified_notifications_sent?: boolean
           view_count?: number
           answer_count?: number
           helpful_count?: number
@@ -216,8 +223,8 @@ export type Database = {
           ai_category_confidence?: number | null
           ai_tags?: string[]
           urgency?: string
-          matched_experts?: string[]
-          expert_notifications_sent?: boolean
+          matched_certified_users?: string[]
+          certified_notifications_sent?: boolean
           view_count?: number
           answer_count?: number
           helpful_count?: number
@@ -384,13 +391,15 @@ export type Database = {
           type: string
           title: string
           message: string
+          data: Record<string, unknown> | null
+          created_by: string | null
           related_id: string | null
           related_type: string | null
           is_read: boolean
           is_email_sent: boolean
           is_push_sent: boolean
           is_kakao_sent: boolean
-          channels: Record<string, any>
+          channels: Record<string, unknown>
           created_at: string
           read_at: string | null
           sent_at: string | null
@@ -401,13 +410,15 @@ export type Database = {
           type: string
           title: string
           message: string
+          data?: Record<string, unknown> | null
+          created_by?: string | null
           related_id?: string | null
           related_type?: string | null
           is_read?: boolean
           is_email_sent?: boolean
           is_push_sent?: boolean
           is_kakao_sent?: boolean
-          channels?: Record<string, any>
+          channels?: Record<string, unknown>
           created_at?: string
           read_at?: string | null
           sent_at?: string | null
@@ -418,13 +429,15 @@ export type Database = {
           type?: string
           title?: string
           message?: string
+          data?: Record<string, unknown> | null
+          created_by?: string | null
           related_id?: string | null
           related_type?: string | null
           is_read?: boolean
           is_email_sent?: boolean
           is_push_sent?: boolean
           is_kakao_sent?: boolean
-          channels?: Record<string, any>
+          channels?: Record<string, unknown>
           read_at?: string | null
           sent_at?: string | null
         }
@@ -445,6 +458,18 @@ export type Database = {
       can_edit_content: {
         Args: { content_type: string; content_id: string; user_id: string }
         Returns: boolean
+      }
+      adjust_trust_score: {
+        Args: { adjustment: number }
+        Returns: void
+      }
+      increment_answer_count: {
+        Args: Record<string, never>
+        Returns: void
+      }
+      decrement_answer_count: {
+        Args: Record<string, never>
+        Returns: void
       }
     }
     Enums: {

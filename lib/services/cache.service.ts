@@ -1,10 +1,10 @@
 // Redis-like caching service (using memory cache as fallback)
 class CacheService {
-  private cache = new Map<string, { data: any, expireAt: number }>()
+  private cache = new Map<string, { data: unknown, expireAt: number }>()
   private defaultTTL = 5 * 60 * 1000 // 5분 기본 TTL
 
   // 캐시 저장
-  set(key: string, data: any, ttlMs?: number): void {
+  set(key: string, data: unknown, ttlMs?: number): void {
     const expireAt = Date.now() + (ttlMs || this.defaultTTL)
     this.cache.set(key, { data, expireAt })
   }
@@ -146,8 +146,8 @@ export class CacheKeyGenerator {
     return `stats:user:${userId}`
   }
 
-  static expertRecommendations(questionId: string): string {
-    return `experts:${questionId}`
+  static certifiedRecommendations(questionId: string): string {
+    return `certified:${questionId}`
   }
 
   static notifications(userId: string, page: number): string {
@@ -172,81 +172,81 @@ export class VietnamQACacheManager {
   }
 
   // 질문 캐싱 (1시간)
-  cacheQuestion(id: string, question: any): void {
+  cacheQuestion(id: string, question: object): void {
     this.cache.set(CacheKeyGenerator.question(id), question, 60 * 60 * 1000)
   }
 
-  getQuestion(id: string): any | null {
+  getQuestion(id: string): object | null {
     return this.cache.get(CacheKeyGenerator.question(id))
   }
 
   // 질문 목록 캐싱 (5분)
-  cacheQuestionList(page: number, limit: number, questions: any[], category?: string, sort?: string): void {
+  cacheQuestionList(page: number, limit: number, questions: object[], category?: string, sort?: string): void {
     const key = CacheKeyGenerator.questionList(page, limit, category, sort)
     this.cache.set(key, questions, 5 * 60 * 1000)
   }
 
-  getQuestionList(page: number, limit: number, category?: string, sort?: string): any[] | null {
+  getQuestionList(page: number, limit: number, category?: string, sort?: string): object[] | null {
     const key = CacheKeyGenerator.questionList(page, limit, category, sort)
     return this.cache.get(key)
   }
 
   // 사용자 프로필 캐싱 (30분)
-  cacheUserProfile(userId: string, profile: any): void {
+  cacheUserProfile(userId: string, profile: object): void {
     this.cache.set(CacheKeyGenerator.userProfile(userId), profile, 30 * 60 * 1000)
   }
 
-  getUserProfile(userId: string): any | null {
+  getUserProfile(userId: string): object | null {
     return this.cache.get(CacheKeyGenerator.userProfile(userId))
   }
 
   // 검색 결과 캐싱 (10분)
-  cacheSearchResults(query: string, type: string, page: number, results: any): void {
+  cacheSearchResults(query: string, type: string, page: number, results: object): void {
     const key = CacheKeyGenerator.searchResults(query, type, page)
     this.cache.set(key, results, 10 * 60 * 1000)
   }
 
-  getSearchResults(query: string, type: string, page: number): any | null {
+  getSearchResults(query: string, type: string, page: number): object | null {
     const key = CacheKeyGenerator.searchResults(query, type, page)
     return this.cache.get(key)
   }
 
   // 카테고리 목록 캐싱 (1시간)
-  cacheCategories(categories: any[]): void {
+  cacheCategories(categories: object[]): void {
     this.cache.set(CacheKeyGenerator.categoryList(), categories, 60 * 60 * 1000)
   }
 
-  getCategories(): any[] | null {
+  getCategories(): object[] | null {
     return this.cache.get(CacheKeyGenerator.categoryList())
   }
 
   // 사이트 통계 캐싱 (15분)
-  cacheSiteStats(stats: any): void {
+  cacheSiteStats(stats: object): void {
     this.cache.set(CacheKeyGenerator.siteStats(), stats, 15 * 60 * 1000)
   }
 
-  getSiteStats(): any | null {
+  getSiteStats(): object | null {
     return this.cache.get(CacheKeyGenerator.siteStats())
   }
 
-  // 전문가 추천 캐싱 (1시간)
-  cacheExpertRecommendations(questionId: string, recommendations: any): void {
-    const key = CacheKeyGenerator.expertRecommendations(questionId)
+  // 인증 사용자 추천 캐싱 (1시간)
+  cacheCertifiedRecommendations(questionId: string, recommendations: object): void {
+    const key = CacheKeyGenerator.certifiedRecommendations(questionId)
     this.cache.set(key, recommendations, 60 * 60 * 1000)
   }
 
-  getExpertRecommendations(questionId: string): any | null {
-    const key = CacheKeyGenerator.expertRecommendations(questionId)
+  getCertifiedRecommendations(questionId: string): object | null {
+    const key = CacheKeyGenerator.certifiedRecommendations(questionId)
     return this.cache.get(key)
   }
 
   // 알림 캐싱 (5분)
-  cacheNotifications(userId: string, page: number, notifications: any): void {
+  cacheNotifications(userId: string, page: number, notifications: object): void {
     const key = CacheKeyGenerator.notifications(userId, page)
     this.cache.set(key, notifications, 5 * 60 * 1000)
   }
 
-  getNotifications(userId: string, page: number): any | null {
+  getNotifications(userId: string, page: number): object | null {
     const key = CacheKeyGenerator.notifications(userId, page)
     return this.cache.get(key)
   }
@@ -279,7 +279,7 @@ export class VietnamQACacheManager {
   }
 
   // 캐시 워밍업 (자주 사용되는 데이터 미리 로드)
-  async warmup(supabase: any): Promise<void> {
+  async warmup(supabase: { from: (table: string) => any }): Promise<void> {
     try {
       // 인기 카테고리 미리 로드
       const { data: categories } = await supabase
@@ -323,7 +323,7 @@ export class VietnamQACacheManager {
 export const cacheManager = new VietnamQACacheManager()
 
 // 캐시 데코레이터 (함수 결과 캐싱)
-export function withCache<T extends (...args: any[]) => any>(
+export function withCache<T extends (...args: unknown[]) => unknown>(
   fn: T,
   keyGenerator: (...args: Parameters<T>) => string,
   ttlMs: number = 5 * 60 * 1000
