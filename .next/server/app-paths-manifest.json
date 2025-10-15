@@ -1,7 +1,9 @@
 {
-  "/profile/page": "app/profile/page.js",
-  "/settings/page": "app/settings/page.js",
-  "/my-questions/page": "app/my-questions/page.js",
-  "/questions/[id]/page": "app/questions/[id]/page.js",
-  "/page": "app/page.js"
+  "/api/questions/route": "app/api/questions/route.js",
+  "/questions/page": "app/questions/page.js",
+  "/experts/apply/page": "app/experts/apply/page.js",
+  "/page": "app/page.js",
+  "/onboarding/page": "app/onboarding/page.js",
+  "/topics/page": "app/topics/page.js",
+  "/following/page": "app/following/page.js"
 }

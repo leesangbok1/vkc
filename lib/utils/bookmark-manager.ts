@@ -5,7 +5,7 @@
 
 export interface Bookmark {
   id: string
-  type: 'question' | 'answer'
+  type: 'question' | 'answer' | 'post'
   targetId: string
   title: string
   content: string
@@ -49,7 +49,7 @@ export function addBookmark(bookmark: Omit<Bookmark, 'id' | 'created_at'>): bool
   }
 }
 
-export function removeBookmark(targetId: string, type: 'question' | 'answer'): boolean {
+export function removeBookmark(targetId: string, type: 'question' | 'answer' | 'post'): boolean {
   try {
     const bookmarks = getBookmarks()
     const filtered = bookmarks.filter(b => !(b.targetId === targetId && b.type === type))
@@ -66,7 +66,7 @@ export function removeBookmark(targetId: string, type: 'question' | 'answer'): b
   }
 }
 
-export function isBookmarked(targetId: string, type: 'question' | 'answer'): boolean {
+export function isBookmarked(targetId: string, type: 'question' | 'answer' | 'post'): boolean {
   const bookmarks = getBookmarks()
   return bookmarks.some(b => b.targetId === targetId && b.type === type)
 }

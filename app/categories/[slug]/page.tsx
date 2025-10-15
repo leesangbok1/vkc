@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import Sidebar from '@/components/layout/Sidebar'
+import ActionBar from '@/components/common/ActionBar'
 
 const categoryMap: Record<string, { name: string; icon: string; description: string }> = {
   visa: {
@@ -44,11 +46,37 @@ const categoryMap: Record<string, { name: string; icon: string; description: str
 
 export default function CategoryPage() {
   const params = useParams()
+  const router = useRouter()
   const slug = params.slug as string
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   const category = categoryMap[slug]
+
+  // Check login status
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const mockSession = localStorage.getItem('mock_session')
+      setIsLoggedIn(mockSession === 'true')
+    }
+  }, [])
+
+  // Format date helper
+  function formatDate(dateString: string) {
+    if (!dateString) return '방금 전'
+    const date = new Date(dateString)
+    const now = new Date()
+    const diff = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    if (diff < 60) return '방금 전'
+    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`
+    const days = Math.floor(diff / 86400)
+    if (days === 1) return '1일 전'
+    if (days < 7) return `${days}일 전`
+    return date.toLocaleDateString('ko-KR')
+  }
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -72,140 +100,231 @@ export default function CategoryPage() {
 
   if (!category) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">카테고리를 찾을 수 없습니다</h1>
-          <Link href="/">
-            <button className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-              홈으로 돌아가기
-            </button>
-          </Link>
+      <main className="main-layout">
+        <div className="container">
+          <div className="main-content">
+            <div className="section category-error-state">
+              <div className="category-error-icon">🔍</div>
+              <h1 className="category-error-title">카테고리를 찾을 수 없습니다</h1>
+              <p className="category-error-message">요청하신 카테고리가 존재하지 않습니다.</p>
+              <button
+                onClick={() => router.push('/')}
+                className="btn btn-primary"
+              >
+                홈으로 돌아가기
+              </button>
+            </div>
+          </div>
+          <Sidebar showContent={false} />
         </div>
-      </div>
+      </main>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Simple Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="text-xl font-bold text-gray-900">
-              VietKConnect
-            </Link>
-            <nav className="flex items-center space-x-4">
-              <Link href="/questions/new">
-                <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                  질문하기
-                </button>
-              </Link>
-              <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                로그인
-              </button>
-            </nav>
-          </div>
-        </div>
-      </header>
+    <main className="main-layout">
+      {/* Mobile Category Grid */}
+      <div className="mobile-category-grid">
+        <a href="/categories/visa" className="mobile-category-item">
+          <div className="mobile-category-icon">💼</div>
+          <div className="mobile-category-label">한국 취업</div>
+        </a>
+        <a href="/categories/visa" className="mobile-category-item">
+          <div className="mobile-category-icon">✈️</div>
+          <div className="mobile-category-label">한국 비자</div>
+        </a>
+        <a href="/categories/life" className="mobile-category-item">
+          <div className="mobile-category-icon">🏠</div>
+          <div className="mobile-category-label">한국 생활</div>
+        </a>
+        <a href="/categories/legal" className="mobile-category-item">
+          <div className="mobile-category-icon">⚖️</div>
+          <div className="mobile-category-label">한국 법률</div>
+        </a>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="container">
+        <div className="main-content">
         {/* Category Header */}
-        <div className="bg-white rounded-lg shadow-sm border p-8 mb-8">
-          <div className="flex items-center mb-4">
-            <span className="text-4xl mr-4">{category.icon}</span>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{category.name}</h1>
-              <p className="text-lg text-gray-600 mt-2">{category.description}</p>
+        <div className="section card category-header">
+          <div className="category-header-content">
+            <span className="category-header-icon">{category.icon}</span>
+            <div className="category-header-text">
+              <h1 className="section-title">{category.name}</h1>
+              <p className="category-description">{category.description}</p>
             </div>
           </div>
-          
-          <div className="flex gap-4">
+
+          <div className="category-header-actions">
             <Link href="/questions/new">
-              <button className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+              <button className="btn btn-primary">
                 {category.name} 질문하기
               </button>
             </Link>
             <Link href="/">
-              <button className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+              <button className="btn btn-secondary">
                 다른 카테고리 보기
               </button>
             </Link>
           </div>
         </div>
 
+        {/* Category Tabs */}
+        <div className="category-tabs">
+          <a href="/" className="category-tab">Popular</a>
+          <a href="/topics" className="category-tab">Topic</a>
+          <a href="/following" className="category-tab">Following</a>
+        </div>
+
         {/* Questions List */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+        <div className="section">
+          <h2 className="section-title">
             {category.name} 관련 질문들
           </h2>
-          <p className="text-gray-600">
+          <p className="section-subtitle">
             {loading ? '질문을 불러오는 중...' : `${questions.length}개의 질문이 있습니다.`}
           </p>
         </div>
 
         {loading ? (
-          <div className="space-y-4">
+          <div className="section">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="bg-white p-6 rounded-lg shadow-sm border animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+              <div key={i} className="card loading-card">
+                <div className="loading-line loading-line-title"></div>
+                <div className="loading-line loading-line-subtitle"></div>
+                <div className="loading-line loading-line-small"></div>
               </div>
             ))}
           </div>
         ) : questions.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
-            <div className="mb-4">
-              <span className="text-6xl">{category.icon}</span>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <div className="section card category-empty-state">
+            <div className="category-empty-icon">{category.icon}</div>
+            <h3 className="category-empty-title">
               아직 {category.name} 질문이 없습니다
             </h3>
-            <p className="text-gray-500 mb-6">
+            <p className="category-empty-message">
               첫 번째 {category.name} 질문을 작성해보세요!
             </p>
             <Link href="/questions/new">
-              <button className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+              <button className="btn btn-primary">
                 첫 질문 작성하기
               </button>
             </Link>
           </div>
         ) : (
-          <div className="space-y-4">
-            {questions.map((question: any, index: number) => (
-              <div key={index} className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      <Link href={`/questions/${question.id}`} className="hover:text-blue-600">
-                        {question.title}
-                      </Link>
-                    </h3>
-                    <p className="text-gray-600 mb-4 line-clamp-2">
-                      {question.content}
-                    </p>
-                    <div className="flex items-center text-sm text-gray-500 space-x-4">
-                      <span>답변 {question.answer_count || 0}개</span>
-                      <span>조회 {question.view_count || 0}회</span>
-                      <span>{question.created_at ? new Date(question.created_at).toLocaleDateString('ko-KR') : '날짜 미상'}</span>
-                      {question.author && (
-                        <span>작성자: {question.author.name}</span>
-                      )}
+          <div className="feed-container">
+            {questions.map((question: any) => (
+              <div
+                key={question.id}
+                className="question-card"
+                onClick={() => router.push(`/questions/${question.id}`)}
+              >
+                <div className="question-header">
+                  {/* Author Info */}
+                  <div className="question-meta">
+                    <div className="question-author-row">
+                      <div
+                        className="author-avatar-small"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (question.author?.id) {
+                            router.push(`/users/${question.author.id}`)
+                          }
+                        }}
+                      ></div>
+
+                      <div className="question-author-info">
+                        <div className="question-author">
+                          <span
+                            className="question-author-link"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (question.author?.id) {
+                                router.push(`/users/${question.author.id}`)
+                              }
+                            }}
+                          >
+                            {question.author?.name || '익명'}
+                          </span>
+                          {question.author && (question.author.visaType || question.author.yearsInKorea) && (
+                            <span className={`author-verification-box ${question.author.role === 'verified' || question.author.role === 'admin' ? 'verified' : ''}`}>
+                              <span className="verification-text">
+                                {question.author.visaType || ''}
+                                {question.author.yearsInKorea ? `, 한국 ${question.author.yearsInKorea}년차` : ''}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="question-time-row">
+                          <div className="question-time">
+                            {formatDate(question.created_at)}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* More Button */}
+                  <button
+                    className="question-more-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/questions/${question.id}`)
+                    }}
+                    aria-label="게시글 상세 보기"
+                  >
+                    자세히
+                  </button>
+                </div>
+
+                <h3 className="question-title">{question.title}</h3>
+                <p className="question-content">
+                  {question.content?.length > 200 ? question.content.substring(0, 200) + '...' : question.content}
+                </p>
+
+                <div className="question-stats">
+                  <div className="question-stats-comments">
+                    <span className="answer-expert-icon">🎓</span>
+                    <span>
+                      {question.answer_count === 0 ? (
+                        <span>아직 답변이 없어요</span>
+                      ) : (
+                        <><strong>{question.answer_count}명</strong>이 답변했어요</>
+                      )}
+                    </span>
+                  </div>
                   {question.status === 'resolved' && (
-                    <div className="ml-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        ✓ 해결됨
-                      </span>
-                    </div>
+                    <span className="status-badge status-badge-resolved">
+                      ✓ 해결됨
+                    </span>
                   )}
+                </div>
+
+                {/* ActionBar */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ActionBar
+                    targetId={question.id}
+                    targetType="question"
+                    title={question.title}
+                    content={question.content}
+                    url={`/questions/${question.id}`}
+                    initialHelpfulCount={question.votes || 0}
+                    compact={true}
+                    requireLogin={!isLoggedIn}
+                    onLoginRequired={() => {
+                      router.push(`/auth/login?redirectTo=/categories/${slug}`)
+                    }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         )}
-      </main>
-    </div>
+        </div>
+
+        {/* Sidebar */}
+        <Sidebar showContent={false} />
+      </div>
+    </main>
   )
 }

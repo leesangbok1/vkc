@@ -281,7 +281,7 @@ export default function NotificationsPage() {
         </div>
 
         {/* Sidebar */}
-        <Sidebar />
+        <Sidebar showContent={false} />
       </div>
     </main>
   )

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import EmailCollectionModal from '@/components/modals/EmailCollectionModal'
+import NotificationSetupModal from '@/components/modals/NotificationSetupModal'
 import { CATEGORIES } from '@/lib/data/categories-mock'
 
 export default function NewQuestionPage() {
@@ -48,7 +48,14 @@ export default function NewQuestionPage() {
   const [content, setContent] = useState('')
   const [categoryId, setCategoryId] = useState('1') // 기본값: 첫 번째 카테고리
   const [submitting, setSubmitting] = useState(false)
-  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [showNotificationModal, setShowNotificationModal] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+
+  // 사용자 이메일 로드
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('mock_user') || '{}')
+    setUserEmail(user.email || '')
+  }, [])
 
   // 문자 카운터 업데이트
   const updateCharCounter = (current: number, max: number) => {
@@ -58,24 +65,15 @@ export default function NewQuestionPage() {
   // 폼 유효성 검사
   const isValid = title.trim().length >= 5 && content.trim().length >= 10
 
-  // 3일간 보지 않기 체크
-  const shouldShowEmailModal = () => {
-    const skipUntil = localStorage.getItem('vietkconnect_email_modal_skip_until')
-    if (skipUntil) {
-      const skipDate = new Date(skipUntil)
-      const now = new Date()
-      if (now < skipDate) {
-        return false // 아직 3일 기간 중
-      }
+  // 알림 설정 완료 여부 체크
+  const shouldShowNotificationModal = () => {
+    const notifSettings = localStorage.getItem('notification_settings')
+    if (!notifSettings) {
+      return true // 알림 설정 안 함 → 모달 표시
     }
 
-    // 이미 이메일을 등록했는지 체크
-    const hasEmail = localStorage.getItem('vietkconnect_user_email')
-    if (hasEmail) {
-      return false
-    }
-
-    return true
+    const settings = JSON.parse(notifSettings)
+    return !settings.setup_completed // setup_completed가 false면 모달 표시
   }
 
   // 제출 핸들러
@@ -110,9 +108,9 @@ export default function NewQuestionPage() {
       if (response.ok) {
         const data = await response.json()
 
-        // 질문 등록 성공 후 이메일 모달 표시 여부 확인
-        if (shouldShowEmailModal()) {
-          setShowEmailModal(true)
+        // 질문 등록 성공 후 알림 설정 모달 표시 여부 확인
+        if (shouldShowNotificationModal()) {
+          setShowNotificationModal(true)
         } else {
           alert('질문이 성공적으로 등록되었습니다!')
           router.push(`/questions/${data.id}`)
@@ -128,27 +126,16 @@ export default function NewQuestionPage() {
     }
   }
 
-  // 이메일 제출 핸들러
-  const handleEmailSubmit = async (email: string) => {
-    console.log('📧 이메일 등록:', email)
-
-    // localStorage에 이메일 저장
-    localStorage.setItem('vietkconnect_user_email', email)
-
-    // TODO: 실제 서버에 이메일 저장 API 호출
-    // await fetch('/api/users/email', {
-    //   method: 'POST',
-    //   body: JSON.stringify({ email })
-    // })
-
-    setShowEmailModal(false)
-    alert('질문이 성공적으로 등록되었습니다!\n답변 알림을 이메일로 받으실 수 있습니다.')
+  // 알림 설정 완료 핸들러
+  const handleNotificationComplete = () => {
+    setShowNotificationModal(false)
+    alert('질문이 성공적으로 등록되었습니다!\n답변 알림을 받으실 수 있습니다.')
     router.push('/questions')
   }
 
-  // 모달 닫기 핸들러
-  const handleModalClose = () => {
-    setShowEmailModal(false)
+  // 모달 닫기 핸들러 (나중에 설정)
+  const handleNotificationClose = () => {
+    setShowNotificationModal(false)
     alert('질문이 성공적으로 등록되었습니다!')
     router.push('/questions')
   }
@@ -299,7 +286,7 @@ export default function NewQuestionPage() {
             <ul className="question-tips-list">
               <li>제목은 간단명료하게, 내용에서 구체적인 상황을 설명해주세요</li>
               <li>개인정보는 포함하지 말고, 일반적인 상황으로 질문해주세요</li>
-              <li>관련된 토픽을 선택하면 해당 분야 Certified Users가 답변해드려요</li>
+              <li>관련된 토픽을 선택하면 해당 분야 Certified User가 답변해드려요</li>
               <li>이전에 시도해본 방법이나 참고한 자료가 있다면 함께 적어주세요</li>
               <li>예의를 지켜주시면 더 많은 도움을 받을 수 있어요</li>
             </ul>
@@ -307,11 +294,12 @@ export default function NewQuestionPage() {
         </div>
       </div>
 
-      {/* Email Collection Modal */}
-      <EmailCollectionModal
-        isOpen={showEmailModal}
-        onClose={handleModalClose}
-        onSubmit={handleEmailSubmit}
+      {/* Notification Setup Modal */}
+      <NotificationSetupModal
+        isOpen={showNotificationModal}
+        onClose={handleNotificationClose}
+        onComplete={handleNotificationComplete}
+        userEmail={userEmail}
       />
     </main>
   )

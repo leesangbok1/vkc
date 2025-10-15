@@ -12,16 +12,20 @@ export interface FollowedUser {
   followed_at: string
 }
 
-export interface FollowedTopic {
+export interface SubscribedTopic {
   id: number
   name: string
   slug: string
   icon: string
-  followed_at: string
+  subscribed_at: string
 }
 
+// Legacy type for backward compatibility
+export type FollowedTopic = SubscribedTopic
+
 const FOLLOWED_USERS_KEY = 'vietkconnect_followed_users'
-const FOLLOWED_TOPICS_KEY = 'vietkconnect_followed_topics'
+const SUBSCRIBED_TOPICS_KEY = 'vietkconnect_subscribed_topics'
+const LEGACY_FOLLOWED_TOPICS_KEY = 'vietkconnect_followed_topics' // For migration
 
 // User Following Functions
 export function getFollowedUsers(): FollowedUser[] {
@@ -92,71 +96,115 @@ export function toggleFollowUser(user: Omit<FollowedUser, 'followed_at'>): { suc
   }
 }
 
-// Topic Following Functions
-export function getFollowedTopics(): FollowedTopic[] {
+// Topic Subscription Functions
+export function getSubscribedTopics(): SubscribedTopic[] {
   try {
-    const followedStr = localStorage.getItem(FOLLOWED_TOPICS_KEY)
-    return followedStr ? JSON.parse(followedStr) : []
+    // Try new key first
+    let subscribedStr = localStorage.getItem(SUBSCRIBED_TOPICS_KEY)
+
+    // Migration: Check legacy key if new key doesn't exist
+    if (!subscribedStr) {
+      const legacyStr = localStorage.getItem(LEGACY_FOLLOWED_TOPICS_KEY)
+      if (legacyStr) {
+        const legacyTopics = JSON.parse(legacyStr)
+        // Migrate followed_at to subscribed_at
+        const migratedTopics = legacyTopics.map((topic: any) => ({
+          ...topic,
+          subscribed_at: topic.followed_at || new Date().toISOString()
+        }))
+        // Save to new key
+        localStorage.setItem(SUBSCRIBED_TOPICS_KEY, JSON.stringify(migratedTopics))
+        // Remove legacy key
+        localStorage.removeItem(LEGACY_FOLLOWED_TOPICS_KEY)
+        return migratedTopics
+      }
+      return []
+    }
+
+    return JSON.parse(subscribedStr)
   } catch (error) {
-    console.error('Failed to load followed topics:', error)
+    console.error('Failed to load subscribed topics:', error)
     return []
   }
 }
 
-export function followTopic(topic: Omit<FollowedTopic, 'followed_at'>): boolean {
-  try {
-    const followed = getFollowedTopics()
+// Legacy function for backward compatibility
+export function getFollowedTopics(): SubscribedTopic[] {
+  return getSubscribedTopics()
+}
 
-    // Check if already following
-    const exists = followed.some(t => t.id === topic.id)
+export function subscribeTopic(topic: Omit<SubscribedTopic, 'subscribed_at'>): boolean {
+  try {
+    const subscribed = getSubscribedTopics()
+
+    // Check if already subscribed
+    const exists = subscribed.some(t => t.id === topic.id)
     if (exists) {
       return false
     }
 
-    const newFollow: FollowedTopic = {
+    const newSubscription: SubscribedTopic = {
       ...topic,
-      followed_at: new Date().toISOString()
+      subscribed_at: new Date().toISOString()
     }
 
-    followed.unshift(newFollow)
-    localStorage.setItem(FOLLOWED_TOPICS_KEY, JSON.stringify(followed))
+    subscribed.unshift(newSubscription)
+    localStorage.setItem(SUBSCRIBED_TOPICS_KEY, JSON.stringify(subscribed))
     return true
   } catch (error) {
-    console.error('Failed to follow topic:', error)
+    console.error('Failed to subscribe topic:', error)
     return false
   }
 }
 
-export function unfollowTopic(topicId: number): boolean {
+export function unsubscribeTopic(topicId: number): boolean {
   try {
-    const followed = getFollowedTopics()
-    const filtered = followed.filter(t => t.id !== topicId)
+    const subscribed = getSubscribedTopics()
+    const filtered = subscribed.filter(t => t.id !== topicId)
 
-    if (filtered.length === followed.length) {
+    if (filtered.length === subscribed.length) {
       return false // Nothing was removed
     }
 
-    localStorage.setItem(FOLLOWED_TOPICS_KEY, JSON.stringify(filtered))
+    localStorage.setItem(SUBSCRIBED_TOPICS_KEY, JSON.stringify(filtered))
     return true
   } catch (error) {
-    console.error('Failed to unfollow topic:', error)
+    console.error('Failed to unsubscribe topic:', error)
     return false
   }
 }
 
-export function isFollowingTopic(topicId: number): boolean {
-  const followed = getFollowedTopics()
-  return followed.some(t => t.id === topicId)
+export function isSubscribedToTopic(topicId: number): boolean {
+  const subscribed = getSubscribedTopics()
+  return subscribed.some(t => t.id === topicId)
 }
 
-export function toggleFollowTopic(topic: Omit<FollowedTopic, 'followed_at'>): { success: boolean; isFollowing: boolean } {
-  const currentlyFollowing = isFollowingTopic(topic.id)
+export function toggleSubscribeTopic(topic: Omit<SubscribedTopic, 'subscribed_at'>): { success: boolean; isSubscribed: boolean } {
+  const currentlySubscribed = isSubscribedToTopic(topic.id)
 
-  if (currentlyFollowing) {
-    const success = unfollowTopic(topic.id)
-    return { success, isFollowing: false }
+  if (currentlySubscribed) {
+    const success = unsubscribeTopic(topic.id)
+    return { success, isSubscribed: false }
   } else {
-    const success = followTopic(topic)
-    return { success, isFollowing: true }
+    const success = subscribeTopic(topic)
+    return { success, isSubscribed: true }
   }
+}
+
+// Legacy functions for backward compatibility
+export function followTopic(topic: Omit<SubscribedTopic, 'subscribed_at'>): boolean {
+  return subscribeTopic(topic)
+}
+
+export function unfollowTopic(topicId: number): boolean {
+  return unsubscribeTopic(topicId)
+}
+
+export function isFollowingTopic(topicId: number): boolean {
+  return isSubscribedToTopic(topicId)
+}
+
+export function toggleFollowTopic(topic: Omit<SubscribedTopic, 'subscribed_at'>): { success: boolean; isFollowing: boolean } {
+  const result = toggleSubscribeTopic(topic)
+  return { success: result.success, isFollowing: result.isSubscribed }
 }

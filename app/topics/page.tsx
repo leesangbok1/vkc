@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
-import { getFollowedTopics, toggleFollowTopic } from '@/lib/utils/follow-manager'
+import { getSubscribedTopics, toggleSubscribeTopic } from '@/lib/utils/follow-manager'
 import Sidebar from '@/components/layout/Sidebar'
 import RelatedQuestionsFeed from '@/components/topics/RelatedQuestionsFeed'
 
@@ -137,11 +137,11 @@ export default function TopicsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'following'>('all')
 
-  // Load followed topics from localStorage on mount
+  // Load subscribed topics from localStorage on mount
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      const followedTopics = getFollowedTopics()
-      const followedIds = new Set(followedTopics.map(t => t.id))
+      const subscribedTopics = getSubscribedTopics()
+      const followedIds = new Set(subscribedTopics.map(t => t.id))
 
       setTopics(prev => prev.map(topic => ({
         ...topic,
@@ -160,8 +160,8 @@ export default function TopicsPage() {
     const topic = topics.find(t => t.id === topicId)
     if (!topic) return
 
-    // Toggle follow in localStorage
-    const result = toggleFollowTopic({
+    // Toggle subscribe in localStorage
+    const result = toggleSubscribeTopic({
       id: topic.id,
       name: topic.name,
       slug: topic.slug || topic.name.toLowerCase(),
@@ -185,7 +185,7 @@ export default function TopicsPage() {
 
   const followingCount = topics.filter(t => t.isFollowing).length
 
-  // 팔로우한 토픽 목록 (RelatedQuestionsFeed에 전달)
+  // 구독 중인 토픽 목록 (RelatedQuestionsFeed에 전달)
   const followingTopics = useMemo(
     () => topics.filter(t => t.isFollowing),
     [topics]
@@ -193,6 +193,26 @@ export default function TopicsPage() {
 
   return (
     <main className="main-layout">
+      {/* Mobile Category Grid */}
+      <div className="mobile-category-grid">
+        <a href="/categories/visa" className="mobile-category-item">
+          <div className="mobile-category-icon">💼</div>
+          <div className="mobile-category-label">한국 취업</div>
+        </a>
+        <a href="/categories/visa" className="mobile-category-item">
+          <div className="mobile-category-icon">✈️</div>
+          <div className="mobile-category-label">한국 비자</div>
+        </a>
+        <a href="/categories/life" className="mobile-category-item">
+          <div className="mobile-category-icon">🏠</div>
+          <div className="mobile-category-label">한국 생활</div>
+        </a>
+        <a href="/categories/legal" className="mobile-category-item">
+          <div className="mobile-category-icon">⚖️</div>
+          <div className="mobile-category-label">한국 법률</div>
+        </a>
+      </div>
+
       <div className="container">
         <div className="main-content">
         {/* Page Header */}
@@ -202,7 +222,7 @@ export default function TopicsPage() {
               💖 관심 토픽
             </h1>
             <p className="topics-page-subtitle">
-              관심있는 토픽을 팔로우하면 맞춤형 질문과 답변을 받을 수 있습니다
+              관심있는 토픽을 구독하면 맞춤형 질문과 답변을 받을 수 있습니다
             </p>
           </div>
 
@@ -234,10 +254,17 @@ export default function TopicsPage() {
                 className={`category-tab ${filter === 'following' ? 'active' : ''}`}
                 onClick={() => setFilter('following')}
               >
-                팔로잉 ({followingCount})
+                구독중 ({followingCount})
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="category-tabs">
+          <a href="/" className="category-tab">Popular</a>
+          <a href="/topics" className="category-tab active">Topic</a>
+          <a href="/following" className="category-tab">Following</a>
         </div>
 
         {/* Following Topics Summary - only show if logged in and following topics */}
@@ -246,10 +273,10 @@ export default function TopicsPage() {
             <div className="topics-following-content">
               <div>
                 <h3 className="topics-following-title">
-                  💖 {followingCount}개의 토픽을 팔로우 중입니다
+                  💖 {followingCount}개의 토픽을 구독 중입니다
                 </h3>
                 <p className="topics-following-subtitle">
-                  아래에서 팔로우한 토픽의 최신 질문을 확인하세요
+                  아래에서 구독 중인 토픽의 최신 질문을 확인하세요
                 </p>
               </div>
             </div>
@@ -272,7 +299,7 @@ export default function TopicsPage() {
           </div>
         )}
 
-        {/* Related Questions Feed - 팔로우한 토픽의 최신 질문 (로그인 시에만) */}
+        {/* Related Questions Feed - 구독 중인 토픽의 최신 질문 (로그인 시에만) */}
         {isAuthenticated && followingCount > 0 && (
           <RelatedQuestionsFeed followingTopics={followingTopics} />
         )}
@@ -282,10 +309,10 @@ export default function TopicsPage() {
           <div className="section topics-empty-state">
             <div className="topics-empty-icon">🔍</div>
             <h3 className="topics-empty-title">
-              {searchQuery ? '검색 결과가 없습니다' : filter === 'following' ? '팔로우 중인 토픽이 없습니다' : '토픽이 없습니다'}
+              {searchQuery ? '검색 결과가 없습니다' : filter === 'following' ? '구독 중인 토픽이 없습니다' : '토픽이 없습니다'}
             </h3>
             <p className="topics-empty-description">
-              {searchQuery ? '다른 검색어를 시도해보세요' : filter === 'following' ? '관심있는 토픽을 팔로우해보세요' : ''}
+              {searchQuery ? '다른 검색어를 시도해보세요' : filter === 'following' ? '관심있는 토픽을 구독해보세요' : ''}
             </p>
           </div>
         ) : (
@@ -321,7 +348,7 @@ export default function TopicsPage() {
                     className={`btn ${topic.isFollowing ? 'btn-primary' : 'btn-secondary'} topic-action-btn`}
                     onClick={() => toggleFollow(topic.id)}
                   >
-                    {topic.isFollowing ? '✓ 팔로잉' : '+ 팔로우'}
+                    {topic.isFollowing ? '✓ 구독중' : '+ 구독'}
                   </button>
                   <Link href={`/categories/${topic.name.toLowerCase()}`} className="topic-action-link">
                     <button className="btn btn-secondary topic-action-btn-full">
@@ -336,7 +363,7 @@ export default function TopicsPage() {
         </div>
 
         {/* Sidebar */}
-        <Sidebar />
+        <Sidebar showContent={false} />
       </div>
     </main>
   )

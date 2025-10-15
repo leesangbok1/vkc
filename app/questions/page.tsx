@@ -1,35 +1,35 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import TopicSelectionModal from '@/components/modals/TopicSelectionModal'
 import Sidebar from '@/components/layout/Sidebar'
+import ActionBar from '@/components/common/ActionBar'
 import { MOCK_QUESTIONS, type Question } from '@/lib/data/mockData'
-import { questionMatchesTopics } from '@/lib/data/topic-category-mapping'
+import { getSubscribedTopics } from '@/lib/utils/follow-manager'
 
 export default function QuestionsPage() {
-  const [activeTab, setActiveTab] = useState<'popular' | 'interest' | 'answers'>('popular')
-  const [filter, setFilter] = useState<'all' | 'first-answer'>('all')
+  const [filter, setFilter] = useState<'all' | 'latest' | 'myTopics'>('all')
   const [questions, setQuestions] = useState<Question[]>(MOCK_QUESTIONS)
   const [loading, setLoading] = useState(false)
-  const [showTopicModal, setShowTopicModal] = useState(false)
-  const [followedUsers, setFollowedUsers] = useState<string[]>([])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+  const [subscribedTopics, setSubscribedTopics] = useState<any[]>([])
 
-  // localStorage에서 팔로우 목록 로드
+  // localStorage에서 로그인 상태와 구독 토픽 로드
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('followed_users')
-      setFollowedUsers(stored ? JSON.parse(stored) : [])
-
       const mockSession = localStorage.getItem('mock_session')
       setIsLoggedIn(mockSession === 'true')
+
+      // Load subscribed topics
+      if (mockSession === 'true') {
+        const topics = getSubscribedTopics()
+        setSubscribedTopics(topics)
+      }
     }
   }, [])
 
   useEffect(() => {
     loadQuestions()
-  }, [activeTab, filter, selectedTopics])
+  }, [filter])
 
   async function loadQuestions() {
     try {
@@ -49,19 +49,44 @@ export default function QuestionsPage() {
     }
   }
 
-  // Filter questions by selected topics
-  const filteredQuestions = questions.filter(question => {
-    // If no topics selected, show all
-    if (selectedTopics.length === 0) return true
+  // Filter and sort questions
+  const filteredQuestions = questions
+    .filter(q => {
+      // My Topics filter - show only questions from subscribed topics
+      if (filter === 'myTopics') {
+        if (!isLoggedIn || subscribedTopics.length === 0) {
+          return false
+        }
 
-    // Filter by category if question has category field
-    if (question.category) {
-      return questionMatchesTopics(question.category, selectedTopics)
-    }
+        // Check if question's topic matches any subscribed topic
+        // subscribedTopics array has objects with {id, name, slug, icon}
+        // questions have topic field with slug value
+        const subscribedSlugs = subscribedTopics.map(t => t.slug)
 
-    // Fallback: show all if no category
-    return true
-  })
+        // Match question topic with subscribed topics
+        if (q.topic && subscribedSlugs.includes(q.topic)) {
+          return true
+        }
+
+        // Also match by category name if no specific topic
+        const subscribedNames = subscribedTopics.map(t => t.name)
+        if (subscribedNames.includes(q.category)) {
+          return true
+        }
+
+        return false
+      }
+      return true
+    })
+    .sort((a, b) => {
+      if (filter === 'latest') {
+        // Latest first (newest to oldest)
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      } else {
+        // All (popular): sort by votes
+        return b.votes - a.votes
+      }
+    })
 
   function formatDate(dateString: string) {
     if (!dateString) return '방금 전'
@@ -80,261 +105,234 @@ export default function QuestionsPage() {
 
   return (
     <main className="main-layout">
+      {/* Mobile Category Grid (Mobile Only) */}
+      <div className="mobile-category-grid">
+        <a href="/categories/visa" className="mobile-category-item">
+          <div className="mobile-category-icon">💼</div>
+          <div className="mobile-category-label">한국 취업</div>
+        </a>
+        <a href="/categories/visa" className="mobile-category-item">
+          <div className="mobile-category-icon">✈️</div>
+          <div className="mobile-category-label">한국 비자</div>
+        </a>
+        <a href="/categories/life" className="mobile-category-item">
+          <div className="mobile-category-icon">🏠</div>
+          <div className="mobile-category-label">한국 생활</div>
+        </a>
+        <a href="/categories/legal" className="mobile-category-item">
+          <div className="mobile-category-icon">⚖️</div>
+          <div className="mobile-category-label">한국 법률</div>
+        </a>
+      </div>
+
       <div className="container">
+        {/* Main Content Area */}
         <div className="main-content">
-          {/* 탭 네비게이션 */}
-          <div className="tab-navigation">
-            <button
-              className={`tab ${activeTab === 'popular' ? 'active' : ''}`}
-              onClick={() => setActiveTab('popular')}
-            >
-              인기
-            </button>
-            <button
-              className={`tab ${activeTab === 'interest' ? 'active' : ''}`}
-              onClick={() => setActiveTab('interest')}
-            >
-              관심
-            </button>
-            <button
-              className={`tab ${activeTab === 'answers' ? 'active' : ''}`}
-              onClick={() => setActiveTab('answers')}
-            >
-              답변
-            </button>
-          </div>
-
-          {/* 필터 바 */}
-          <div className="filter-bar">
-            <div className="filter-buttons">
-              <button
-                className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-                onClick={() => setFilter('all')}
-              >
-                전체 ▼
-              </button>
-              <button
-                className={`filter-btn ${filter === 'first-answer' ? 'active' : ''}`}
-                onClick={() => setFilter('first-answer')}
-              >
-                👍 첫 답변 받기
-              </button>
-            </div>
-
-            <button
-              className="topic-trigger-btn"
-              onClick={() => setShowTopicModal(true)}
-            >
-              {selectedTopics.length > 0
-                ? `선택된 토픽 (${selectedTopics.length})`
-                : '누구나 토픽 전체'}
-            </button>
-          </div>
-
-          {/* 이벤트 배너 */}
-          <a href="/events/beta" className="event-banner">
-            <div className="event-banner-content">
-              <div className="event-banner-title">답변 작성 챌린지 이벤트</div>
-              <div className="event-banner-subtitle">
-                미션 달성하고 혜택을 받아보세요! 9월 15일 ~ 10월 31일
+          {/* Desktop Hero Section */}
+          {!isLoggedIn && (
+            // 로그인 전: 플랫폼 가치 강조
+            <div className="desktop-hero">
+              <div className="hero-badge">
+                <span>🛡️</span>
+                <span>검증된 선경험자의 진짜 답변</span>
+              </div>
+              <h1 className="hero-title">
+                비자, 유학, 취업 등 한국생활 관련 질문을<br />
+                실제 경험으로 인증받은 Certified User가 답변합니다
+              </h1>
+              <div className="hero-actions">
+                <button
+                  className="hero-btn-primary"
+                  onClick={() => window.location.href = '/auth/login'}
+                >
+                  🚀 Google로 시작하기
+                </button>
               </div>
             </div>
-            <div className="event-banner-icons">
-              <span>💬</span>
-              <span>🎁</span>
-            </div>
-          </a>
+          )}
 
-          {/* 질문 목록 */}
-          <div className="questions-list">
+          {/* Categories Tabs */}
+          <div className="category-tabs">
+            <a href="/" className={`category-tab ${filter !== 'myTopics' ? 'active' : ''}`}>Popular</a>
+            <button
+              className={`category-tab ${filter === 'myTopics' ? 'active' : ''}`}
+              onClick={() => {
+                if (!isLoggedIn) {
+                  window.location.href = '/auth/login?redirectTo=/questions'
+                  return
+                }
+                setFilter('myTopics')
+              }}
+            >
+              My Topic
+            </button>
+            <a href="/following" className="category-tab">Following</a>
+          </div>
+
+          {/* Filter Buttons - Separate Group */}
+          <div className="filter-buttons">
+            <button
+              className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+              onClick={() => setFilter('all')}
+            >
+              전체
+            </button>
+            <button
+              className={`filter-btn ${filter === 'latest' ? 'active' : ''}`}
+              onClick={() => setFilter('latest')}
+            >
+              최신
+            </button>
+          </div>
+
+          {/* Questions Feed */}
+          <div className="feed-container">
             {loading && (
-              <div className="loading-state">
+              <div className="feed-loading">
                 로딩 중...
               </div>
             )}
 
             {!loading && filteredQuestions.length === 0 && (
-              <div className="empty-state">
-                <div className="empty-icon">📝</div>
+              <div className="feed-empty">
+                <div className="feed-empty-icon">📝</div>
                 <h3>아직 질문이 없습니다</h3>
                 <p>첫 번째 질문을 작성해보세요!</p>
-                <a href="/questions/new" className="btn-primary">질문 작성하기</a>
+                <a href="/questions/new" className="btn-primary feed-empty-link">질문 작성하기</a>
               </div>
             )}
 
             {!loading && filteredQuestions.map((question) => {
-              // Safe author access with fallback
               const author = question.author || { id: 'unknown', name: '익명', role: 'user' }
 
-              return (<div
-                key={question.id}
-                className="question-card"
-                onClick={() => window.location.href = `/questions/${question.id}`}
-              >
-                <div className="question-card-header">
-                  {/* 작성자 정보 with 프로필 아바타 */}
-                  <div className="question-meta">
-                    <div className="question-author-row">
-                      {/* 프로필 아바타 */}
-                      <div
-                        className="author-avatar-small"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (author.id !== 'unknown') {
-                            window.location.href = `/users/${author.id}`
-                          }
-                        }}
-                      ></div>
+              return (
+                <div
+                  key={question.id}
+                  className="question-card"
+                  onClick={() => window.location.href = `/questions/${question.id}`}
+                >
+                  <div className="question-header">
+                    {/* 작성자 정보 with 프로필 아바타 */}
+                    <div className="question-meta">
+                      <div className="question-author-row">
+                        {/* 프로필 아바타 */}
+                        <div
+                          className="author-avatar-small"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (author.id !== 'unknown') {
+                              window.location.href = `/users/${author.id}`
+                            }
+                          }}
+                        ></div>
 
-                      {/* 작성자 정보 */}
-                      <div className="question-author-info">
-                        <div className="question-author">
-                          <span
-                            className="question-author-link"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (author.id !== 'unknown') {
-                                window.location.href = `/users/${author.id}`
-                              }
-                            }}
-                          >
-                            {author.name}
-                          </span>
-                          {/* 인증 정보 박스 */}
-                          {(author.visaType || author.yearsInKorea) && (
-                            <span className={`author-verification-box ${author.role === 'verified' || author.role === 'admin' ? 'verified' : ''}`}>
-                              <span className="verification-text">
-                                {author.visaType || ''}
-                                {author.yearsInKorea ? `, 한국 ${author.yearsInKorea}년차` : ''}
-                              </span>
+                        {/* 작성자 정보 */}
+                        <div className="question-author-info">
+                          <div className="question-author">
+                            <span
+                              className="question-author-link"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (author.id !== 'unknown') {
+                                  window.location.href = `/users/${author.id}`
+                                }
+                              }}
+                            >
+                              {author.name}
                             </span>
-                          )}
-                        </div>
-                        <div className="question-time-row">
-                          <div className="question-time">
-                            {formatDate(question.createdAt)}
+                            {/* 인증 정보 박스: 정보가 있을 때만 표시 */}
+                            {(author.visaType || author.yearsInKorea) && (
+                              <span className={`author-verification-box ${author.role === 'verified' || author.role === 'admin' ? 'verified' : ''}`}>
+                                <span className="verification-text">
+                                  {author.visaType || ''}
+                                  {author.yearsInKorea ? `, 한국 ${author.yearsInKorea}년차` : ''}
+                                </span>
+                              </span>
+                            )}
                           </div>
-                          {/* Follow 버튼 */}
-                          {author.id !== 'unknown' && (
-                          <button
-                            className={`follow-btn-compact ${followedUsers.includes(author.id) ? 'following' : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (!isLoggedIn) {
-                                window.location.href = `/auth/login?redirectTo=/questions`
-                                return
-                              }
-
-                              const isFollowing = followedUsers.includes(author.id)
-                              if (isFollowing) {
-                                const updated = followedUsers.filter((id: string) => id !== author.id)
-                                localStorage.setItem('followed_users', JSON.stringify(updated))
-                                setFollowedUsers(updated)
-                                alert(`${author.name}님을 언팔로우했습니다`)
-                              } else {
-                                const updated = [...followedUsers, author.id]
-                                localStorage.setItem('followed_users', JSON.stringify(updated))
-                                setFollowedUsers(updated)
-                                alert(`${author.name}님을 팔로우했습니다`)
-                              }
-                            }}
-                          >
-                            {followedUsers.includes(author.id) ? 'Following' : 'Follow'}
-                          </button>
-                          )}
+                          <div className="question-time-row">
+                            <div className="question-time">
+                              {formatDate(question.createdAt)}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* 더보기 버튼 */}
-                  <button
-                    className="question-more-btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      window.location.href = `/questions/${question.id}`
-                    }}
-                    aria-label="게시글 상세 보기"
-                  >
-                    자세히
-                  </button>
-                </div>
-
-                <h3 className="question-title">{question.title}</h3>
-                <p className="question-content">
-                  {question.content.length > 200 ? question.content.substring(0, 200) + '...' : question.content}
-                </p>
-
-                <div className="question-stats">
-                  <div className="question-stats-actions">
+                    {/* 더보기 버튼 (오른쪽 상단) */}
                     <button
-                      className="vote-btn"
+                      className="question-more-btn"
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (!isLoggedIn) {
-                          window.location.href = `/auth/login?redirectTo=/questions`
-                          return
-                        }
-                        alert('투표 기능 구현 예정')
+                        window.location.href = `/questions/${question.id}`
                       }}
+                      aria-label="게시글 상세 보기"
                     >
-                      👍 <span>{question.votes}</span>
+                      자세히
                     </button>
-                    <button
-                      className="vote-btn"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (!isLoggedIn) {
-                          window.location.href = `/auth/login?redirectTo=/questions`
-                          return
-                        }
-                        alert('투표 기능 구현 예정')
-                      }}
-                    >
-                      👎
-                    </button>
-                    <span className="view-count">
-                      👁️ <span>{question.views}</span>
-                    </span>
                   </div>
-                  <div className="question-stats-comments">
-                    <span className="answer-expert-icon">🎓</span>
-                    <span>
-                      {(() => {
-                        const totalCount = question.answerCount
-                        const expertCount = Math.max(1, Math.floor(totalCount * 0.4))
-                        const othersCount = totalCount - expertCount
 
-                        if (totalCount === 0) {
-                          return <span>아직 답변이 없어요</span>
-                        }
+                  <h3 className="question-title">{question.title}</h3>
+                  <p className="question-content">
+                    {question.content.length > 200 ? question.content.substring(0, 200) + '...' : question.content}
+                  </p>
 
-                        if (expertCount > 0 && othersCount > 0) {
+                  <div className="question-stats">
+                    <div className="question-stats-comments">
+                      <span className="answer-expert-icon">🎓</span>
+                      <span>
+                        {(() => {
+                          const totalCount = question.answerCount
+                          const expertCount = Math.max(1, Math.floor(totalCount * 0.4))
+                          const othersCount = totalCount - expertCount
+
+                          if (totalCount === 0) {
+                            return <span>아직 답변이 없어요</span>
+                          }
+
+                          if (expertCount > 0 && othersCount > 0) {
+                            return (
+                              <>
+                                <strong className="expert-highlight">Certified User {expertCount}명</strong> 외 <strong>{othersCount}명</strong>이 답변했어요
+                              </>
+                            )
+                          }
+
+                          if (expertCount > 0) {
+                            return (
+                              <>
+                                <strong className="expert-highlight">Certified User {expertCount}명</strong>이 답변했어요
+                              </>
+                            )
+                          }
+
                           return (
                             <>
-                              <strong className="expert-highlight">Certified {expertCount}명</strong> 외 <strong>{othersCount}명</strong>이 답변했어요
+                              <strong>{totalCount}명</strong>이 답변했어요
                             </>
                           )
-                        }
+                        })()}
+                      </span>
+                    </div>
+                  </div>
 
-                        if (expertCount > 0) {
-                          return (
-                            <>
-                              <strong className="expert-highlight">Certified {expertCount}명</strong>이 답변했어요
-                            </>
-                          )
-                        }
-
-                        return (
-                          <>
-                            <strong>{totalCount}명</strong>이 답변했어요
-                          </>
-                        )
-                      })()}
-                    </span>
+                  {/* ActionBar: 도움됨/북마크/공유 버튼 */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <ActionBar
+                      targetId={question.id}
+                      targetType="question"
+                      title={question.title}
+                      content={question.content}
+                      url={`/questions/${question.id}`}
+                      initialHelpfulCount={question.votes}
+                      compact={true}
+                      requireLogin={!isLoggedIn}
+                      onLoginRequired={() => {
+                        window.location.href = `/auth/login?redirectTo=/questions`
+                      }}
+                    />
                   </div>
                 </div>
-              </div>
               )
             })}
           </div>
@@ -343,18 +341,6 @@ export default function QuestionsPage() {
         {/* Sidebar */}
         <Sidebar />
       </div>
-
-      {/* 토픽 선택 모달 */}
-      <TopicSelectionModal
-        isOpen={showTopicModal}
-        onClose={() => setShowTopicModal(false)}
-        onConfirm={(topics) => {
-          console.log('Selected topics:', topics)
-          setSelectedTopics(topics)
-          // Auto-close modal after selection
-          setShowTopicModal(false)
-        }}
-      />
     </main>
   )
 }

@@ -30,14 +30,27 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
     }
   }
 
+  const handleKakaoShare = () => {
+    // 카카오톡 공유 - 웹 공유 API 사용 또는 URL 스키마
+    const kakaoUrl = `https://sharer.kakao.com/talk/friends/picker/link?app_key=YOUR_APP_KEY&validation_action=share&validation_params={"link_ver":"4.0","template_object":{"object_type":"feed","content":{"title":"${encodeURIComponent(title)}","link":{"web_url":"${fullUrl}"}}}}`
+
+    // 모바일에서는 카카오톡 앱으로, 웹에서는 공유 페이지로
+    if (typeof window !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      // 모바일: 카카오톡 앱 실행
+      window.location.href = `kakaotalk://share?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(title)}`
+    } else {
+      // 웹: 클립보드 복사 후 안내
+      handleCopyLink()
+      alert('링크가 복사되었습니다. 카카오톡에서 붙여넣기 해주세요.')
+    }
+    setShowModal(false)
+  }
+
   const shareOptions = [
     {
       name: 'KakaoTalk',
       icon: '💬',
-      action: () => {
-        alert('카카오톡 공유 기능은 곧 추가됩니다')
-        setShowModal(false)
-      }
+      action: handleKakaoShare
     },
     {
       name: 'Facebook',
@@ -71,6 +84,20 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
         <button
           className="action-btn"
           onClick={() => setShowModal(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            padding: '0.25rem 0.5rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            background: 'white',
+            color: '#6b7280',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            fontWeight: 400,
+            transition: 'all 0.2s'
+          }}
         >
           <span>📤</span>
           <span>공유</span>

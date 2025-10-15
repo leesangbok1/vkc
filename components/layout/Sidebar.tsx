@@ -9,10 +9,14 @@ import { useState, useEffect } from 'react'
  * - Certified User 인증 광고 배너
  * - 최근 기사/소식
  *
+ * Props:
+ * @param showContent - true: 질문/답변 페이지 (배너+뉴스), false: 기타 페이지 (빈 사이드바)
+ *
  * 사용법:
- * <Sidebar />
+ * <Sidebar showContent={true} />  // 메인, 질문 페이지
+ * <Sidebar showContent={false} /> // 설정, 알림 등
  */
-export default function Sidebar() {
+export default function Sidebar({ showContent = true }: { showContent?: boolean }) {
   const [currentTime, setCurrentTime] = useState('')
 
   useEffect(() => {
@@ -29,6 +33,11 @@ export default function Sidebar() {
 
     return () => clearInterval(interval) // cleanup
   }, [])
+
+  // 빈 사이드바 (질문/답변 페이지가 아닌 경우)
+  if (!showContent) {
+    return <div className="sidebar sidebar-sticky"></div>
+  }
 
   return (
     <div className="sidebar sidebar-sticky">
@@ -47,7 +56,7 @@ export default function Sidebar() {
             <li>24시간 내 관리자 심사 완료</li>
             <li>프로필에 <strong>인증 뱃지</strong> 표시</li>
           </ul>
-          <a href="/experts/apply" className="banner-action-btn">Certified 인증 신청하기</a>
+          <a href="/experts/apply" className="banner-action-btn">Certified User 인증 신청하기</a>
         </div>
       </div>
 

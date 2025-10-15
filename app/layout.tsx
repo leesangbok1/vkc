@@ -1,5 +1,6 @@
 import './globals.css'
 import Header from '@/components/layout/Header'
+import ChatbotButton from '@/components/chatbot/ChatbotButton'
 
 export default function RootLayout({
   children,
@@ -13,6 +14,7 @@ export default function RootLayout({
         <main className="app-main-content">
           {children}
         </main>
+        <ChatbotButton />
       </body>
     </html>
   )

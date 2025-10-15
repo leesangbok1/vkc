@@ -3,6 +3,336 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { MOCK_BANNERS } from '@/lib/data/mockData'
+
+// Banner Management Component
+function BannerManagementContent() {
+  const [banners, setBanners] = useState(MOCK_BANNERS)
+  const [editingBanner, setEditingBanner] = useState<any>(null)
+  const [showModal, setShowModal] = useState(false)
+
+  useEffect(() => {
+    // Load banner overrides from localStorage if any
+    const overrides = localStorage.getItem('banner_overrides')
+    if (overrides) {
+      try {
+        const parsed = JSON.parse(overrides)
+        // Merge overrides with MOCK_BANNERS
+        const merged = MOCK_BANNERS.map(banner => {
+          const override = parsed.find((o: any) => o.id === banner.id)
+          return override || banner
+        })
+        setBanners(merged)
+      } catch (error) {
+        console.error('Failed to load banner overrides:', error)
+      }
+    }
+  }, [])
+
+  function handleEdit(banner: any) {
+    setEditingBanner({ ...banner })
+    setShowModal(true)
+  }
+
+  function handleSave() {
+    if (!editingBanner) return
+
+    // Update banners state
+    const updatedBanners = banners.map(b =>
+      b.id === editingBanner.id ? editingBanner : b
+    )
+    setBanners(updatedBanners)
+
+    // Save to localStorage
+    localStorage.setItem('banner_overrides', JSON.stringify(updatedBanners))
+
+    setShowModal(false)
+    setEditingBanner(null)
+  }
+
+  function handleResetAll() {
+    if (confirm('모든 배너를 기본값으로 초기화하시겠습니까?')) {
+      localStorage.removeItem('banner_overrides')
+      setBanners(MOCK_BANNERS)
+    }
+  }
+
+  return (
+    <>
+      {/* Banner List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {banners.map((banner) => (
+          <div
+            key={banner.id}
+            style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              background: 'white'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <div style={{
+                  fontSize: '0.875rem',
+                  color: '#6b7280',
+                  fontWeight: '600',
+                  marginBottom: '0.5rem'
+                }}>
+                  Banner ID: {banner.id}
+                </div>
+                <h3 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: '700',
+                  color: '#111827',
+                  marginBottom: '0.5rem'
+                }}>
+                  {banner.title}
+                </h3>
+                <p style={{
+                  color: '#6b7280',
+                  fontSize: '0.938rem',
+                  marginBottom: '0.75rem'
+                }}>
+                  {banner.description}
+                </p>
+                <div style={{
+                  display: 'flex',
+                  gap: '1rem',
+                  fontSize: '0.875rem',
+                  color: '#374151'
+                }}>
+                  <div>
+                    <strong>링크:</strong> {banner.linkUrl}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleEdit(banner)}
+                style={{
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem'
+                }}
+              >
+                편집
+              </button>
+            </div>
+
+            {/* Banner Preview */}
+            <div style={{
+              background: banner.backgroundColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              padding: '1.5rem',
+              borderRadius: '8px',
+              color: 'white'
+            }}>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                {banner.title}
+              </h4>
+              <p style={{ fontSize: '0.9rem', opacity: 0.95 }}>
+                {banner.description}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Reset Button */}
+      <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+        <button
+          onClick={handleResetAll}
+          style={{
+            background: '#6b7280',
+            color: 'white',
+            border: 'none',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          모든 배너 기본값으로 초기화
+        </button>
+      </div>
+
+      {/* Edit Modal */}
+      {showModal && editingBanner && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '2rem',
+            maxWidth: '600px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              marginBottom: '1.5rem',
+              color: '#111827'
+            }}>
+              배너 편집
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
+                  제목
+                </label>
+                <input
+                  type="text"
+                  value={editingBanner.title}
+                  onChange={(e) => setEditingBanner({ ...editingBanner, title: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.938rem'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
+                  설명
+                </label>
+                <textarea
+                  value={editingBanner.description}
+                  onChange={(e) => setEditingBanner({ ...editingBanner, description: e.target.value })}
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.938rem',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
+                  링크 URL
+                </label>
+                <input
+                  type="text"
+                  value={editingBanner.linkUrl}
+                  onChange={(e) => setEditingBanner({ ...editingBanner, linkUrl: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.938rem'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
+                  배경 색상 (CSS Gradient)
+                </label>
+                <input
+                  type="text"
+                  value={editingBanner.backgroundColor || ''}
+                  onChange={(e) => setEditingBanner({ ...editingBanner, backgroundColor: e.target.value })}
+                  placeholder="예: linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.938rem'
+                  }}
+                />
+              </div>
+
+              {/* Preview */}
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
+                  미리보기
+                </label>
+                <div style={{
+                  background: editingBanner.backgroundColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  padding: '1.5rem',
+                  borderRadius: '8px',
+                  color: 'white'
+                }}>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                    {editingBanner.title}
+                  </h4>
+                  <p style={{ fontSize: '0.9rem', opacity: 0.95 }}>
+                    {editingBanner.description}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '1rem',
+              marginTop: '1.5rem',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => {
+                  setShowModal(false)
+                  setEditingBanner(null)
+                }}
+                style={{
+                  background: '#e5e7eb',
+                  color: '#374151',
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSave}
+                style={{
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -99,6 +429,13 @@ export default function AdminDashboard() {
           <span className="admin-tab-icon">💾</span>
           데이터 관리
         </button>
+        <button
+          className={`admin-tab ${activeTab === 'banners' ? 'admin-tab-active' : ''}`}
+          onClick={() => setActiveTab('banners')}
+        >
+          <span className="admin-tab-icon">📢</span>
+          배너 관리
+        </button>
       </div>
 
       {/* Content */}
@@ -148,33 +485,6 @@ export default function AdminDashboard() {
                   <div className="admin-stat-change admin-stat-change-warning">
                     검토 필요
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* User Role Distribution */}
-            <div className="admin-section">
-              <h2 className="admin-section-title">사용자 역할별 분포</h2>
-              <div className="admin-role-grid">
-                <div className="admin-role-card admin-role-card-gray">
-                  <div className="admin-role-icon">🔒</div>
-                  <div className="admin-role-value">1,420</div>
-                  <div className="admin-role-label">게스트</div>
-                </div>
-                <div className="admin-role-card admin-role-card-blue">
-                  <div className="admin-role-icon">👤</div>
-                  <div className="admin-role-value">1,287</div>
-                  <div className="admin-role-label">일반 사용자</div>
-                </div>
-                <div className="admin-role-card admin-role-card-green">
-                  <div className="admin-role-icon">✅</div>
-                  <div className="admin-role-value">132</div>
-                  <div className="admin-role-label">인증 사용자</div>
-                </div>
-                <div className="admin-role-card admin-role-card-purple">
-                  <div className="admin-role-icon">👑</div>
-                  <div className="admin-role-value">8</div>
-                  <div className="admin-role-label">관리자</div>
                 </div>
               </div>
             </div>
@@ -257,7 +567,6 @@ export default function AdminDashboard() {
               />
               <select className="admin-filter-select">
                 <option value="all">전체 권한</option>
-                <option value="guest">게스트</option>
                 <option value="user">일반 사용자</option>
                 <option value="verified">인증 사용자</option>
                 <option value="admin">관리자</option>
@@ -595,6 +904,17 @@ export default function AdminDashboard() {
             <div className="admin-placeholder">
               <p>💡 데이터 백업, 복원, 내보내기 기능은 구현 예정입니다</p>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'banners' && (
+          <div className="admin-tab-content">
+            <h2 className="admin-section-title">배너 관리</h2>
+            <p className="admin-section-subtitle">
+              홈페이지 배너 컨텐츠 관리 및 링크 설정
+            </p>
+
+            <BannerManagementContent />
           </div>
         )}
       </div>

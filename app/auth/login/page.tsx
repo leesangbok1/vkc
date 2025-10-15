@@ -36,7 +36,7 @@ export default function LoginPage() {
       id: 'mock-admin-dev',
       email: 'dev@vietkconnect.com',
       name: '관리자 (개발 모드)',
-      role: 'user', // 온보딩 전에는 user, 온보딩 후 admin으로 업그레이드
+      role: 'USER', // 온보딩 전에는 USER, 온보딩 후 ADMIN으로 업그레이드
       is_dev_mode: true, // 개발자 모드 플래그
       created_at: new Date().toISOString()
     }))

@@ -2,13 +2,24 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { generateUniqueNickname } from '@/lib/utils/nickname-generator'
 
 type SurveyData = {
   residence?: string
   gender?: string
   age?: string
   category?: string
+  topics?: number[]
 }
+
+// 인기 토픽 5개
+const POPULAR_TOPICS = [
+  { id: 1, name: '한국 비자·체류', icon: '🛂' },
+  { id: 2, name: '한국 직장생활', icon: '💼' },
+  { id: 4, name: '한국 생활 정착', icon: '🌏' },
+  { id: 8, name: '베트남 송금·금융', icon: '💰' },
+  { id: 9, name: '한국어 배우기', icon: '📚' }
+]
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -17,10 +28,11 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [surveyData, setSurveyData] = useState<SurveyData>({})
   const [categoryOther, setCategoryOther] = useState('')
+  const [selectedTopics, setSelectedTopics] = useState<number[]>([])
   const [isNextDisabled, setIsNextDisabled] = useState(true)
   const progressBarRef = useRef<HTMLDivElement>(null)
 
-  const totalSteps = 4
+  const totalSteps = 5 // 4 → 5로 변경 (토픽 선택 추가)
 
   // Validate current step
   useEffect(() => {
@@ -38,10 +50,13 @@ export default function OnboardingPage() {
       } else {
         isValid = !!surveyData.category
       }
+    } else if (currentStep === 5) {
+      // 토픽 선택은 선택사항 (0개 이상)
+      isValid = true
     }
 
     setIsNextDisabled(!isValid)
-  }, [currentStep, surveyData, categoryOther])
+  }, [currentStep, surveyData, categoryOther, selectedTopics])
 
   const handleRadioChange = (field: keyof SurveyData, value: string) => {
     setSurveyData(prev => ({ ...prev, [field]: value }))
@@ -68,18 +83,36 @@ export default function OnboardingPage() {
     }
   }
 
+  const toggleTopic = (topicId: number) => {
+    setSelectedTopics(prev => {
+      if (prev.includes(topicId)) {
+        return prev.filter(id => id !== topicId)
+      } else {
+        return [...prev, topicId]
+      }
+    })
+  }
+
   const completeOnboarding = async () => {
     const finalData = { ...surveyData }
     if (surveyData.category === 'other') {
       finalData.category = categoryOther
     }
 
+    // 자동 닉네임 생성
+    const autoNickname = generateUniqueNickname()
+
     console.log('✅ 프로필 설정 완료:', finalData)
+    console.log('✅ 자동 생성된 닉네임:', autoNickname)
+    console.log('✅ 선택된 토픽:', selectedTopics)
 
     // 🎭 MOCK: 페이지 플로우 테스트용 - localStorage에만 저장
     localStorage.setItem('vietkconnect_onboarded', 'true')
     localStorage.setItem('vietkconnect_profile', JSON.stringify({
       ...finalData,
+      nickname: autoNickname,
+      interests: selectedTopics,
+      profile_completion: 40, // 기본 정보만 입력 = 40%
       completedAt: new Date().toISOString()
     }))
 
@@ -88,9 +121,13 @@ export default function OnboardingPage() {
     if (currentUser.is_dev_mode) {
       const adminUser = {
         ...currentUser,
-        role: 'admin',
+        role: 'ADMIN',
+        nickname: autoNickname,
         onboarding_completed: true,
-        profile: finalData,
+        profile: {
+          ...finalData,
+          interests: selectedTopics
+        },
         trust_score: 100,
         badges: {
           verified: true,
@@ -110,6 +147,7 @@ export default function OnboardingPage() {
       localStorage.setItem('mock_user', JSON.stringify(adminUser))
       console.log('👑 관리자 권한 활성화 완료!', adminUser)
       console.log('🎯 개발 모드: 모든 페이지 및 기능 접근 가능')
+      console.log('✅ 닉네임:', autoNickname, '(프로필에서 변경 가능)')
     }
 
     console.log('→ redirectTo로 이동:', redirectTo)
@@ -316,6 +354,55 @@ export default function OnboardingPage() {
                     autoFocus
                   />
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: 인기 토픽 선택 */}
+          {currentStep === 5 && (
+            <div className="survey-step">
+              <div className="form-group">
+                <label className="form-label">
+                  관심 있는 토픽을 선택해주세요 (선택사항)
+                </label>
+                <p className="form-help" style={{ marginBottom: '1.5rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  자주 선택되는 인기 토픽입니다. 나중에 더 추가할 수 있어요!
+                </p>
+
+                <div className="popular-topics-grid">
+                  {POPULAR_TOPICS.map((topic) => (
+                    <label
+                      key={topic.id}
+                      className={`popular-topic-card ${selectedTopics.includes(topic.id) ? 'selected' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTopics.includes(topic.id)}
+                        onChange={() => toggleTopic(topic.id)}
+                        style={{ display: 'none' }}
+                      />
+                      <span className="topic-icon-large">{topic.icon}</span>
+                      <span className="topic-name">{topic.name}</span>
+                      {selectedTopics.includes(topic.id) && (
+                        <span className="topic-check">✓</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+
+                <div style={{
+                  marginTop: '1rem',
+                  padding: '0.75rem 1rem',
+                  background: '#f0fdf4',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  color: '#166534',
+                  textAlign: 'center'
+                }}>
+                  {selectedTopics.length > 0
+                    ? `✅ ${selectedTopics.length}개 토픽 선택됨`
+                    : '💡 토픽을 선택하면 맞춤형 질문을 추천해드려요'}
+                </div>
               </div>
             </div>
           )}

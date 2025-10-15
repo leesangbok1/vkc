@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
-import BookmarkButton from '@/components/common/BookmarkButton'
-import ShareButton from '@/components/common/ShareButton'
+import ActionBar from '@/components/common/ActionBar'
 import Sidebar from '@/components/layout/Sidebar'
 import { MOCK_QUESTIONS, MOCK_ANSWERS, getAnswersByQuestionId, type Question, type Answer } from '@/lib/data/mockData'
 import { notifyAnswerAccepted } from '@/lib/utils/notification-manager'
+import CertificationPromptModal from '@/components/modals/CertificationPromptModal'
 
 // Type for adapted question that combines API and mock data formats
 interface QuestionDisplay {
@@ -37,6 +37,8 @@ export default function QuestionDetailPage() {
   const [answers, setAnswers] = useState<Answer[]>([])
   const [activeVotes, setActiveVotes] = useState<Set<string>>(new Set())
   const [acceptedAnswerId, setAcceptedAnswerId] = useState<string | null>(null)
+  const [showCertificationModal, setShowCertificationModal] = useState(false)
+  const [certificationTrigger, setCertificationTrigger] = useState<'first_answer' | 'third_answer' | 'manual'>('first_answer')
 
   useEffect(() => {
     const fetchQuestion = async () => {
@@ -120,6 +122,46 @@ export default function QuestionDetailPage() {
     return sorted
   }
 
+  // Check if user should see certification prompt
+  const shouldShowCertificationPrompt = (answerCount: number): boolean => {
+    // Don't show if user is already certified
+    const mockUser = JSON.parse(localStorage.getItem('mock_user') || '{}')
+    if (mockUser.role === 'VERIFIED' || mockUser.role === 'ADMIN' || mockUser.is_certified) {
+      return false
+    }
+
+    // Check 24-hour cooldown
+    const promptData = localStorage.getItem('certification_prompt_data')
+    if (promptData) {
+      const data = JSON.parse(promptData)
+      const lastShown = new Date(data.last_shown)
+      const now = new Date()
+      const hoursSinceLastShown = (now.getTime() - lastShown.getTime()) / (1000 * 60 * 60)
+
+      // Don't show if shown within 24 hours
+      if (hoursSinceLastShown < 24) {
+        return false
+      }
+    }
+
+    // Show on 1st or 3rd answer
+    return answerCount === 1 || answerCount === 3
+  }
+
+  // Get user's total answer count
+  const getUserAnswerCount = (): number => {
+    const answerCount = localStorage.getItem('user_answer_count')
+    return answerCount ? parseInt(answerCount) : 0
+  }
+
+  // Increment user's answer count
+  const incrementAnswerCount = (): number => {
+    const currentCount = getUserAnswerCount()
+    const newCount = currentCount + 1
+    localStorage.setItem('user_answer_count', newCount.toString())
+    return newCount
+  }
+
   // 투표 토글
   const toggleHelpful = (answerId: string) => {
     if (!isAuthenticated) {
@@ -175,7 +217,18 @@ export default function QuestionDetailPage() {
 
     setAnswers(prev => [...prev, newAnswer])
     setAnswerText('')
-    alert('답변이 등록되었습니다!')
+
+    // Increment answer count and check if certification prompt should show
+    const newAnswerCount = incrementAnswerCount()
+
+    if (shouldShowCertificationPrompt(newAnswerCount)) {
+      // Determine trigger type
+      const trigger = newAnswerCount === 1 ? 'first_answer' : 'third_answer'
+      setCertificationTrigger(trigger)
+      setShowCertificationModal(true)
+    } else {
+      alert('답변이 등록되었습니다!')
+    }
   }
 
   // 답변 채택
@@ -239,7 +292,8 @@ export default function QuestionDetailPage() {
 
   return (
     <main className="main-layout">
-      <div className="main-content">
+      <div className="container">
+        <div className="main-content">
           {/* Breadcrumb */}
           <nav className="breadcrumb">
             <a href="/" className="breadcrumb-link">홈</a>
@@ -280,20 +334,16 @@ export default function QuestionDetailPage() {
               {question.content}
             </div>
 
-            <div className="question-actions">
-              <BookmarkButton
-                targetId={questionId}
-                type="question"
-                title={question.title}
-                content={question.content}
-                compact={true}
-              />
-              <ShareButton
-                url={`/questions/${questionId}`}
-                title={question.title}
-                compact={true}
-              />
-            </div>
+            <ActionBar
+              targetId={questionId}
+              targetType="question"
+              title={question.title}
+              content={question.content}
+              url={`/questions/${questionId}`}
+              compact={true}
+              requireLogin={!isAuthenticated}
+              onLoginRequired={() => router.push(`/auth/login?redirectTo=/questions/${questionId}`)}
+            />
           </div>
 
           {/* Answer Form */}
@@ -306,7 +356,7 @@ export default function QuestionDetailPage() {
                     이 질문에 답변해보세요
                   </h3>
                   <p className="answer-form-subtitle-compact">
-                    검증된 Certified User가 되어 커뮤니티에 기여하세요
+                    인증된 Certified User가 되어 커뮤니티에 기여하세요
                   </p>
                 </div>
                 <button
@@ -390,7 +440,7 @@ export default function QuestionDetailPage() {
                         <h3 className="author-name">{answer.author.name}</h3>
                         {answer.isExpert && (
                           <span className="expert-badge-inline" style={{ color: '#2563eb', background: 'transparent' }}>
-                            <span style={{ color: '#84cc16' }}>✅</span> Certified <span style={{ fontWeight: 700 }}>인증 완료</span>
+                            <span style={{ color: '#84cc16' }}>✅</span> Certified User <span style={{ fontWeight: 700 }}>인증 완료</span>
                           </span>
                         )}
                       </div>
@@ -404,45 +454,22 @@ export default function QuestionDetailPage() {
                     {answer.content}
                   </div>
 
-                  <div className="question-actions">
-                    <button
-                      onClick={() => toggleHelpful(answer.id)}
-                      className={`action-btn ${activeVotes.has(answer.id) ? 'active' : ''}`}
-                    >
-                      <span>👍</span>
-                      <span>{answer.helpful}</span>
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={() => {
-                        if (!isAuthenticated) {
-                          router.push(`/auth/login?redirectTo=/questions/${questionId}`)
-                          return
-                        }
-                        alert('댓글 기능 구현 예정')
-                      }}
-                    >
-                      <span>💬</span>
-                      <span>{answer.commentCount}</span>
-                    </button>
-                    <BookmarkButton
-                      targetId={answer.id}
-                      type="answer"
-                      title={`${question.title}의 답변`}
-                      content={answer.content}
-                      compact={true}
-                    />
-                    {isAuthenticated && !acceptedAnswerId && (
-                      <button
-                        className="action-btn btn-primary"
-                        onClick={() => handleAcceptAnswer(answer.id)}
-                        style={{ marginLeft: 'auto', fontWeight: 'bold' }}
-                      >
-                        <span>✅</span>
-                        <span>채택하기</span>
-                      </button>
-                    )}
-                  </div>
+                  <ActionBar
+                    targetId={answer.id}
+                    targetType="answer"
+                    title={`${question.title}의 답변`}
+                    content={answer.content}
+                    url={`/questions/${questionId}#answer-${answer.id}`}
+                    initialHelpfulCount={answer.helpful}
+                    isHelpful={activeVotes.has(answer.id)}
+                    onHelpfulClick={() => toggleHelpful(answer.id)}
+                    compact={true}
+                    showAcceptButton={isAuthenticated && !acceptedAnswerId}
+                    onAcceptClick={() => handleAcceptAnswer(answer.id)}
+                    isAccepted={acceptedAnswerId === answer.id}
+                    requireLogin={!isAuthenticated}
+                    onLoginRequired={() => router.push(`/auth/login?redirectTo=/questions/${questionId}`)}
+                  />
                 </div>
               ))}
             </div>
@@ -451,6 +478,17 @@ export default function QuestionDetailPage() {
 
         {/* Sidebar */}
         <Sidebar />
-      </main>
-    )
-  }
+      </div>
+
+      {/* Certification Prompt Modal */}
+      <CertificationPromptModal
+        isOpen={showCertificationModal}
+        onClose={() => {
+          setShowCertificationModal(false)
+          alert('답변이 등록되었습니다!')
+        }}
+        trigger={certificationTrigger}
+      />
+    </main>
+  )
+}

@@ -1,7 +1,13 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { UserRole, getRoleDisplayInfo } from '@/lib/utils/permissions'
+import {
+  UserRole,
+  getRoleDisplayInfo,
+  getVerificationTypeIcon,
+  getVerificationTypeLabel,
+  isExperienceBasedVerification
+} from '@/lib/utils/permissions'
 import { ExtendedUser } from '@/lib/types/permissions'
 
 interface TrustBadgeProps {
@@ -25,25 +31,12 @@ export default function TrustBadge({
   variant = 'default',
   className
 }: TrustBadgeProps) {
-  const getVerificationIcon = (type?: string) => {
-    switch (type) {
-      case 'student': return '🎓'
-      case 'worker': return '💼'
-      case 'resident': return '🏠'
-      case 'business': return '🏢'
-      default: return '✓'
-    }
-  }
-
-  const getVerificationLabel = (type?: string) => {
-    switch (type) {
-      case 'student': return '학생 인증'
-      case 'worker': return '재직 인증'
-      case 'resident': return '거주 인증'
-      case 'business': return '사업자 인증'
-      default: return '인증됨'
-    }
-  }
+  // 통합된 유틸리티 함수 사용 (permissions.ts에서 import)
+  // 이제 경험 기반 인증 타입도 자동으로 지원됩니다:
+  // - mentor (👨‍🏫 멘토 인증)
+  // - experienced (⭐ 선경험자 인증)
+  // - community_leader (👥 커뮤니티 리더)
+  // - specialist (🎯 전문가 인증)
 
   const getTrustLevel = (score: number, role?: UserRole) => {
     // 4-tier 권한 시스템 우선 적용
@@ -160,8 +153,13 @@ export default function TrustBadge({
         {/* 인증 정보 */}
         {(user.is_verified || user.role === UserRole.VERIFIED || user.role === UserRole.ADMIN) && (
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary rounded-full text-sm mb-3">
-            <span>{getVerificationIcon(user.verification_type)}</span>
-            <span className="text-primary">{getVerificationLabel(user.verification_type)}</span>
+            <span>{getVerificationTypeIcon(user.verification_type || '')}</span>
+            <span className="text-primary">{getVerificationTypeLabel(user.verification_type || '')}</span>
+            {isExperienceBasedVerification(user.verification_type || '') && (
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded ml-2">
+                경험 기반
+              </span>
+            )}
             {user.verification_status === 'pending' && (
               <span className="text-xs bg-warning-500 text-white px-2 py-1 rounded ml-2">
                 심사중
@@ -238,9 +236,9 @@ export default function TrustBadge({
       {/* 인증 상태 */}
       {(user.is_verified || user.role === UserRole.VERIFIED || user.role === UserRole.ADMIN) && (
         <div className="inline-flex items-center gap-1 px-2 py-1 bg-trust text-white rounded-full text-xs">
-          {getVerificationIcon(user.verification_type)}
+          {getVerificationTypeIcon(user.verification_type || '')}
           <span className="hidden sm:inline">
-            {getVerificationLabel(user.verification_type)}
+            {getVerificationTypeLabel(user.verification_type || '')}
           </span>
         </div>
       )}
@@ -255,8 +253,8 @@ export default function TrustBadge({
   )
 }
 
-// Certified User 카드 컴포넌트
-export function ExpertCard({
+// Certified User 프로필 카드 컴포넌트
+export function CertifiedUserCard({
   expert,
   matchScore,
   matchReason,

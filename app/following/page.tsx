@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Sidebar from '@/components/layout/Sidebar'
+import ActionBar from '@/components/common/ActionBar'
 import { MOCK_QUESTIONS, MOCK_POSTS, type Question, type Post } from '@/lib/data/mockData'
 
 type FeedItem = (Question | Post) & {
@@ -13,8 +15,13 @@ export default function FollowingPage() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [followedUsers, setFollowedUsers] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
+    // Check login status
+    const mockSession = localStorage.getItem('mock_session')
+    setIsLoggedIn(mockSession === 'true')
+
     // Get followed users from localStorage
     const stored = localStorage.getItem('followed_users')
     const followed = stored ? JSON.parse(stored) : []
@@ -58,370 +65,215 @@ export default function FollowingPage() {
     }
   }
 
+  function formatDate(dateString: string) {
+    if (!dateString) return '방금 전'
+    const date = new Date(dateString)
+    const now = new Date()
+    const diff = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    if (diff < 60) return '방금 전'
+    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`
+    const days = Math.floor(diff / 86400)
+    if (days === 1) return '1일 전'
+    if (days < 7) return `${days}일 전`
+    return date.toLocaleDateString('ko-KR')
+  }
+
   if (loading) {
     return (
       <main className="main-layout">
-        <div className="following-loading">로딩 중...</div>
+        <div className="container">
+          <div className="main-content">
+            <div className="feed-loading">로딩 중...</div>
+          </div>
+        </div>
       </main>
     )
   }
 
   return (
     <main className="main-layout">
-      <div className="following-container">
-        <div className="following-header">
-          <h1 className="following-title">Following</h1>
-          <p className="following-subtitle">
-            팔로우한 사용자들의 최신 게시글
-          </p>
-        </div>
-
-        {followedUsers.length === 0 ? (
-          // Empty state - no users followed
-          <div className="following-empty-state">
-            <div className="empty-state-icon">👥</div>
-            <h2 className="empty-state-title">You're all caught up</h2>
-            <p className="empty-state-message">
-              팔로우한 사용자가 없습니다.<br />
-              흥미로운 게시글을 올리는 사용자를 팔로우해보세요.
-            </p>
-            <button
-              className="empty-state-button"
-              onClick={() => router.push('/questions')}
-            >
-              팔로우 사용자 찾아보기
-            </button>
-          </div>
-        ) : feed.length === 0 ? (
-          // Empty state - users followed but no content
-          <div className="following-empty-state">
-            <div className="empty-state-icon">📭</div>
-            <h2 className="empty-state-title">You're all caught up</h2>
-            <p className="empty-state-message">
-              팔로우한 사용자들의 최근 게시글이 없습니다.<br />
-              더 많은 콘텐츠를 확인해보세요.
-            </p>
-            <button
-              className="empty-state-button"
-              onClick={() => router.push('/questions')}
-            >
-              팔로우 사용자 찾아보기
-            </button>
-          </div>
-        ) : (
-          // Feed with followed users' posts
-          <div className="following-feed">
-            {feed.map((item) => (
-              <div
-                key={`${item.type}-${item.id}`}
-                className="feed-item-card"
-                onClick={() => handleCardClick(item)}
-              >
-                {/* Author Info */}
-                <div className="feed-item-author">
-                  <div className="author-avatar">
-                    {item.author.name[0]}
-                  </div>
-                  <div className="author-details">
-                    <div className="author-name-row">
-                      <span className="author-name">{item.author.name}</span>
-                      {item.author.isExpert && (
-                        <span className="expert-badge">✅ Certified User</span>
-                      )}
-                    </div>
-                    <p className="author-meta">
-                      {new Date(item.createdAt).toLocaleDateString('ko-KR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                  <button
-                    className="unfollow-btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleUnfollow(item.author.id, item.author.name)
-                    }}
-                  >
-                    팔로잉
-                  </button>
-                </div>
-
-                {/* Content */}
-                <div className="feed-item-content">
-                  <h2 className="feed-item-title">{item.title}</h2>
-                  <p className="feed-item-excerpt">
-                    {item.content.length > 150
-                      ? `${item.content.substring(0, 150)}...`
-                      : item.content}
-                  </p>
-                </div>
-
-                {/* Stats */}
-                <div className="feed-item-stats">
-                  <div className="stat-item">
-                    <span className="stat-icon">👍</span>
-                    <span className="stat-value">{item.votes}</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-icon">💬</span>
-                    <span className="stat-value">
-                      {item.type === 'question' ? item.answerCount : (item as Post).commentCount}
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-icon">👁️</span>
-                    <span className="stat-value">{item.views}</span>
-                  </div>
-                  <div className="stat-item stat-type">
-                    <span className="type-badge">
-                      {item.type === 'question' ? '질문' : '포스트'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Mobile Category Grid */}
+      <div className="mobile-category-grid">
+        <a href="/categories/visa" className="mobile-category-item">
+          <div className="mobile-category-icon">💼</div>
+          <div className="mobile-category-label">한국 취업</div>
+        </a>
+        <a href="/categories/visa" className="mobile-category-item">
+          <div className="mobile-category-icon">✈️</div>
+          <div className="mobile-category-label">한국 비자</div>
+        </a>
+        <a href="/categories/life" className="mobile-category-item">
+          <div className="mobile-category-icon">🏠</div>
+          <div className="mobile-category-label">한국 생활</div>
+        </a>
+        <a href="/categories/legal" className="mobile-category-item">
+          <div className="mobile-category-icon">⚖️</div>
+          <div className="mobile-category-label">한국 법률</div>
+        </a>
       </div>
 
-      <style jsx>{`
-        .following-container {
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 2rem 1rem;
-        }
+      <div className="container">
+        <div className="main-content">
+          {/* Page Header */}
+          <div className="section" style={{ marginBottom: '1.5rem' }}>
+            <h1 className="section-title">Following</h1>
+            <p style={{ color: '#6b7280', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+              팔로우한 사용자들의 최신 게시글
+            </p>
+          </div>
 
-        .following-header {
-          margin-bottom: 2rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px solid var(--border);
-        }
+          {/* Category Tabs */}
+          <div className="category-tabs">
+            <a href="/" className="category-tab">Popular</a>
+            <a href="/topics" className="category-tab">Topic</a>
+            <a href="/following" className="category-tab active">Following</a>
+          </div>
 
-        .following-title {
-          font-size: 2rem;
-          font-weight: 700;
-          color: var(--foreground);
-          margin-bottom: 0.5rem;
-        }
+          {/* Feed Container */}
+          <div className="feed-container">
+            {followedUsers.length === 0 ? (
+              // Empty state - no users followed
+              <div className="feed-empty">
+                <div className="feed-empty-icon">👥</div>
+                <h3>팔로우한 사용자가 없습니다</h3>
+                <p>흥미로운 게시글을 올리는 사용자를 팔로우해보세요</p>
+                <button
+                  className="btn-primary"
+                  onClick={() => router.push('/questions')}
+                >
+                  팔로우 사용자 찾아보기
+                </button>
+              </div>
+            ) : feed.length === 0 ? (
+              // Empty state - users followed but no content
+              <div className="feed-empty">
+                <div className="feed-empty-icon">📭</div>
+                <h3>모든 게시글을 확인했습니다</h3>
+                <p>팔로우한 사용자들의 최근 게시글이 없습니다</p>
+                <button
+                  className="btn-primary"
+                  onClick={() => router.push('/questions')}
+                >
+                  더 많은 콘텐츠 보기
+                </button>
+              </div>
+            ) : (
+              // Feed with followed users' posts
+              <>
+                {feed.map((item) => (
+                  <div
+                    key={`${item.type}-${item.id}`}
+                    className="question-card"
+                    onClick={() => handleCardClick(item)}
+                  >
+                    <div className="question-header">
+                      {/* Author Info */}
+                      <div className="question-meta">
+                        <div className="question-author-row">
+                          <div
+                            className="author-avatar-small"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/users/${item.author.id}`)
+                            }}
+                          ></div>
 
-        .following-subtitle {
-          font-size: 1rem;
-          color: var(--muted-foreground);
-        }
+                          <div className="question-author-info">
+                            <div className="question-author">
+                              <span
+                                className="question-author-link"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  router.push(`/users/${item.author.id}`)
+                                }}
+                              >
+                                {item.author.name}
+                              </span>
+                              {(item.author.visaType || item.author.yearsInKorea) && (
+                                <span className={`author-verification-box ${item.author.role === 'verified' || item.author.role === 'admin' ? 'verified' : ''}`}>
+                                  <span className="verification-text">
+                                    {item.author.visaType || ''}
+                                    {item.author.yearsInKorea ? `, 한국 ${item.author.yearsInKorea}년차` : ''}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="question-time-row">
+                              <div className="question-time">
+                                {formatDate(item.createdAt)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-        .following-empty-state {
-          text-align: center;
-          padding: 4rem 2rem;
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
+                      {/* More Button */}
+                      <button
+                        className="question-more-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleCardClick(item)
+                        }}
+                        aria-label="게시글 상세 보기"
+                      >
+                        자세히
+                      </button>
+                    </div>
 
-        .empty-state-icon {
-          font-size: 4rem;
-          margin-bottom: 1rem;
-        }
+                    <h3 className="question-title">{item.title}</h3>
+                    <p className="question-content">
+                      {item.content.length > 200 ? item.content.substring(0, 200) + '...' : item.content}
+                    </p>
 
-        .empty-state-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: var(--foreground);
-          margin-bottom: 1rem;
-        }
+                    <div className="question-stats">
+                      <div className="question-stats-comments">
+                        <span className="answer-expert-icon">🎓</span>
+                        <span>
+                          {item.type === 'question' ? (
+                            item.answerCount === 0 ? (
+                              <span>아직 답변이 없어요</span>
+                            ) : (
+                              <><strong>{item.answerCount}명</strong>이 답변했어요</>
+                            )
+                          ) : (
+                            (item as Post).commentCount === 0 ? (
+                              <span>아직 댓글이 없어요</span>
+                            ) : (
+                              <><strong>{(item as Post).commentCount}명</strong>이 댓글했어요</>
+                            )
+                          )}
+                        </span>
+                      </div>
+                    </div>
 
-        .empty-state-message {
-          font-size: 1rem;
-          color: var(--muted-foreground);
-          line-height: 1.6;
-          margin-bottom: 2rem;
-        }
+                    {/* ActionBar */}
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ActionBar
+                        targetId={item.id}
+                        targetType={item.type === 'question' ? 'question' : 'post'}
+                        title={item.title}
+                        content={item.content}
+                        url={item.type === 'question' ? `/questions/${item.id}` : `/posts/${item.id}`}
+                        initialHelpfulCount={item.votes}
+                        compact={true}
+                        requireLogin={!isLoggedIn}
+                        onLoginRequired={() => {
+                          router.push('/auth/login?redirectTo=/following')
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
 
-        .empty-state-button {
-          background: var(--color-blue-600);
-          color: white;
-          border: none;
-          padding: 0.75rem 2rem;
-          border-radius: 8px;
-          font-size: 1rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .empty-state-button:hover {
-          background: var(--color-blue-700);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        }
-
-        .following-feed {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .feed-item-card {
-          background: white;
-          border-radius: 12px;
-          padding: 1.5rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .feed-item-card:hover {
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-          transform: translateY(-2px);
-        }
-
-        .feed-item-author {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          margin-bottom: 1rem;
-        }
-
-        .author-avatar {
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, var(--color-blue-400), var(--color-blue-600));
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: 700;
-          font-size: 1.25rem;
-        }
-
-        .author-details {
-          flex: 1;
-        }
-
-        .author-name-row {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 0.25rem;
-        }
-
-        .author-name {
-          font-weight: 600;
-          color: var(--foreground);
-        }
-
-        .expert-badge {
-          font-size: 0.75rem;
-          color: var(--color-green-600);
-          background: var(--color-green-50);
-          padding: 0.125rem 0.5rem;
-          border-radius: 12px;
-          font-weight: 600;
-        }
-
-        .author-meta {
-          font-size: 0.875rem;
-          color: var(--muted-foreground);
-        }
-
-        .unfollow-btn {
-          background: var(--color-blue-600);
-          color: white;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 6px;
-          font-size: 0.875rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .unfollow-btn:hover {
-          background: var(--color-red-600);
-        }
-
-        .unfollow-btn:hover::after {
-          content: ' (언팔로우)';
-        }
-
-        .feed-item-content {
-          margin-bottom: 1rem;
-        }
-
-        .feed-item-title {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: var(--foreground);
-          margin-bottom: 0.5rem;
-          line-height: 1.4;
-        }
-
-        .feed-item-excerpt {
-          font-size: 0.938rem;
-          color: var(--muted-foreground);
-          line-height: 1.6;
-        }
-
-        .feed-item-stats {
-          display: flex;
-          align-items: center;
-          gap: 1.5rem;
-          padding-top: 1rem;
-          border-top: 1px solid var(--border);
-        }
-
-        .stat-item {
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          font-size: 0.875rem;
-          color: var(--muted-foreground);
-        }
-
-        .stat-icon {
-          font-size: 1rem;
-        }
-
-        .stat-type {
-          margin-left: auto;
-        }
-
-        .type-badge {
-          background: var(--color-blue-50);
-          color: var(--color-blue-600);
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          font-size: 0.75rem;
-          font-weight: 600;
-        }
-
-        .following-loading {
-          text-align: center;
-          padding: 4rem 2rem;
-          font-size: 1.125rem;
-          color: var(--muted-foreground);
-        }
-
-        @media (max-width: 768px) {
-          .following-container {
-            padding: 1rem;
-          }
-
-          .following-title {
-            font-size: 1.5rem;
-          }
-
-          .feed-item-card {
-            padding: 1rem;
-          }
-
-          .feed-item-stats {
-            gap: 1rem;
-          }
-        }
-      `}</style>
+        {/* Sidebar */}
+        <Sidebar />
+      </div>
     </main>
   )
 }

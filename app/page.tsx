@@ -3,7 +3,12 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import Sidebar from '@/components/layout/Sidebar'
-import { MOCK_QUESTIONS, MOCK_POSTS, type Question, type Post, type User } from '@/lib/data/mockData'
+import ActionBar from '@/components/common/ActionBar'
+import BannerCarousel from '@/components/banners/BannerCarousel'
+import CertificationModal from '@/components/modals/CertificationModal'
+import { MOCK_QUESTIONS, MOCK_POSTS, MOCK_BANNERS, type Question, type Post, type User } from '@/lib/data/mockData'
+import QuickTour from '@/components/tour/QuickTour'
+import { useQuickTour, defaultTourSteps } from '@/lib/hooks/useQuickTour'
 
 // Type alias for Author (compatibility with existing code)
 type Author = User
@@ -36,11 +41,27 @@ export default function HomePage() {
   const [userRole, setUserRole] = useState<'guest' | 'user' | 'verified' | 'admin'>('guest')
   const [isCheckingAuth, setIsCheckingAuth] = useState(true) // 초기 로딩 상태
   const [showEventModal, setShowEventModal] = useState(false) // 이벤트 모달 상태
+  const [showCertificationModal, setShowCertificationModal] = useState(false) // 인증 신청 모달 상태
   const [followedUsers, setFollowedUsers] = useState<string[]>([]) // 팔로우한 사용자 목록
+  const [banners, setBanners] = useState(MOCK_BANNERS) // 배너 목록 (localStorage 오버라이드 지원)
+
+  // Quick Tour state (only for logged-in users, wait for event modal to close)
+  const { isOpen: isTourOpen, handleComplete: completeTour, handleSkip: skipTour } = useQuickTour(isLoggedIn, showEventModal)
 
   useEffect(() => {
     checkAuth()
     loadFeed()
+
+    // Load banner overrides from localStorage if any
+    const overrides = localStorage.getItem('banner_overrides')
+    if (overrides) {
+      try {
+        const parsed = JSON.parse(overrides)
+        setBanners(parsed)
+      } catch (error) {
+        console.error('Failed to load banner overrides:', error)
+      }
+    }
   }, [])
 
   // localStorage에서 팔로우 목록 로드 (클라이언트 사이드만)
@@ -64,6 +85,30 @@ export default function HomePage() {
       }
     }
   }, [isLoggedIn, isCheckingAuth])
+
+  // URL 파라미터로 인증 모달 오픈 제어
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('modal') === 'certification') {
+      setShowCertificationModal(true)
+    }
+
+    // Listen for custom event from Sidebar or other components
+    const handleOpenCertificationModal = () => {
+      setShowCertificationModal(true)
+      // Update URL
+      const url = new URL(window.location.href)
+      url.searchParams.set('modal', 'certification')
+      window.history.pushState({}, '', url)
+    }
+
+    window.addEventListener('openCertificationModal', handleOpenCertificationModal)
+    return () => {
+      window.removeEventListener('openCertificationModal', handleOpenCertificationModal)
+    }
+  }, [])
 
   async function checkAuth() {
     try {
@@ -159,6 +204,32 @@ export default function HomePage() {
     return date.toLocaleDateString('ko-KR')
   }
 
+  // 인증 체크 중일 때 로딩 화면 표시 (FOUC 방지)
+  if (isCheckingAuth) {
+    return (
+      <main className="main-layout">
+        <div className="container" style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '60vh'
+        }}>
+          <div style={{
+            textAlign: 'center',
+            color: '#666'
+          }}>
+            <div style={{
+              fontSize: '2rem',
+              marginBottom: '1rem',
+              animation: 'spin 1s linear infinite'
+            }}>⏳</div>
+            <p>로딩 중...</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="main-layout">
       {/* Mobile Category Grid (Mobile Only) */}
@@ -194,7 +265,7 @@ export default function HomePage() {
               </div>
               <h1 className="hero-title">
                 비자, 유학, 취업 등 한국생활 관련 질문을<br />
-                실제 경험으로 인증받은 Certified가 답변합니다
+                실제 경험으로 인증받은 Certified User가 답변합니다
               </h1>
               <div className="hero-actions">
                 <button
@@ -224,6 +295,7 @@ export default function HomePage() {
                 <button
                   className="hero-action-btn"
                   onClick={() => window.location.href = '/questions/new'}
+                  data-tour="ask-question"
                 >
                   ❓ Ask
                 </button>
@@ -243,36 +315,15 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Event Banner - 베타 오픈 챌린지 */}
+          {/* Banner Carousel - 미션/이벤트 배너 */}
           {isLoggedIn && (
-            <div
-              className="event-banner-horizontal"
-              onClick={() => setShowEventModal(true)}
-            >
-              <div className="event-banner-left">
-                <h3 className="event-banner-main-title">
-                  한국생활 질문에 답변하고 리워드 받아가세요
-                </h3>
-                <p className="event-banner-description">
-                  Certified 인증 후 답변 작성 시 최대 50,000원 상품권 지급
-                </p>
-              </div>
-              <div className="event-banner-center">
-                <div className="event-banner-date">~11월 30일</div>
-              </div>
-              <div className="event-banner-right">
-                <div className="event-banner-icons-compact">
-                  <span className="event-icon-compact">🎁</span>
-                  <span className="event-icon-compact">💰</span>
-                </div>
-              </div>
-            </div>
+            <BannerCarousel banners={banners} />
           )}
 
           {/* Categories Tabs */}
           <div className="category-tabs">
             <a href="/" className="category-tab active">Popular</a>
-            <a href="/topics" className="category-tab">Topic</a>
+            <a href="/topics" className="category-tab" data-tour="topics">Topic</a>
             <a href="/following" className="category-tab">Following</a>
           </div>
 
@@ -332,7 +383,10 @@ export default function HomePage() {
                           </span>
                           {/* 인증 정보 박스: 정보가 있을 때만 표시 */}
                           {(item.author.visaType || item.author.yearsInKorea) && (
-                            <span className={`author-verification-box ${item.author.role === 'verified' || item.author.role === 'admin' ? 'verified' : ''}`}>
+                            <span
+                              className={`author-verification-box ${item.author.role === 'verified' || item.author.role === 'admin' ? 'verified' : ''}`}
+                              data-tour="certified-badge"
+                            >
                               <span className="verification-text">
                                 {item.author.visaType || ''}
                                 {item.author.yearsInKorea ? `, 한국 ${item.author.yearsInKorea}년차` : ''}
@@ -404,39 +458,6 @@ export default function HomePage() {
                 </p>
 
                 <div className="question-stats">
-                  <div className="question-stats-actions">
-                    <button
-                      className="vote-btn"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (!isLoggedIn) {
-                          const currentUrl = window.location.pathname
-                          window.location.href = `/auth/login?redirectTo=${encodeURIComponent(currentUrl)}`
-                          return
-                        }
-                        alert('투표 기능 구현 예정')
-                      }}
-                    >
-                      👍 <span>{item.votes}</span>
-                    </button>
-                    <button
-                      className="vote-btn"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (!isLoggedIn) {
-                          const currentUrl = window.location.pathname
-                          window.location.href = `/auth/login?redirectTo=${encodeURIComponent(currentUrl)}`
-                          return
-                        }
-                        alert('투표 기능 구현 예정')
-                      }}
-                    >
-                      👎
-                    </button>
-                    <span className="view-count">
-                      👁️ <span>{item.views}</span>
-                    </span>
-                  </div>
                   <div className="question-stats-comments">
                     <span className="answer-expert-icon">
                       🎓
@@ -455,7 +476,7 @@ export default function HomePage() {
                         if (expertCount > 0 && othersCount > 0) {
                           return (
                             <>
-                              <strong className="expert-highlight">Certified {expertCount}명</strong> 외 <strong>{othersCount}명</strong>이 {item.type === 'question' ? '답변' : '댓글'}했어요
+                              <strong className="expert-highlight">Certified User {expertCount}명</strong> 외 <strong>{othersCount}명</strong>이 {item.type === 'question' ? '답변' : '댓글'}했어요
                             </>
                           )
                         }
@@ -463,7 +484,7 @@ export default function HomePage() {
                         if (expertCount > 0) {
                           return (
                             <>
-                              <strong className="expert-highlight">Certified {expertCount}명</strong>이 {item.type === 'question' ? '답변' : '댓글'}했어요
+                              <strong className="expert-highlight">Certified User {expertCount}명</strong>이 {item.type === 'question' ? '답변' : '댓글'}했어요
                             </>
                           )
                         }
@@ -476,6 +497,24 @@ export default function HomePage() {
                       })()}
                     </span>
                   </div>
+                </div>
+
+                {/* ActionBar: 도움됨/북마크/공유 버튼 */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ActionBar
+                    targetId={item.id}
+                    targetType={item.type === 'question' ? 'question' : 'post'}
+                    title={item.title}
+                    content={item.content}
+                    url={item.type === 'question' ? `/questions/${item.id}` : `/posts/${item.id}`}
+                    initialHelpfulCount={item.votes}
+                    compact={true}
+                    requireLogin={!isLoggedIn}
+                    onLoginRequired={() => {
+                      const currentUrl = window.location.pathname
+                      window.location.href = `/auth/login?redirectTo=${encodeURIComponent(currentUrl)}`
+                    }}
+                  />
                 </div>
               </div>
             ))}
@@ -536,12 +575,12 @@ export default function HomePage() {
               {/* Certified Mission Section */}
               <div className="event-modal-section">
                 <h3 className="event-modal-section-title">
-                  🔥 Certified 답변 분야
+                  🔥 Certified User 답변 분야
                 </h3>
 
                 <div className="event-modal-mission">
                   <div className="event-modal-mission-title">
-                    첫 번째 미션: Certified 답변 10개 작성하기
+                    첫 번째 미션: Certified User 답변 10개 작성하기
                   </div>
                   <div className="event-modal-mission-reward">
                     💰 미션 혜택: 달성하면 네이버페이 10,000원 지급
@@ -550,7 +589,7 @@ export default function HomePage() {
 
                 <div className="event-modal-mission">
                   <div className="event-modal-mission-title">
-                    두 번째 미션: Certified 답변 20개 작성하기
+                    두 번째 미션: Certified User 답변 20개 작성하기
                   </div>
                   <div className="event-modal-mission-reward">
                     💰 미션 혜택: 20명 추첨 후, 네이버페이 10,000원 지급
@@ -559,7 +598,7 @@ export default function HomePage() {
 
                 <div className="event-modal-mission">
                   <div className="event-modal-mission-title">
-                    세 번째 미션: 10일 이상 Certified 답변 활동하고, 60개 이상 답변 완료하기
+                    세 번째 미션: 10일 이상 Certified User 답변 활동하고, 60개 이상 답변 완료하기
                   </div>
                   <div className="event-modal-mission-reward">
                     💰 미션 혜택: 40명 추첨 후, 신세계 상품권 50,000원 지급
@@ -643,6 +682,26 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Quick Tour */}
+      <QuickTour
+        steps={defaultTourSteps}
+        isOpen={isTourOpen}
+        onComplete={completeTour}
+        onSkip={skipTour}
+      />
+
+      {/* Certification Modal */}
+      <CertificationModal
+        isOpen={showCertificationModal}
+        onClose={() => {
+          setShowCertificationModal(false)
+          // Remove URL parameter
+          const url = new URL(window.location.href)
+          url.searchParams.delete('modal')
+          window.history.pushState({}, '', url)
+        }}
+      />
     </main>
   )
 }

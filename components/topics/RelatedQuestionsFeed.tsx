@@ -59,7 +59,7 @@ export default function RelatedQuestionsFeed({ followingTopics }: RelatedQuestio
   const [topicQuestions, setTopicQuestions] = useState<Map<number, Question[]>>(new Map())
 
   useEffect(() => {
-    // 팔로우한 토픽별로 관련 질문 필터링 (각 토픽당 최신 3개)
+    // 구독 중인 토픽별로 관련 질문 필터링 (각 토픽당 최신 3개)
     const questionsMap = new Map<number, Question[]>()
 
     followingTopics.forEach(topic => {
@@ -83,7 +83,7 @@ export default function RelatedQuestionsFeed({ followingTopics }: RelatedQuestio
   return (
     <div style={{ marginBottom: 'var(--space-lg)' }}>
       <h2 className="section-title" style={{ marginBottom: 'var(--space-md)', fontSize: 'var(--font-size-lg)', fontWeight: 600 }}>
-        🔥 팔로우한 토픽의 최신 질문
+        🔥 구독 중인 토픽의 최신 질문
       </h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>

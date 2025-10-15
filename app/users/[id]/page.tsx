@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Sidebar from '@/components/layout/Sidebar'
 import { MOCK_QUESTIONS, MOCK_POSTS, MOCK_ANSWERS, type User, type Question, type Post, type Answer } from '@/lib/data/mockData'
 
 type UserActivity = {
@@ -130,7 +131,12 @@ export default function UserProfilePage() {
   if (loading) {
     return (
       <main className="main-layout">
-        <div className="profile-loading">로딩 중...</div>
+        <div className="container">
+          <div className="main-content">
+            <div className="section profile-loading">로딩 중...</div>
+          </div>
+          <Sidebar showContent={false} />
+        </div>
       </main>
     )
   }
@@ -138,11 +144,18 @@ export default function UserProfilePage() {
   if (!user) {
     return (
       <main className="main-layout">
-        <div className="profile-error">
-          <h1>사용자를 찾을 수 없습니다</h1>
-          <button onClick={() => router.push('/')} className="btn-primary">
-            홈으로 돌아가기
-          </button>
+        <div className="container">
+          <div className="main-content">
+            <div className="section profile-error">
+              <div className="profile-error-icon">👤</div>
+              <h1 className="profile-error-title">사용자를 찾을 수 없습니다</h1>
+              <p className="profile-error-message">요청하신 사용자가 존재하지 않습니다.</p>
+              <button onClick={() => router.push('/')} className="btn btn-primary">
+                홈으로 돌아가기
+              </button>
+            </div>
+          </div>
+          <Sidebar showContent={false} />
         </div>
       </main>
     )
@@ -150,7 +163,9 @@ export default function UserProfilePage() {
 
   return (
     <main className="main-layout">
-      <div className="profile-container">
+      <div className="container">
+        <div className="main-content">
+        <div className="profile-container">
         {/* Profile Header */}
         <div className="profile-header">
           <div className="profile-header-content">
@@ -294,6 +309,11 @@ export default function UserProfilePage() {
             </div>
           )}
         </div>
+        </div>
+        </div>
+
+        {/* Sidebar */}
+        <Sidebar showContent={false} />
       </div>
 
       <style jsx>{`

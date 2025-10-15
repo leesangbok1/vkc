@@ -37,6 +37,8 @@ export interface Question {
   answerCount: number
   createdAt: string
   tags?: string[]
+  status?: 'solved' | 'unsolved'  // 질문 해결 상태
+  accepted_answer_id?: string     // 채택된 답변 ID
 }
 
 export interface Answer {
@@ -48,6 +50,7 @@ export interface Answer {
   createdAt: string
   helpful: number
   commentCount: number
+  is_accepted?: boolean  // 채택된 답변 여부
 }
 
 export interface Post {
@@ -57,11 +60,21 @@ export interface Post {
   content: string
   author: User
   category: string
-  votes: number
-  views: number
+  votes: number  // deprecated - helpful로 대체
+  views: number  // deprecated - 표시 안함
   commentCount: number
   createdAt: string
   tags?: string[]
+  helpful_count?: number  // 도움됨 카운트
+}
+
+export interface Banner {
+  id: string
+  title: string
+  description: string
+  imageUrl?: string
+  linkUrl: string
+  backgroundColor?: string
 }
 
 // ============================================
@@ -1941,7 +1954,7 @@ export const MOCK_POSTS: Post[] = [
   {
     id: 'p1',
     type: 'post',
-    title: '🇰🇷 E-9 비자 연장 완벽 가이드 (2025년 최신판)',
+    title: 'E-9 비자 연장 완벽 가이드 (2025년 최신판)',
     content: `안녕하세요, 7년차 베트남 근로자 Nguyễn Văn Hùng입니다.
 
 E-9 비자를 4번 연장한 경험을 바탕으로 완벽한 가이드를 만들었습니다.
@@ -2222,7 +2235,7 @@ E-9 비자 연장은 어렵지 않습니다!
   {
     id: 'p3',
     type: 'post',
-    title: '📚 베트남인을 위한 한국 비자 종류 완벽 정리 (변호사 작성)',
+    title: '베트남인을 위한 한국 비자 종류 완벽 정리 (변호사 작성)',
     content: `이민법 전문 변호사 이민수입니다.
 
 베트남 분들이 자주 문의하는 비자 종류를 정리했습니다.
@@ -3130,7 +3143,7 @@ A: D-2 → 구직비자(D-10) → E-7
   {
     id: 'p7',
     type: 'post',
-    title: '🏠 월세 계약 완벽 가이드 (사기 예방법 포함)',
+    title: '월세 계약 완벽 가이드 (사기 예방법 포함)',
     content: `5번 이사한 Trần Văn Duy입니다.
 
 월세 계약 실수하면 큰일나요!
@@ -3777,7 +3790,7 @@ A: D-2 → 구직비자(D-10) → E-7
   {
     id: 'p9',
     type: 'post',
-    title: '📚 TOPIK 2급 합격 로드맵 (4개월 단기 완성)',
+    title: 'TOPIK 2급 합격 로드맵 (4개월 단기 완성)',
     content: `TOPIK 6급 합격자 Trần Văn Tuấn입니다.
 
 2급부터 6급까지 올린 경험
@@ -4618,3 +4631,31 @@ export function getQuestionCountByTopic(): Record<string, number> {
     return acc
   }, {} as Record<string, number>)
 }
+
+// ============================================
+// 배너 데이터 (미션/이벤트 캐러셀용)
+// ============================================
+
+export const MOCK_BANNERS: Banner[] = [
+  {
+    id: 'banner1',
+    title: '🎯 베타 오픈 챌린지 이벤트',
+    description: '한국생활 질문에 답변하고 최대 50,000원 상품권 받아가세요! (~11월 30일)',
+    linkUrl: '/missions',
+    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+  },
+  {
+    id: 'banner2',
+    title: '✅ Certified User가 되어보세요',
+    description: '실제 경험을 공유하고 커뮤니티에 기여하세요. 검증된 답변자로 인정받습니다.',
+    linkUrl: '/experts/apply',
+    backgroundColor: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+  },
+  {
+    id: 'banner3',
+    title: '🎯 아하 답변 작성 챌린지 이벤트',
+    description: '전문가 답변 10개 작성하고 10,000원 받아가세요! 9월 15일 ~ 10월 31일',
+    linkUrl: '/events/visa-challenge',
+    backgroundColor: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+  }
+]

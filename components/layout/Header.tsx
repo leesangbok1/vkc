@@ -19,6 +19,7 @@ type Notification = {
 export default function Header() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true) // FOUC 방지
   const [userName, setUserName] = useState('사용자')
   const [userRole, setUserRole] = useState<UserRole>(UserRole.GUEST)
   const [isDevAdmin, setIsDevAdmin] = useState(false)
@@ -26,6 +27,7 @@ export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showLanguageMenu, setShowLanguageMenu] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginModalRedirect, setLoginModalRedirect] = useState('/')
   const [loginModalMessage, setLoginModalMessage] = useState('이 기능은 로그인이 필요합니다')
@@ -35,6 +37,7 @@ export default function Header() {
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const notificationsRef = useRef<HTMLDivElement>(null)
   const languageMenuRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     checkAuth()
@@ -46,11 +49,11 @@ export default function Header() {
     window.addEventListener('storage', checkAuth)
     window.addEventListener('storage', loadNotifications) // 알림 변경 감지
 
-    // 같은 탭에서의 localStorage 변경을 감지하기 위한 interval
+    // 같은 탭에서의 localStorage 변경을 감지하기 위한 interval (5초마다 체크)
     const interval = setInterval(() => {
       checkAuth()
       loadNotifications()
-    }, 500)
+    }, 5000) // 500ms → 5000ms (5초) - 리소스 최적화
 
     return () => {
       window.removeEventListener('storage', checkAuth)
@@ -70,16 +73,19 @@ export default function Header() {
       if (languageMenuRef.current && !languageMenuRef.current.contains(event.target as Node)) {
         setShowLanguageMenu(false)
       }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchDropdown(false)
+      }
     }
 
-    if (showProfileMenu || showNotifications || showLanguageMenu) {
+    if (showProfileMenu || showNotifications || showLanguageMenu || showSearchDropdown) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showProfileMenu, showNotifications, showLanguageMenu])
+  }, [showProfileMenu, showNotifications, showLanguageMenu, showSearchDropdown])
 
   async function checkAuth() {
     try {
@@ -112,6 +118,8 @@ export default function Header() {
       setIsLoggedIn(false)
       setUserRole(UserRole.GUEST)
       setIsDevAdmin(false)
+    } finally {
+      setIsCheckingAuth(false) // 인증 체크 완료
     }
   }
 
@@ -188,29 +196,223 @@ export default function Header() {
           </a>
 
           <nav className="nav-menu">
-            <a href="/" className="nav-icon home-icon" title="홈">
+            <a
+              href="/"
+              className="nav-icon home-icon"
+              title="홈"
+              style={{
+                background: currentPath === '/' ? '#e8f4fd' : 'transparent',
+                borderBottom: currentPath === '/' ? '2px solid #3b82f6' : '2px solid transparent'
+              }}
+            >
               🏠
             </a>
-            <a href="/questions" className="nav-icon" title="답변">
+            <a
+              href="/questions"
+              className="nav-icon"
+              title="답변"
+              style={{
+                background: currentPath === '/questions' ? '#e8f4fd' : 'transparent',
+                borderBottom: currentPath === '/questions' ? '2px solid #3b82f6' : '2px solid transparent'
+              }}
+            >
               📝
             </a>
-            <a href="/following" className="nav-icon" title="팔로잉">
+            <a
+              href="/following"
+              className="nav-icon"
+              title="팔로잉"
+              style={{
+                background: currentPath === '/following' ? '#e8f4fd' : 'transparent',
+                borderBottom: currentPath === '/following' ? '2px solid #3b82f6' : '2px solid transparent'
+              }}
+            >
               👥
             </a>
           </nav>
         </div>
 
         {/* Center: Search */}
-        <form className="search-container" onSubmit={handleSearch}>
-          <div className="search-icon">🔍</div>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </form>
+        <div ref={searchRef} className="search-container" style={{ position: 'relative' }}>
+          <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+            <div className="search-icon">🔍</div>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search Quora"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setShowSearchDropdown(true)}
+            />
+          </form>
+
+          {/* Search Dropdown - Topic 목록 */}
+          {showSearchDropdown && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              left: 0,
+              right: 0,
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+              zIndex: 1000,
+              maxHeight: '400px',
+              overflowY: 'auto'
+            }}>
+              {/* Topic 목록 */}
+              <div style={{ padding: '0.5rem 0' }}>
+                <a
+                  href="/topics/visa-immigration"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    textDecoration: 'none',
+                    color: '#374151',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <span style={{ fontSize: '1.25rem' }}>🛂</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
+                    비자/이민
+                  </span>
+                </a>
+
+                <a
+                  href="/topics/employment"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    textDecoration: 'none',
+                    color: '#374151',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <span style={{ fontSize: '1.25rem' }}>💼</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
+                    취업
+                  </span>
+                </a>
+
+                <a
+                  href="/topics/education"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    textDecoration: 'none',
+                    color: '#374151',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <span style={{ fontSize: '1.25rem' }}>🎓</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
+                    교육
+                  </span>
+                </a>
+
+                <a
+                  href="/topics/life-in-korea"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    textDecoration: 'none',
+                    color: '#374151',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <span style={{ fontSize: '1.25rem' }}>🏠</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
+                    한국생활
+                  </span>
+                </a>
+
+                <a
+                  href="/topics/law"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    textDecoration: 'none',
+                    color: '#374151',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <span style={{ fontSize: '1.25rem' }}>⚖️</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
+                    법률
+                  </span>
+                </a>
+
+                <a
+                  href="/topics/finance"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    textDecoration: 'none',
+                    color: '#374151',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <span style={{ fontSize: '1.25rem' }}>💰</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
+                    금융
+                  </span>
+                </a>
+
+                <a
+                  href="/topics/health"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    textDecoration: 'none',
+                    color: '#374151',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <span style={{ fontSize: '1.25rem' }}>🏥</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
+                    의료
+                  </span>
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Right: Actions */}
         <div className="header-right">
@@ -251,6 +453,28 @@ export default function Header() {
               </div>
             )}
           </div>
+
+          {/* 북마크 - 로그인 상태에서만 표시 */}
+          {isLoggedIn && (
+            <button
+              className="nav-icon"
+              title="북마크"
+              onClick={() => router.push('/bookmarks')}
+            >
+              🔖
+            </button>
+          )}
+
+          {/* 미션 - 로그인 상태에서만 표시 */}
+          {isLoggedIn && (
+            <button
+              className="nav-icon"
+              title="미션"
+              onClick={() => router.push('/missions')}
+            >
+              🎯
+            </button>
+          )}
 
           {/* Notifications - 로그인 상태에서만 표시 */}
           {isLoggedIn && (
@@ -307,11 +531,18 @@ export default function Header() {
             </div>
           )}
 
-          {isLoggedIn ? (
+          {isCheckingAuth ? (
+            // 인증 체크 중: skeleton UI (FOUC 방지)
+            <div style={{
+              width: '80px',
+              height: '40px',
+              background: 'transparent'
+            }}></div>
+          ) : isLoggedIn ? (
             // 로그인 후: 프로필 아바타 + 드롭다운 메뉴
             <div ref={profileMenuRef} className="dropdown-container">
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div className="header-profile-avatar" onClick={() => setShowProfileMenu(!showProfileMenu)} title={userName}>
+                <div className="header-profile-avatar" onClick={() => setShowProfileMenu(!showProfileMenu)} title="내 정보">
                   👤
                 </div>
                 {isDevAdmin && (
@@ -353,25 +584,13 @@ export default function Header() {
 
                   <div className="profile-divider"></div>
 
-                  {/* 역할 배지 */}
-                  <div className="profile-menu-section">
-                    <div className="profile-menu-item">
-                      <span className="profile-menu-icon">{roleInfo.icon}</span>
-                      <span className={`profile-role-badge role-${userRole.toLowerCase()}`}>
-                        {roleInfo.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="profile-divider"></div>
-
                   {/* USER 이상 메뉴 */}
                   {userRole !== UserRole.GUEST && (
                     <>
                       <div className="profile-menu-section">
                         <a href="/profile" className="profile-menu-item">
                           <span className="profile-menu-icon">👤</span>
-                          <span className="profile-menu-text">지식 프로필</span>
+                          <span className="profile-menu-text">프로필</span>
                         </a>
                         <a href="/my-questions" className="profile-menu-item">
                           <span className="profile-menu-icon">📝</span>
@@ -387,13 +606,13 @@ export default function Header() {
                     </>
                   )}
 
-                  {/* USER: Certified 신청 */}
+                  {/* USER: Certified User 신청 */}
                   {userRole === UserRole.USER && (
                     <>
                       <div className="profile-menu-section">
                         <a href="/experts/apply" className="profile-menu-item">
                           <span className="profile-menu-icon">✅</span>
-                          <span className="profile-menu-text">Certified 신청</span>
+                          <span className="profile-menu-text">Certified User 신청</span>
                         </a>
                       </div>
                       <div className="profile-divider"></div>
@@ -407,6 +626,19 @@ export default function Header() {
                         <a href="/experts/network" className="profile-menu-item">
                           <span className="profile-menu-icon">🤝</span>
                           <span className="profile-menu-text">Certified Network</span>
+                        </a>
+                      </div>
+                      <div className="profile-divider"></div>
+                    </>
+                  )}
+
+                  {/* USER & VERIFIED: 보유 자산 */}
+                  {(userRole === UserRole.USER || userRole === UserRole.VERIFIED) && (
+                    <>
+                      <div className="profile-menu-section">
+                        <a href="/wallet" className="profile-menu-item">
+                          <span className="profile-menu-icon">💰</span>
+                          <span className="profile-menu-text">보유 자산</span>
                         </a>
                       </div>
                       <div className="profile-divider"></div>

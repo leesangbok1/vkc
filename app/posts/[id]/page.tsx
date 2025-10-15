@@ -1,11 +1,13 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import Header from '@/components/layout/Header'
+import Sidebar from '@/components/layout/Sidebar'
+import ActionBar from '@/components/common/ActionBar'
 import { useState, useEffect } from 'react'
+import { MOCK_POSTS } from '@/lib/data/mockData'
 
-// Mock 게시글 데이터
-const MOCK_POSTS: Record<string, {
+// 로컬 Mock 게시글 데이터 (백업용)
+const LOCAL_MOCK_POSTS: Record<string, {
   id: string
   title: string
   content: string
@@ -61,7 +63,7 @@ const MOCK_POSTS: Record<string, {
     categoryIcon: '🛂',
     author: {
       name: 'VietKConnect 관리자',
-      role: 'admin',
+      role: 'ADMIN',
       visaType: 'F-4',
       yearsInKorea: 8
     },
@@ -113,7 +115,7 @@ const MOCK_POSTS: Record<string, {
     categoryIcon: '🎓',
     author: {
       name: 'VietKConnect 관리자',
-      role: 'admin',
+      role: 'ADMIN',
       visaType: 'F-4',
       yearsInKorea: 8
     },
@@ -177,7 +179,7 @@ const MOCK_POSTS: Record<string, {
     categoryIcon: '💼',
     author: {
       name: 'VietKConnect 관리자',
-      role: 'admin',
+      role: 'ADMIN',
       visaType: 'F-4',
       yearsInKorea: 8
     },
@@ -190,7 +192,34 @@ export default function PostDetailPage() {
   const params = useParams()
   const router = useRouter()
   const postId = params.id as string
-  const post = MOCK_POSTS[postId]
+
+  // MOCK_POSTS 배열에서 ID로 게시글 찾기
+  const foundPost = MOCK_POSTS.find(p => p.id === postId)
+  const localPost = LOCAL_MOCK_POSTS[postId]
+
+  // Category에서 아이콘 추출 (mockData.ts의 Post는 categoryIcon이 없음)
+  function getCategoryIcon(category: string): string {
+    const iconMap: Record<string, string> = {
+      '비자/이민': '🛂',
+      '교육': '🎓',
+      '취업': '💼',
+      '한국생활': '🏠',
+      '법률': '⚖️',
+      '금융': '💰',
+      '의료': '🏥',
+      '교통': '🚗',
+      '부동산': '🏢',
+      '기타': '📌'
+    }
+    return iconMap[category] || '📝'
+  }
+
+  // Post 데이터 통합 (categoryIcon 추가)
+  const post = foundPost ? {
+    ...foundPost,
+    categoryIcon: getCategoryIcon(foundPost.category),
+    viewCount: foundPost.views
+  } : localPost
 
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
@@ -203,21 +232,24 @@ export default function PostDetailPage() {
   // 게시글이 없으면 404
   if (!post) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <main className="container mx-auto px-4 py-8 max-w-4xl">
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">게시글을 찾을 수 없습니다</h1>
-            <p className="text-gray-600 mb-6">요청하신 게시글이 존재하지 않거나 삭제되었습니다.</p>
-            <button
-              onClick={() => router.push('/posts')}
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              목록으로 돌아가기
-            </button>
+      <main className="main-layout">
+        <div className="container">
+          <div className="main-content">
+            <div className="section post-error-state">
+              <div className="post-error-icon">📄</div>
+              <h1 className="post-error-title">게시글을 찾을 수 없습니다</h1>
+              <p className="post-error-message">요청하신 게시글이 존재하지 않거나 삭제되었습니다.</p>
+              <button
+                onClick={() => router.push('/')}
+                className="btn btn-primary"
+              >
+                홈으로 돌아가기
+              </button>
+            </div>
           </div>
-        </main>
-      </div>
+          <Sidebar showContent={false} />
+        </div>
+      </main>
     )
   }
 
@@ -234,66 +266,53 @@ export default function PostDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+    <main className="main-layout">
+      <div className="container">
+        <div className="main-content">
         {/* 상단 네비게이션 */}
-        <div className="mb-6">
+        <div className="section post-navigation">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="btn btn-secondary post-back-btn"
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M12 4l-8 8 8 8" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            뒤로 가기
+            ← 뒤로 가기
           </button>
         </div>
 
         {/* 게시글 카드 */}
-        <article className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <article className="section card post-detail-card">
           {/* 헤더 */}
-          <div className="p-6 border-b border-gray-200">
+          <div className="post-detail-header">
             {/* 카테고리 */}
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">{post.categoryIcon}</span>
-              <span className="text-sm font-medium text-blue-600">{post.category}</span>
+            <div className="post-category-badge">
+              <span className="category-icon">{post.categoryIcon}</span>
+              <span className="category-name">{post.category}</span>
             </div>
 
             {/* 제목 */}
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
+            <h1 className="post-detail-title">{post.title}</h1>
 
             {/* 메타 정보 */}
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                    {post.author.name[0]}
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">{post.author.name}</div>
-                    <div className="text-xs text-gray-500">
-                      {post.author.visaType} · 한국 {post.author.yearsInKorea}년차
-                    </div>
+            <div className="post-meta">
+              <div className="post-author">
+                <div className="author-avatar-small"></div>
+                <div className="author-details">
+                  <div className="author-name">{post.author.name}</div>
+                  <div className="author-info">
+                    {post.author.visaType && `${post.author.visaType} · `}
+                    {post.author.yearsInKorea && `한국 ${post.author.yearsInKorea}년차`}
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-gray-500">
-                <div className="flex items-center gap-1">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M8 3C4.5 3 1.5 5.5 1 8c.5 2.5 3.5 5 7 5s6.5-2.5 7-5c-.5-2.5-3.5-5-7-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zm0-5c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                  </svg>
-                  {post.viewCount.toLocaleString()}
-                </div>
-                <div>{formatDate(post.createdAt)}</div>
+              <div className="post-stats">
+                <span className="post-stat-item">{formatDate(post.createdAt)}</span>
               </div>
             </div>
           </div>
 
           {/* 본문 */}
-          <div className="p-6">
-            <div className="prose prose-gray max-w-none">
+          <div className="post-detail-content">
+            <div className="post-content-body">
               <div
                 className="post-content"
                 dangerouslySetInnerHTML={{
@@ -325,28 +344,45 @@ export default function PostDetailPage() {
               />
             </div>
           </div>
+
+          {/* ActionBar: 도움됨/북마크/공유 버튼 */}
+          <div style={{ padding: '1rem 0', borderTop: '1px solid #e9ecef' }}>
+            <ActionBar
+              targetId={post.id}
+              targetType="post"
+              title={post.title}
+              content={post.content}
+              url={`/posts/${post.id}`}
+              initialHelpfulCount={0}
+              compact={false}
+              requireLogin={!isLoggedIn}
+              onLoginRequired={() => {
+                router.push(`/auth/login?redirectTo=/posts/${post.id}`)
+              }}
+            />
+          </div>
         </article>
 
         {/* 관련 게시글 */}
-        <div className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">다른 기사</h2>
-          <div className="grid gap-4">
-            {Object.values(MOCK_POSTS)
+        <div className="section related-posts">
+          <h2 className="section-title">다른 기사</h2>
+          <div className="related-posts-grid">
+            {MOCK_POSTS
               .filter(p => p.id !== postId)
               .slice(0, 2)
               .map(relatedPost => (
                 <a
                   key={relatedPost.id}
                   href={`/posts/${relatedPost.id}`}
-                  className="bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 transition-colors"
+                  className="card related-post-card"
                 >
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">{relatedPost.categoryIcon}</span>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 mb-1 hover:text-blue-600">
+                  <div className="related-post-content">
+                    <span className="related-post-icon">{getCategoryIcon(relatedPost.category)}</span>
+                    <div className="related-post-info">
+                      <h3 className="related-post-title">
                         {relatedPost.title}
                       </h3>
-                      <div className="text-sm text-gray-500">
+                      <div className="related-post-meta">
                         {relatedPost.category} · {formatDate(relatedPost.createdAt)}
                       </div>
                     </div>
@@ -355,7 +391,11 @@ export default function PostDetailPage() {
               ))}
           </div>
         </div>
-      </main>
-    </div>
+        </div>
+
+        {/* Sidebar */}
+        <Sidebar showContent={false} />
+      </div>
+    </main>
   )
 }
