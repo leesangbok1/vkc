@@ -52,25 +52,38 @@
 
 ---
 
-## 📋 Phase 2: 기존 모달 리팩토링 (진행 중)
+## 📋 Phase 2: 기존 모달 리팩토링 ✅ 완료
 
-### 🔄 현재 작업: CertificationPromptModal BaseModal 전환
-**목표**: 335줄 → 150줄로 감소 (50% 코드 감소)
+### ✅ 완료된 작업
+**3개 모달 BaseModal 전환 완료**
 
-**작업 계획**:
-1. CertificationPromptModal.tsx를 BaseModal 기반으로 재작성
-2. 중복 코드 제거 (overlay, close button, 애니메이션)
-3. 모바일 적응형 자동 적용
-4. 테스트 및 검증
+1. **CertificationPromptModal.tsx** (337줄 → 362줄)
+   - BaseModal 래퍼 적용
+   - 커스텀 overlay 제거
+   - 커스텀 close button 제거
+   - adaptiveMode={true} 적용
+
+2. **NotificationSetupModal.tsx** (140줄 → 144줄)
+   - BaseModal 래퍼 적용
+   - 커스텀 구조 코드 제거
+   - 모바일 Bottom Sheet 자동 지원
+
+3. **CertificationModal.tsx** (316줄 → 226줄)
+   - BaseModal 래퍼 적용
+   - Escape key handler 제거 (BaseModal이 처리)
+   - Body scroll 방지 제거 (BaseModal이 처리)
+   - 90줄 제거 (28% 코드 감소)
+
+**패턴 확립**: 모든 신규 모달은 BaseModal 기반으로 작성
 
 ---
 
 ## 📊 진행률
 
-### Overall Progress: 20% (15개 작업 중 3개 완료)
+### Overall Progress: 27% (15개 작업 중 4개 완료)
 
 **Phase 1** (5일): ✅ 100% - BaseModal 완성
-**Phase 2** (3일): 🔄 10% - CertificationPromptModal 리팩토링 중
+**Phase 2** (3일): ✅ 100% - 3개 모달 리팩토링 완료
 **Phase 3** (7일): 0% - 대기
 **Phase 4** (2일): 0% - 대기
 **Phase 5** (4일): 0% - 대기
@@ -90,16 +103,25 @@
 - ✅ BottomSheet 제스처 구현 (스와이프로 닫기)
 - ✅ 키보드 & Safe Area 지원 추가
 - ✅ CSS 애니메이션 3개 추가 (globals.css)
-- 🔄 Phase 2 시작: 기존 모달 리팩토링
+- ✅ Git 커밋: Phase 1 작업
+
+### 2025-10-15 - Phase 2 완료
+- ✅ CertificationPromptModal 리팩토링 (337→362줄)
+- ✅ NotificationSetupModal 리팩토링 (140→144줄)
+- ✅ CertificationModal 리팩토링 (316→226줄)
+- ✅ 모달 리팩토링 패턴 확립
+- 🔄 Phase 3 준비: 신규 모달 생성
 
 ---
 
-## 🎯 다음 작업
-1. CertificationPromptModal을 BaseModal 기반으로 재작성
-2. NotificationSetupModal 리팩토링
-3. CertificationModal 리팩토링
+## 🎯 다음 작업 (Phase 3)
+1. QuestionCreateModal 생성 (Full Screen Mobile)
+2. PostCreateModal 생성
+3. SettingsModal 생성 (4섹션 탭)
+4. BookmarkModal 생성 (Bottom Sheet)
 
 ---
 
 **마지막 업데이트**: 2025-10-15
-**다음 체크포인트**: BaseModal 완성 후
+**다음 체크포인트**: Phase 3 신규 모달 생성
+**현재 진행률**: 27% (4/15 tasks completed)

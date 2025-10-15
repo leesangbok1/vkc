@@ -1,152 +1,143 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import BaseModal from './BaseModal'
 
 interface NotificationSetupModalProps {
   isOpen: boolean
   onClose: () => void
-  context: 'question' | 'answer'
+  onComplete: () => void
+  userEmail: string
 }
 
-export default function NotificationSetupModal({ isOpen, onClose, context }: NotificationSetupModalProps) {
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [emailNotification, setEmailNotification] = useState(true)
-  const [kakaoNotification, setKakaoNotification] = useState(false)
-  const [saved, setSaved] = useState(false)
+export default function NotificationSetupModal({
+  isOpen,
+  onClose,
+  onComplete,
+  userEmail
+}: NotificationSetupModalProps) {
+  const [emailNotif, setEmailNotif] = useState(true)
+  const [pushNotif, setPushNotif] = useState(false)
+  const [saving, setSaving] = useState(false)
 
-  if (!isOpen) return null
+  useEffect(() => {
+    // 기존 설정 로드
+    const settings = localStorage.getItem('notification_settings')
+    if (settings) {
+      const parsed = JSON.parse(settings)
+      setEmailNotif(parsed.email_notifications ?? true)
+      setPushNotif(parsed.push_notifications ?? false)
+    }
+  }, [])
 
   const handleSave = () => {
-    // Save to localStorage
-    const notificationSettings = {
-      email: emailNotification ? email : null,
-      phone: kakaoNotification ? phone : null,
-      emailEnabled: emailNotification,
-      kakaoEnabled: kakaoNotification,
-      savedAt: new Date().toISOString()
+    setSaving(true)
+
+    // 알림 설정 저장
+    const settings = {
+      email_notifications: emailNotif,
+      push_notifications: pushNotif,
+      setup_completed: true,
+      setup_date: new Date().toISOString()
     }
 
-    localStorage.setItem('vietkconnect_notification_settings', JSON.stringify(notificationSettings))
+    localStorage.setItem('notification_settings', JSON.stringify(settings))
 
-    setSaved(true)
+    // TODO: API로 DB 저장
+    // await fetch('/api/users/notification-preferences', {
+    //   method: 'POST',
+    //   body: JSON.stringify(settings)
+    // })
+
     setTimeout(() => {
-      setSaved(false)
-      onClose()
-    }, 2000)
-  }
-
-  const contextText = {
-    question: {
-      title: '질문 알림 설정',
-      description: '이 질문에 새로운 답변이 달리면 알림을 받으시겠습니까?'
-    },
-    answer: {
-      title: '답변 알림 설정',
-      description: '답변이 채택되거나 댓글이 달리면 알림을 받으시겠습니까?'
-    }
+      setSaving(false)
+      onComplete()
+    }, 500)
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="modal-title">{contextText[context].title}</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      width="500px"
+      adaptiveMode={true}
+    >
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🔔</div>
+        <h3 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1f2937', margin: 0 }}>
+          답변 알림 받기
+        </h3>
+        <p style={{ marginTop: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
+          질문에 답변이 달리면 알림을 보내드려요!
+        </p>
+      </div>
+
+      {/* 이메일 확인 */}
+      <div className="notification-info-box">
+        <div className="info-label">이메일</div>
+        <div className="info-value">{userEmail}</div>
+        <div className="info-status">✅ 확인됨</div>
+      </div>
+
+      {/* 알림 옵션 */}
+      <div className="notification-options">
+        <div className="notification-option">
+          <div className="option-left">
+            <span className="option-icon">📧</span>
+            <div className="option-text">
+              <div className="option-title">이메일 알림</div>
+              <div className="option-desc">새 답변, 댓글 알림</div>
+            </div>
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={emailNotif}
+              onChange={(e) => setEmailNotif(e.target.checked)}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </div>
 
-        <div className="modal-body">
-          <p className="modal-description">
-            {contextText[context].description}
-          </p>
-
-          {saved ? (
-            <div className="alert alert-success">
-              ✅ 알림 설정이 저장되었습니다!
+        <div className="notification-option">
+          <div className="option-left">
+            <span className="option-icon">🔔</span>
+            <div className="option-text">
+              <div className="option-title">푸시 알림</div>
+              <div className="option-desc">실시간 알림 (선택)</div>
             </div>
-          ) : (
-            <>
-              {/* Email Notification */}
-              <div className="notification-option">
-                <div className="notification-option-header">
-                  <label className="notification-option-label">
-                    <input
-                      type="checkbox"
-                      checked={emailNotification}
-                      onChange={(e) => setEmailNotification(e.target.checked)}
-                      className="notification-checkbox"
-                    />
-                    <span>📧 이메일로 알림 받기</span>
-                  </label>
-                </div>
-
-                {emailNotification && (
-                  <div className="notification-option-input">
-                    <input
-                      type="email"
-                      className="form-input"
-                      placeholder="example@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* KakaoTalk Notification */}
-              <div className="notification-option">
-                <div className="notification-option-header">
-                  <label className="notification-option-label">
-                    <input
-                      type="checkbox"
-                      checked={kakaoNotification}
-                      onChange={(e) => setKakaoNotification(e.target.checked)}
-                      className="notification-checkbox"
-                    />
-                    <span>💬 카카오톡으로 알림 받기</span>
-                  </label>
-                </div>
-
-                {kakaoNotification && (
-                  <div className="notification-option-input">
-                    <input
-                      type="tel"
-                      className="form-input"
-                      placeholder="010-1234-5678"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                    <p className="notification-option-hint">
-                      카카오톡 알림은 휴대폰 번호로 전송됩니다
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="modal-footer">
-                <button
-                  onClick={onClose}
-                  className="btn btn-secondary"
-                >
-                  나중에
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="btn btn-primary"
-                  disabled={
-                    (!emailNotification && !kakaoNotification) ||
-                    (emailNotification && !email) ||
-                    (kakaoNotification && !phone)
-                  }
-                >
-                  저장하기
-                </button>
-              </div>
-            </>
-          )}
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={pushNotif}
+              onChange={(e) => setPushNotif(e.target.checked)}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </div>
       </div>
-    </div>
+
+      {/* 안내 메시지 */}
+      <div className="notification-notice">
+        💡 언제든지 설정에서 변경할 수 있어요
+      </div>
+
+      {/* Footer Actions */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+        <button className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>
+          나중에
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={handleSave}
+          disabled={saving}
+          style={{ flex: 1 }}
+        >
+          {saving ? '저장 중...' : '알림 설정 완료'}
+        </button>
+      </div>
+    </BaseModal>
   )
 }
