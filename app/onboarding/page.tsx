@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { generateUniqueNickname } from '@/lib/utils/nickname-generator'
+import { subscribeTopic } from '@/lib/utils/follow-manager'
 
 type SurveyData = {
   residence?: string
@@ -115,6 +116,19 @@ export default function OnboardingPage() {
       profile_completion: 40, // 기본 정보만 입력 = 40%
       completedAt: new Date().toISOString()
     }))
+
+    // 선택한 토픽을 구독 목록에 저장
+    selectedTopics.forEach(topicId => {
+      const topic = POPULAR_TOPICS.find(t => t.id === topicId)
+      if (topic) {
+        subscribeTopic({
+          id: topic.id,
+          name: topic.name,
+          slug: topic.name.replace(/\s+/g, '-').toLowerCase(),
+          icon: topic.icon
+        })
+      }
+    })
 
     // 🔧 DEV MODE: 개발자 모드인 경우 온보딩 완료 후 ADMIN 권한 부여
     const currentUser = JSON.parse(localStorage.getItem('mock_user') || '{}')

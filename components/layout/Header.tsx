@@ -264,7 +264,7 @@ export default function Header() {
               {/* Topic 목록 */}
               <div style={{ padding: '0.5rem 0' }}>
                 <a
-                  href="/topics/visa-immigration"
+                  href="/topics/visa"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -327,7 +327,7 @@ export default function Header() {
                 </a>
 
                 <a
-                  href="/topics/life-in-korea"
+                  href="/topics/daily-life"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -340,7 +340,7 @@ export default function Header() {
                   onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                 >
-                  <span style={{ fontSize: '1.25rem' }}>🏠</span>
+                  <span style={{ fontSize: '1.25rem' }}>🌏</span>
                   <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
                     <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
                     한국생활
@@ -348,7 +348,7 @@ export default function Header() {
                 </a>
 
                 <a
-                  href="/topics/law"
+                  href="/topics/legal"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -390,7 +390,7 @@ export default function Header() {
                 </a>
 
                 <a
-                  href="/topics/health"
+                  href="/topics/healthcare"
                   style={{
                     display: 'flex',
                     alignItems: 'center',

@@ -1,9 +1,9 @@
 {
-  "/api/questions/route": "app/api/questions/route.js",
-  "/questions/page": "app/questions/page.js",
-  "/experts/apply/page": "app/experts/apply/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
   "/page": "app/page.js",
   "/onboarding/page": "app/onboarding/page.js",
-  "/topics/page": "app/topics/page.js",
-  "/following/page": "app/following/page.js"
+  "/following/page": "app/following/page.js",
+  "/bookmarks/page": "app/bookmarks/page.js",
+  "/my-questions/page": "app/my-questions/page.js",
+  "/missions/page": "app/missions/page.js"
 }

@@ -92,16 +92,25 @@ export default function BannerCarousel({ banners }: BannerCarouselProps) {
         .swiper-button-next,
         .swiper-button-prev {
           color: white !important;
-          background: rgba(0, 0, 0, 0.3);
+          background: rgba(0, 0, 0, 0.5);
           padding: 1.5rem;
           border-radius: 50%;
-          width: 40px !important;
-          height: 40px !important;
+          width: 50px !important;
+          height: 50px !important;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .swiper-button-next:hover,
+        .swiper-button-prev:hover {
+          background: rgba(0, 0, 0, 0.7) !important;
+          transform: scale(1.1);
         }
 
         .swiper-button-next:after,
         .swiper-button-prev:after {
-          font-size: 1.2rem !important;
+          font-size: 1.5rem !important;
+          font-weight: bold;
         }
 
         .swiper-pagination-bullet {
@@ -111,6 +120,20 @@ export default function BannerCarousel({ banners }: BannerCarouselProps) {
 
         .swiper-pagination-bullet-active {
           opacity: 1 !important;
+        }
+
+        /* 모바일에서도 화살표 표시 */
+        @media (max-width: 768px) {
+          .swiper-button-next,
+          .swiper-button-prev {
+            width: 40px !important;
+            height: 40px !important;
+          }
+
+          .swiper-button-next:after,
+          .swiper-button-prev:after {
+            font-size: 1.2rem !important;
+          }
         }
       `}</style>
     </div>

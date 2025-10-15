@@ -31,7 +31,7 @@ export default function TopicsPage() {
       slug: 'visa',
       description: '비자 신청·연장, 체류 자격 변경 (베트남인)',
       questionCount: 245,
-      isFollowing: true
+      isFollowing: false
     },
     {
       id: 2,
@@ -40,7 +40,7 @@ export default function TopicsPage() {
       slug: 'employment',
       description: '취업, 한국 직장 문화, 근로계약 가이드',
       questionCount: 189,
-      isFollowing: true
+      isFollowing: false
     },
     {
       id: 3,
@@ -58,7 +58,7 @@ export default function TopicsPage() {
       slug: 'daily-life',
       description: '한국 생활 초기 적응, 문화 차이 극복',
       questionCount: 432,
-      isFollowing: true
+      isFollowing: false
     },
     {
       id: 5,
@@ -103,7 +103,7 @@ export default function TopicsPage() {
       slug: 'korean-language',
       description: '베트남어 화자를 위한 한국어 학습',
       questionCount: 298,
-      isFollowing: true
+      isFollowing: false
     },
     {
       id: 10,
@@ -214,156 +214,190 @@ export default function TopicsPage() {
       </div>
 
       <div className="container">
-        <div className="main-content">
-        {/* Page Header */}
-        <div className="section topics-page-header">
-          <div className="topics-page-title-section">
-            <h1 className="section-title topics-page-title">
-              💖 관심 토픽
-            </h1>
-            <p className="topics-page-subtitle">
-              관심있는 토픽을 구독하면 맞춤형 질문과 답변을 받을 수 있습니다
-            </p>
-          </div>
-
-          {/* Search & Filter */}
-          <div className="topics-search-filter-row">
-            {/* Search Input */}
-            <div className="topics-search-wrapper">
-              <div className="topics-search-icon">
-                🔍
-              </div>
-              <input
-                type="text"
-                className="form-input topics-search-input"
-                placeholder="토픽 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="category-tabs topics-filter-tabs">
-              <button
-                className={`category-tab ${filter === 'all' ? 'active' : ''}`}
-                onClick={() => setFilter('all')}
-              >
-                전체 ({topics.length})
-              </button>
-              <button
-                className={`category-tab ${filter === 'following' ? 'active' : ''}`}
-                onClick={() => setFilter('following')}
-              >
-                구독중 ({followingCount})
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Category Tabs */}
-        <div className="category-tabs">
-          <a href="/" className="category-tab">Popular</a>
-          <a href="/topics" className="category-tab active">Topic</a>
-          <a href="/following" className="category-tab">Following</a>
-        </div>
-
-        {/* Following Topics Summary - only show if logged in and following topics */}
-        {isAuthenticated && followingCount > 0 && (
-          <div className="section topics-following-banner">
-            <div className="topics-following-content">
-              <div>
-                <h3 className="topics-following-title">
-                  💖 {followingCount}개의 토픽을 구독 중입니다
-                </h3>
-                <p className="topics-following-subtitle">
-                  아래에서 구독 중인 토픽의 최신 질문을 확인하세요
+        {/* 좌우 분할 레이아웃 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '2rem',
+          alignItems: 'start'
+        }}>
+          {/* 왼쪽: 토픽 설정 */}
+          <div style={{ width: '100%' }}>
+            {/* Page Header */}
+            <div className="section topics-page-header">
+              <div className="topics-page-title-section">
+                <h1 className="section-title topics-page-title">
+                  💖 관심 토픽
+                </h1>
+                <p className="topics-page-subtitle">
+                  관심있는 토픽을 구독하면 맞춤형 질문과 답변을 받을 수 있습니다
                 </p>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Login prompt for non-authenticated users - only show at bottom if needed */}
-        {!isAuthenticated && filteredTopics.length > 0 && (
-          <div className="section topics-login-prompt">
-            <div className="topics-login-icon">💬</div>
-            <h3 className="topics-login-title">
-              로그인하고<br />나만의 맞춤형 콘텐츠를 만나보세요
-            </h3>
-            <button
-              onClick={() => router.push('/auth/login?redirectTo=/topics')}
-              className="btn btn-primary topics-login-btn"
-            >
-              로그인·회원가입
-            </button>
-          </div>
-        )}
-
-        {/* Related Questions Feed - 구독 중인 토픽의 최신 질문 (로그인 시에만) */}
-        {isAuthenticated && followingCount > 0 && (
-          <RelatedQuestionsFeed followingTopics={followingTopics} />
-        )}
-
-        {/* Topics Grid */}
-        {filteredTopics.length === 0 ? (
-          <div className="section topics-empty-state">
-            <div className="topics-empty-icon">🔍</div>
-            <h3 className="topics-empty-title">
-              {searchQuery ? '검색 결과가 없습니다' : filter === 'following' ? '구독 중인 토픽이 없습니다' : '토픽이 없습니다'}
-            </h3>
-            <p className="topics-empty-description">
-              {searchQuery ? '다른 검색어를 시도해보세요' : filter === 'following' ? '관심있는 토픽을 구독해보세요' : ''}
-            </p>
-          </div>
-        ) : (
-          <div className="topics-grid">
-            {filteredTopics.map((topic) => (
-              <div
-                key={topic.id}
-                className={`card topic-card ${topic.isFollowing ? 'topic-card-following' : ''}`}
-              >
-                {/* Topic Icon & Name */}
-                <div className="topic-card-header">
-                  <div className="topic-icon-wrapper">
-                    {topic.icon}
+              {/* Search & Filter */}
+              <div className="topics-search-filter-row">
+                {/* Search Input */}
+                <div className="topics-search-wrapper">
+                  <div className="topics-search-icon">
+                    🔍
                   </div>
-                  <div className="topic-info-wrapper">
-                    <h3 className="topic-name">
-                      {topic.name}
-                    </h3>
-                    <p className="topic-question-count">
-                      {topic.questionCount}개의 질문
-                    </p>
-                  </div>
+                  <input
+                    type="text"
+                    className="form-input topics-search-input"
+                    placeholder="토픽 검색..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
 
-                {/* Description */}
-                <p className="topic-description">
-                  {topic.description}
-                </p>
-
-                {/* Action Buttons */}
-                <div className="topic-actions">
+                {/* Filter Tabs */}
+                <div className="category-tabs topics-filter-tabs">
                   <button
-                    className={`btn ${topic.isFollowing ? 'btn-primary' : 'btn-secondary'} topic-action-btn`}
-                    onClick={() => toggleFollow(topic.id)}
+                    className={`category-tab ${filter === 'all' ? 'active' : ''}`}
+                    onClick={() => setFilter('all')}
                   >
-                    {topic.isFollowing ? '✓ 구독중' : '+ 구독'}
+                    전체 ({topics.length})
                   </button>
-                  <Link href={`/categories/${topic.name.toLowerCase()}`} className="topic-action-link">
-                    <button className="btn btn-secondary topic-action-btn-full">
-                      더보기
-                    </button>
-                  </Link>
+                  <button
+                    className={`category-tab ${filter === 'following' ? 'active' : ''}`}
+                    onClick={() => setFilter('following')}
+                  >
+                    구독중 ({followingCount})
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-        </div>
+            </div>
 
-        {/* Sidebar */}
-        <Sidebar showContent={false} />
+            {/* Category Tabs */}
+            <div className="category-tabs">
+              <a href="/" className="category-tab">Popular</a>
+              <a href="/topics" className="category-tab active">Topic</a>
+              <a href="/following" className="category-tab">Following</a>
+            </div>
+
+            {/* Login prompt for non-authenticated users */}
+            {!isAuthenticated && filteredTopics.length > 0 && (
+              <div className="section topics-login-prompt" style={{ marginBottom: '1.5rem' }}>
+                <div className="topics-login-icon">💬</div>
+                <h3 className="topics-login-title">
+                  로그인하고<br />나만의 맞춤형 콘텐츠를 만나보세요
+                </h3>
+                <button
+                  onClick={() => router.push('/auth/login?redirectTo=/topics')}
+                  className="btn btn-primary topics-login-btn"
+                >
+                  로그인·회원가입
+                </button>
+              </div>
+            )}
+
+            {/* Topics Grid */}
+            {filteredTopics.length === 0 ? (
+              <div className="section topics-empty-state">
+                <div className="topics-empty-icon">🔍</div>
+                <h3 className="topics-empty-title">
+                  {searchQuery ? '검색 결과가 없습니다' : filter === 'following' ? '구독 중인 토픽이 없습니다' : '토픽이 없습니다'}
+                </h3>
+                <p className="topics-empty-description">
+                  {searchQuery ? '다른 검색어를 시도해보세요' : filter === 'following' ? '관심있는 토픽을 구독해보세요' : ''}
+                </p>
+              </div>
+            ) : (
+              <div className="topics-grid">
+                {filteredTopics.map((topic) => (
+                  <div
+                    key={topic.id}
+                    className={`card topic-card ${topic.isFollowing ? 'topic-card-following' : ''}`}
+                  >
+                    {/* Topic Icon & Name */}
+                    <div className="topic-card-header">
+                      <div className="topic-icon-wrapper">
+                        {topic.icon}
+                      </div>
+                      <div className="topic-info-wrapper">
+                        <h3 className="topic-name">
+                          {topic.name}
+                        </h3>
+                        <p className="topic-question-count">
+                          {topic.questionCount}개의 질문
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <p className="topic-description">
+                      {topic.description}
+                    </p>
+
+                    {/* Action Buttons */}
+                    <div className="topic-actions">
+                      <button
+                        className={`btn ${topic.isFollowing ? 'btn-primary' : 'btn-secondary'} topic-action-btn`}
+                        onClick={() => toggleFollow(topic.id)}
+                      >
+                        {topic.isFollowing ? '✓ 구독중' : '+ 구독'}
+                      </button>
+                      <Link href={`/topics/${topic.slug}`} className="topic-action-link">
+                        <button className="btn btn-secondary topic-action-btn-full">
+                          더보기
+                        </button>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 오른쪽: 구독 토픽의 최신 질문 */}
+          <div style={{ width: '100%', position: 'sticky', top: '1rem' }}>
+            {/* Following Topics Summary */}
+            {isAuthenticated && followingCount > 0 ? (
+              <>
+                <div className="section topics-following-banner" style={{ marginBottom: '1.5rem' }}>
+                  <div className="topics-following-content">
+                    <div>
+                      <h3 className="topics-following-title">
+                        💖 {followingCount}개의 토픽을 구독 중입니다
+                      </h3>
+                      <p className="topics-following-subtitle">
+                        구독 중인 토픽의 최신 질문을 확인하세요
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Related Questions Feed */}
+                <RelatedQuestionsFeed followingTopics={followingTopics} />
+              </>
+            ) : (
+              <div className="section" style={{
+                padding: '2rem',
+                textAlign: 'center',
+                background: '#f9fafb',
+                borderRadius: '12px'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📌</div>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '0.5rem'
+                }}>
+                  토픽 구독 시 맞춤형 질문 추천
+                </h3>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#6b7280',
+                  lineHeight: '1.6'
+                }}>
+                  왼쪽에서 관심있는 토픽을 구독하면<br />
+                  이곳에서 최신 질문을 확인할 수 있습니다
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </main>
   )
