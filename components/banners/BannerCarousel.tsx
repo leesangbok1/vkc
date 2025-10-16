@@ -29,7 +29,11 @@ export default function BannerCarousel({ banners }: BannerCarouselProps) {
       width: '100%',
       margin: '1.5rem 0',
       borderRadius: '12px',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      // Default max-height for slides; can be overridden via CSS var
+      // Ensures internal scroll appears if translated text grows
+      // and prevents layout jump
+      ['--banner-slide-max-height' as any]: '180px'
     }}>
       <Swiper
         modules={[Navigation, Pagination, Autoplay]}
@@ -55,6 +59,11 @@ export default function BannerCarousel({ banners }: BannerCarouselProps) {
                 background: banner.backgroundColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 padding: '1.5rem',
                 minHeight: '100px',
+                // Prevent height jump on long translations
+                maxHeight: 'var(--banner-slide-max-height)',
+                overflowY: 'auto',
+                overscrollBehavior: 'contain',
+                scrollbarGutter: 'stable both-edges',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
@@ -89,6 +98,11 @@ export default function BannerCarousel({ banners }: BannerCarouselProps) {
       </Swiper>
 
       <style jsx global>{`
+        .banner-carousel-container { --banner-slide-max-height: 180px; }
+        @media (max-width: 768px) {
+          .banner-carousel-container { --banner-slide-max-height: 160px; }
+        }
+
         .swiper-button-next,
         .swiper-button-prev {
           color: white !important;
