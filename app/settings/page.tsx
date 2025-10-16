@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 
 type UserTier = 'GUEST' | 'USER' | 'VERIFIED' | 'ADMIN'
 
@@ -54,8 +54,7 @@ export default function SettingsPage() {
 
 
   return (
-    <main className="main-layout">
-      <div className="main-content">
+    <PageLayout variant="centered">
         {/* Page Header */}
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <div className="card-header">
@@ -225,11 +224,7 @@ export default function SettingsPage() {
             />
           </div>
         </div>
-      </div>
-
-      {/* Sidebar */}
-      <Sidebar showContent={false} />
-    </main>
+    </PageLayout>
   )
 }
 
