@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
+import PageLayout from '@/components/layout/PageLayout'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -51,8 +52,8 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="main-layout login-page-layout">
-      <div className="login-container">
+    <PageLayout variant="centered">
+      <div className="login-container" suppressHydrationWarning>
         {/* Login Header */}
         <h1 className="login-title">VietKConnect에 오신걸 환영합니다</h1>
         <p className="login-subtitle">한국 생활의 모든 궁금증을 해결하세요</p>
@@ -113,6 +114,6 @@ export default function LoginPage() {
           로그인하시면 <a href="#">이용약관</a> 및 <a href="#">개인정보보호정책</a>에 동의하는 것으로 간주됩니다.
         </div>
       </div>
-    </main>
+    </PageLayout>
   )
 }

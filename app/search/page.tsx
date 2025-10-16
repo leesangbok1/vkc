@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import PageLayout from '@/components/layout/PageLayout'
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
@@ -34,7 +35,7 @@ export default function SearchPage() {
   }, [query])
 
   return (
-    <main className="main-layout">
+    <PageLayout variant="centered">
       <div className="search-page-container">
         {/* Search Results Header */}
         <div className="search-page-header">
@@ -101,6 +102,6 @@ export default function SearchPage() {
           </div>
         )}
       </div>
-    </main>
+    </PageLayout>
   )
 }

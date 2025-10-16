@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import PageLayout from '@/components/layout/PageLayout'
 
 export default function ExpertApplicationPage() {
   const router = useRouter()
@@ -54,7 +55,7 @@ export default function ExpertApplicationPage() {
   }
 
   return (
-    <main className="main-layout">
+    <PageLayout variant="centered">
       <div className="container">
         {/* Page Header */}
         <div className="page-header">
@@ -480,6 +481,6 @@ export default function ExpertApplicationPage() {
           </div>
         </div>
       </div>
-    </main>
+    </PageLayout>
   )
 }

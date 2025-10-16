@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 import ActionBar from '@/components/common/ActionBar'
 import BannerCarousel from '@/components/banners/BannerCarousel'
 import CertificationModal from '@/components/modals/CertificationModal'
@@ -113,37 +114,31 @@ export default function HomePage() {
 
   async function checkAuth() {
     try {
-      // 🎭 MOCK: localStorage에서 mock session 체크
-      const mockSession = localStorage.getItem('mock_session')
-      const mockUser = localStorage.getItem('mock_user')
-      const onboardingCompleted = localStorage.getItem('vietkconnect_onboarded')
-
-      if (mockSession === 'true' && mockUser && onboardingCompleted === 'true') {
-        const user = JSON.parse(mockUser)
-        setIsLoggedIn(true)
-        setUserName(user.name || user.email || '사용자')
-        setUserRole(user.role || 'user')
-
-        // 개발자 ADMIN 모드 확인
-        if (user.is_dev_mode && user.role === 'admin') {
-          setIsDevAdmin(true)
-          console.log('👑 개발자 ADMIN 모드 활성화!')
-          console.log('✅ 모든 페이지 및 기능 접근 가능')
-        }
-
-        console.log('✅ 로그인 상태 확인:', user.name, '| 권한:', user.role)
-      } else {
-        // 로그인 안됨 또는 온보딩 미완료
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+      if (!res.ok) {
         setIsLoggedIn(false)
         setUserRole('guest')
         setIsDevAdmin(false)
-        console.log('❌ 로그인 안됨 또는 온보딩 미완료')
+        return
       }
+      const json = await res.json()
+      const profile = json.data
+      if (!profile?.onboarding_completed) {
+        setIsLoggedIn(false)
+        setUserRole('guest')
+        setIsDevAdmin(false)
+        return
+      }
+      setIsLoggedIn(true)
+      setUserName(profile.name || '사용자')
+      setUserRole((profile.role as any) || 'user')
     } catch (error) {
       console.error('Auth check failed:', error)
       setIsLoggedIn(false)
+      setUserRole('guest')
+      setIsDevAdmin(false)
     } finally {
-      setIsCheckingAuth(false) // 로딩 완료
+      setIsCheckingAuth(false)
     }
   }
 
@@ -208,31 +203,24 @@ export default function HomePage() {
   // 인증 체크 중일 때 로딩 화면 표시 (FOUC 방지)
   if (isCheckingAuth) {
     return (
-      <main className="main-layout">
-        <div className="container" style={{
+      <PageLayout variant="centered">
+        <div style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           minHeight: '60vh'
         }}>
-          <div style={{
-            textAlign: 'center',
-            color: '#666'
-          }}>
-            <div style={{
-              fontSize: '2rem',
-              marginBottom: '1rem',
-              animation: 'spin 1s linear infinite'
-            }}>⏳</div>
+          <div style={{ textAlign: 'center', color: '#666' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
             <p>로딩 중...</p>
           </div>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="main-layout">
+    <PageLayout variant="withSidebar">
       {/* Mobile Category Grid (Mobile Only) */}
       <div className="mobile-category-grid">
         <a href="/categories/visa" className="mobile-category-item">
@@ -253,9 +241,8 @@ export default function HomePage() {
         </a>
       </div>
 
-      <div className="container">
-        {/* Main Content Area */}
-        <div className="main-content">
+      {/* Main Content Area */}
+      <div>
           {/* Desktop Hero Section */}
           {!isLoggedIn ? (
             // 로그인 전: 플랫폼 가치 강조
@@ -520,10 +507,6 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Sidebar */}
-        <Sidebar />
       </div>
 
       {/* Event Modal - 베타 오픈 이벤트 팝업 */}
@@ -703,6 +686,6 @@ export default function HomePage() {
           window.history.pushState({}, '', url)
         }}
       />
-    </main>
+    </PageLayout>
   )
 }

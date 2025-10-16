@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import PageLayout from '@/components/layout/PageLayout'
 
 type Question = {
   id: number
@@ -76,8 +77,8 @@ export default function MyQuestionsPage() {
   }
 
   return (
-    <main className="main-layout">
-      <div className="container my-questions-container">
+    <PageLayout variant="centered">
+      <div className="my-questions-container">
         {/* Page Header */}
         <div className="section my-questions-header-section">
           <div className="my-questions-header-row">
@@ -228,6 +229,6 @@ export default function MyQuestionsPage() {
           </div>
         )}
       </div>
-    </main>
+    </PageLayout>
   )
 }
