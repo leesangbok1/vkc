@@ -26,3 +26,11 @@
 - 작업: Home(withSidebar), Search, My Questions, Login, Experts Apply 페이지 PageLayout 적용
 - 커밋: 84eae88
 - 비고: 헤더 비수정, 데이터 로직 무변경, 로딩 분기 centered로 통일
+
+### 추가 3
+- 작업: 번역 확장 텍스트 대응 글로벌 규칙 추가(styles/translation-safe.css), globals에 import
+- 커밋: d50402c
+- 규칙:
+  - 텍스트 상자 래핑 강화(overflow-wrap:anywhere, word-break:break-word, hyphens:auto)
+  - 모달/드롭다운/사이드바 카드: 최대 높이 80vh + 세로 스크롤
+  - 작은 UI 컨트롤(탭/배지/필): ellipsis 처리
