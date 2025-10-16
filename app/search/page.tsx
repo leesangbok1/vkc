@@ -73,7 +73,7 @@ export default function SearchPage() {
             </Link>
           </div>
         ) : (
-          <div className="search-results-list">
+          <div className="feed-container search-results-list">
             {results.map((result: any, index: number) => (
               <div key={index} className="question-card">
                 <h3 className="question-title">

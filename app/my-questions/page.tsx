@@ -146,7 +146,7 @@ export default function MyQuestionsPage() {
             </Link>
           </div>
         ) : (
-          <div className="my-questions-list">
+          <div className="feed-container my-questions-list">
             {filteredQuestions.map((question) => (
               <div key={question.id} className="question-card">
                 {/* Status Badge */}
