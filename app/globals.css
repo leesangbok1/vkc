@@ -1,5 +1,5 @@
 /* ===== VIET K-CONNECT UNIFIED DESIGN SYSTEM ===== */
-/* 🎯 Material Design 3.0 + VietKConnect Common Styles 통합 */
+/* 🎯 Material Design 3.0 + Viet K-Connect Common Styles 통합 */
 
 /* Import Vietnamese-optimized fonts (must be first) */
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css');
@@ -16,7 +16,7 @@
 
 /* ===== UNIFIED CSS VARIABLES ===== */
 :root {
-  /* VietKConnect Brand Colors */
+  /* Viet K-Connect Brand Colors */
   --vk-primary: #5682ef;
   --vk-primary-hover: #2553e5;
   --vk-secondary: #10b981;
@@ -5446,7 +5446,9 @@ a:hover {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   border: 1px solid var(--border);
-  overflow: hidden;
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   z-index: 1000;
 }
 
@@ -5495,7 +5497,8 @@ a:hover {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   border: 1px solid var(--border);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   z-index: 1000;
 }
 
@@ -11227,6 +11230,10 @@ select.question-field-input {
 
 .sidebar .sidebar-banner-content {
   padding: 1.5rem 1.5rem 2rem 1.5rem !important; /* 상단 패딩 축소 (2rem → 1.5rem) */
+  /* Long translations: keep card height stable and scroll internally */
+  max-height: 50vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar .banner-description {
