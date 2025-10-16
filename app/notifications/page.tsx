@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 import { MOCK_QUESTIONS, MOCK_POSTS } from '@/lib/data/mockData'
 
 type Notification = {
@@ -157,9 +157,8 @@ export default function NotificationsPage() {
   }
 
   return (
-    <main className="main-layout">
-      <div className="container">
-        <div className="main-content notifications-page-container">
+    <PageLayout variant="centered">
+      <div className="notifications-page-container">
         {/* Page Header */}
         <div className="section notifications-page-header">
           <div className="notifications-header-top">
@@ -278,11 +277,7 @@ export default function NotificationsPage() {
             ))}
           </div>
         )}
-        </div>
-
-        {/* Sidebar */}
-        <Sidebar showContent={false} />
       </div>
-    </main>
+    </PageLayout>
   )
 }

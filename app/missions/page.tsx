@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import PageLayout from '@/components/layout/PageLayout'
 
 export default function MissionsPage() {
   const router = useRouter()
@@ -49,35 +50,24 @@ export default function MissionsPage() {
 
   if (isCheckingAuth) {
     return (
-      <main className="main-layout">
-        <div className="container">
-          <div className="main-content" style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '60vh'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              color: '#666'
-            }}>
-              <div style={{
-                fontSize: '2rem',
-                marginBottom: '1rem',
-                animation: 'spin 1s linear infinite'
-              }}>⏳</div>
-              <p>로딩 중...</p>
-            </div>
+      <PageLayout variant="centered">
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '60vh'
+        }}>
+          <div style={{ textAlign: 'center', color: '#666' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
+            <p>로딩 중...</p>
           </div>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="main-layout">
-      <div className="container">
-        <div className="main-content">
+    <PageLayout variant="centered">
         {/* Header Section */}
         <div style={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -674,7 +664,6 @@ export default function MissionsPage() {
           </button>
         </div>
         </div>
-      </div>
-    </main>
+    </PageLayout>
   )
 }

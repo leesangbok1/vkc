@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 
 type UserRole = 'GUEST' | 'USER' | 'VERIFIED' | 'ADMIN'
 
@@ -152,24 +152,20 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <main className="main-layout">
-        <div className="main-content">
-          <div className="card">
-            <div className="card-content">
-              <p>프로필을 불러오는 중...</p>
-            </div>
+      <PageLayout variant="centered">
+        <div className="card">
+          <div className="card-content">
+            <p>프로필을 불러오는 중...</p>
           </div>
         </div>
-        <Sidebar showContent={false} />
-      </main>
+      </PageLayout>
     )
   }
 
   const roleInfo = getRoleInfo(profile.role)
 
   return (
-    <main className="main-layout">
-      <div className="main-content">
+    <PageLayout variant="centered">
         {/* Page Header */}
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -631,10 +627,6 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Sidebar */}
-      <Sidebar showContent={false} />
-    </main>
+    </PageLayout>
   )
 }
