@@ -1,17 +1,15 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 
 export default function VisaChallengeEventPage() {
   const router = useRouter()
 
   return (
-    <main className="main-layout">
-      <div className="container">
-        <div className="main-content">
-          {/* 상단 네비게이션 */}
-          <div className="section post-navigation">
+    <PageLayout variant="centered">
+        {/* 상단 네비게이션 */}
+        <div className="section post-navigation">
             <button
               onClick={() => router.back()}
               className="btn btn-secondary post-back-btn"
@@ -366,10 +364,6 @@ export default function VisaChallengeEventPage() {
             </div>
           </article>
         </div>
-
-        {/* Sidebar */}
-        <Sidebar showContent={false} />
-      </div>
-    </main>
+    </PageLayout>
   )
 }
