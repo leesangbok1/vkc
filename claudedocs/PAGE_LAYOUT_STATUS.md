@@ -2,6 +2,7 @@
 
 withSidebar
 - app/questions/[id]/page.tsx:1 — 적용됨
+- app/page.tsx:1 — 적용됨
 
 centered
 - app/settings/page.tsx:1 — 적용됨
@@ -16,9 +17,12 @@ centered
 - app/categories/[slug]/page.tsx:1 — 적용됨
 - app/posts/[id]/page.tsx:1 — 적용됨
 - app/events/visa-challenge/page.tsx:1 — 적용됨
+- app/experts/apply/page.tsx:1 — 적용됨
+- app/auth/login/page.tsx:1 — 적용됨
+- app/search/page.tsx:1 — 적용됨
+- app/my-questions/page.tsx:1 — 적용됨
 
 검토 필요
-- app/page.tsx:1 — 홈: 유지(메인 피드 + Sidebar), 추후 PageLayout 전환 검토
 
 추가 적용됨
 - app/admin/certifications/page.tsx:1 — centered 적용

@@ -21,3 +21,8 @@
 - 작업: Admin Certifications 페이지 PageLayout 적용(centered)
 - 커밋: (추가) — 반영됨
 - 비고: 헤더 비수정 가이드 준수
+
+### 추가 2
+- 작업: Home(withSidebar), Search, My Questions, Login, Experts Apply 페이지 PageLayout 적용
+- 커밋: 84eae88
+- 비고: 헤더 비수정, 데이터 로직 무변경, 로딩 분기 centered로 통일
