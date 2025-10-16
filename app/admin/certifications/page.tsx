@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 
 // Mock certification requests data
 const MOCK_CERTIFICATION_REQUESTS = [
@@ -199,14 +199,9 @@ export default function AdminCertificationsPage() {
 
   if (loading) {
     return (
-      <main className="main-layout">
-        <div className="container">
-          <div className="main-content">
-            <div className="text-center py-12">로딩 중...</div>
-          </div>
-          <Sidebar showContent={false} />
-        </div>
-      </main>
+      <PageLayout variant="centered">
+        <div className="text-center py-12">로딩 중...</div>
+      </PageLayout>
     )
   }
 
@@ -215,9 +210,7 @@ export default function AdminCertificationsPage() {
   }
 
   return (
-    <main className="main-layout">
-      <div className="container">
-        <div className="main-content">
+    <PageLayout variant="centered">
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -362,9 +355,6 @@ export default function AdminCertificationsPage() {
           </div>
         </div>
 
-        <Sidebar showContent={false} />
-      </div>
-
       {/* Detail Modal */}
       {selectedRequest && (
         <div
@@ -497,6 +487,6 @@ export default function AdminCertificationsPage() {
           </div>
         </div>
       )}
-    </main>
+    </PageLayout>
   )
 }

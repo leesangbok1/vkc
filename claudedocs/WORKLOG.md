@@ -17,3 +17,7 @@
 
 다음: admin/certifications, 홈 페이지 정리 및 Header/Sidebar 정렬 고도화(sticky/계산식 제거)
 
+### 추가
+- 작업: Admin Certifications 페이지 PageLayout 적용(centered)
+- 커밋: (추가) — 반영됨
+- 비고: 헤더 비수정 가이드 준수

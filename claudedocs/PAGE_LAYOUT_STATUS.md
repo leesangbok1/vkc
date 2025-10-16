@@ -18,6 +18,7 @@ centered
 - app/events/visa-challenge/page.tsx:1 — 적용됨
 
 검토 필요
-- app/admin/certifications/page.tsx:1 — 후보(variant: withSidebar 또는 centered)
 - app/page.tsx:1 — 홈: 유지(메인 피드 + Sidebar), 추후 PageLayout 전환 검토
 
+추가 적용됨
+- app/admin/certifications/page.tsx:1 — centered 적용
