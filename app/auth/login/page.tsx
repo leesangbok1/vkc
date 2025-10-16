@@ -53,10 +53,11 @@ export default function LoginPage() {
 
   return (
     <PageLayout variant="centered">
-      <div className="login-container" suppressHydrationWarning>
+      <div className="login-page-layout" suppressHydrationWarning>
+        <div className="login-container">
         {/* Login Header */}
-        <h1 className="login-title">VietKConnect에 오신걸 환영합니다</h1>
-        <p className="login-subtitle">한국 생활의 모든 궁금증을 해결하세요</p>
+        <h1 className="login-title" translate="no" data-no-translate="true">VietKConnect에 오신걸 환영합니다</h1>
+        <p className="login-subtitle" translate="no" data-no-translate="true">한국 생활의 모든 궁금증을 해결하세요</p>
 
         {/* Error Message */}
         {error && (
@@ -112,6 +113,7 @@ export default function LoginPage() {
         {/* Footer */}
         <div className="login-footer">
           로그인하시면 <a href="#">이용약관</a> 및 <a href="#">개인정보보호정책</a>에 동의하는 것으로 간주됩니다.
+        </div>
         </div>
       </div>
     </PageLayout>
