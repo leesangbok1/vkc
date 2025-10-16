@@ -11,10 +11,12 @@ export default function ChatbotButton() {
     <>
       {/* Floating Button */}
       <button
-        className="chatbot-button"
+        className="chatbot-button notranslate"
         onClick={() => setIsOpen(true)}
         aria-label="챗봇 열기"
         title="궁금한 점이 있으신가요?"
+        translate="no"
+        suppressHydrationWarning
       >
         <span className="chatbot-icon">💬</span>
         {unreadCount > 0 && (
