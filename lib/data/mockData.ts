@@ -618,6 +618,9 @@ export const ALL_USERS = [
   ADMIN_USER,
 ]
 
+// MOCK_USERS alias for ALL_USERS (for compatibility)
+export const MOCK_USERS = ALL_USERS
+
 // ============================================
 // Helper 함수
 // ============================================

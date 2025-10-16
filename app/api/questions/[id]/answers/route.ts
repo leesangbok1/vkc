@@ -84,7 +84,7 @@ export async function GET(
     let query = supabase
       .from('answers')
       .select(`
-        *,
+        id, content, is_accepted, upvote_count, downvote_count, helpful_count, created_at, updated_at,
         author:users!author_id(
           id, name, avatar_url, trust_score, badges,
           visa_type, company, years_in_korea, region,
@@ -94,22 +94,22 @@ export async function GET(
           id, content, created_at,
           author:users!author_id(id, name, avatar_url)
         )
-      `)
+      `, { count: 'exact' })
       .eq('question_id', questionId)
 
     // 정렬 적용
     if (sort === 'best') {
-      // 최적 정렬: 채택된 답변 > 도움이 되는 답변 > 투표 점수 > 생성일
+      // 최적 정렬: 채택 > helpful_count > upvote_count > 생성일
       query = query.order('is_accepted', { ascending: false })
-                   .order('is_helpful', { ascending: false })
-                   .order('vote_score', { ascending: false })
+                   .order('helpful_count', { ascending: false })
+                   .order('upvote_count', { ascending: false })
                    .order('created_at', { ascending: true })
     } else if (sort === 'newest') {
       query = query.order('created_at', { ascending: false })
     } else if (sort === 'oldest') {
       query = query.order('created_at', { ascending: true })
     } else if (sort === 'votes') {
-      query = query.order('vote_score', { ascending: false })
+      query = query.order('upvote_count', { ascending: false })
     }
 
     // 페이지네이션 적용

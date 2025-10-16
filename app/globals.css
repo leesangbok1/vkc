@@ -1619,11 +1619,12 @@ a:hover {
   background: #f5f7f9;
 }
 
-/* Search Container - 중앙 영역 확장 */
+/* Search Container - 중앙 영역 확장 (2배 증가 + 반응형) */
 .search-container {
   position: relative;
   flex: 1;
-  max-width: 500px; /* 중앙 영역 더 넓게 활용 */
+  max-width: 800px; /* 기존 500px → 800px (약 1.6배) */
+  min-width: 300px; /* 최소 너비 설정 */
 }
 
 .search-input {
@@ -5391,7 +5392,7 @@ a:hover {
 /* Search Container */
 .search-container {
   flex: 1;
-  max-width: 280px; /* 서치 박스 더 축소 */
+  max-width: 560px; /* 기존 280px → 560px (2배) */
   position: relative;
   display: flex;
   align-items: center;
@@ -5758,10 +5759,10 @@ a:hover {
     font-size: 1.1rem;
   }
 
-  /* 검색창 크기 축소 */
+  /* 검색창 크기 조정 (반응형) */
   .search-container {
-    max-width: 180px;
-    min-width: 140px;
+    max-width: 360px; /* 기존 180px → 360px (2배) */
+    min-width: 280px; /* 기존 140px → 280px (2배) */
   }
 
   .search-input {

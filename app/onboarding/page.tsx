@@ -13,11 +13,12 @@ type SurveyData = {
   topics?: number[]
 }
 
-// 인기 토픽 5개
+// 인기 토픽 6개
 const POPULAR_TOPICS = [
   { id: 1, name: '한국 비자·체류', icon: '🛂' },
   { id: 2, name: '한국 직장생활', icon: '💼' },
   { id: 4, name: '한국 생활 정착', icon: '🌏' },
+  { id: 6, name: '한국에서 집 구하기', icon: '🏠' },
   { id: 8, name: '베트남 송금·금융', icon: '💰' },
   { id: 9, name: '한국어 배우기', icon: '📚' }
 ]

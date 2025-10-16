@@ -1,0 +1,184 @@
+{
+  "backup_date": "2025-01-16",
+  "total_users": 13,
+  "description": "Phase 1.1 선정 사용자 13명 백업",
+  "users": [
+    {
+      "mock_id": "ve1",
+      "db_uuid": "00000000-0000-0000-0000-000000000001",
+      "name": "Nguyễn Văn Hùng",
+      "role": "verified",
+      "avatar": "N",
+      "specialty": "비자 연장 전문",
+      "yearsInKorea": 7,
+      "visaType": "E-9",
+      "verificationProof": "거주증명서 인증 완료",
+      "email": "nguyen.hung@vietkconnect.com",
+      "bio": "한국 생활 7년차 E-9 비자 전문가입니다. 비자 연장 관련 모든 질문에 답변해드립니다."
+    },
+    {
+      "mock_id": "ve2",
+      "db_uuid": "00000000-0000-0000-0000-000000000002",
+      "name": "Trần Minh Đức",
+      "role": "verified",
+      "avatar": "T",
+      "specialty": "영주권 신청 전문",
+      "yearsInKorea": 9,
+      "visaType": "F-5",
+      "verificationProof": "영주증 인증 완료",
+      "email": "tran.duc@vietkconnect.com",
+      "bio": "F-5 영주권 취득 경험자입니다. 영주권 신청 과정을 상세히 안내해드립니다."
+    },
+    {
+      "mock_id": "ve3",
+      "db_uuid": "00000000-0000-0000-0000-000000000003",
+      "name": "Lê Văn Toàn",
+      "role": "verified",
+      "avatar": "L",
+      "specialty": "E-9→E-7 전환 전문",
+      "yearsInKorea": 6,
+      "visaType": "E-7",
+      "verificationProof": "E-7 비자 인증 완료",
+      "email": "le.toan@vietkconnect.com",
+      "bio": "E-9에서 E-7로 비자 전환 성공! 전환 과정의 모든 노하우를 공유합니다."
+    },
+    {
+      "mock_id": "ve6",
+      "db_uuid": "00000000-0000-0000-0000-000000000004",
+      "name": "Võ Thị Mai",
+      "role": "verified",
+      "avatar": "V",
+      "specialty": "F-6 비자 전문",
+      "yearsInKorea": 6,
+      "visaType": "F-6",
+      "verificationProof": "결혼이민 비자 인증",
+      "email": "vo.mai@vietkconnect.com",
+      "bio": "F-6 결혼이민 비자 소지자입니다. 다문화 가정의 생활 조언을 드립니다."
+    },
+    {
+      "mock_id": "ve10",
+      "db_uuid": "00000000-0000-0000-0000-000000000005",
+      "name": "Ngô Thị Linh",
+      "role": "verified",
+      "avatar": "N",
+      "specialty": "D-4 어학연수 전문",
+      "yearsInKorea": 3,
+      "visaType": "D-4",
+      "verificationProof": "어학당 재학증명서",
+      "email": "ngo.linh@vietkconnect.com",
+      "bio": "D-4 어학연수 비자로 한국어를 공부하고 있습니다. 어학당 생활 정보 공유합니다."
+    },
+    {
+      "mock_id": "ve12",
+      "db_uuid": "00000000-0000-0000-0000-000000000006",
+      "name": "Nguyễn Thị Lan",
+      "role": "verified",
+      "avatar": "N",
+      "specialty": "통역·번역 전문",
+      "yearsInKorea": 6,
+      "visaType": "E-7",
+      "verificationProof": "통역사 자격증 인증",
+      "email": "nguyen.lan@vietkconnect.com",
+      "bio": "E-7 통역·번역사로 일하고 있습니다. 한국 취업과 경력 관리 조언 가능합니다.",
+      "company": "글로벌통역센터"
+    },
+    {
+      "mock_id": "ke1",
+      "db_uuid": "00000000-0000-0000-0000-000000000007",
+      "name": "이민수 변호사",
+      "role": "verified",
+      "avatar": "이",
+      "specialty": "이민법 전문",
+      "verificationProof": "법무법인 대표",
+      "email": "lee.minsu@vietkconnect.com",
+      "bio": "법무법인 대표 변호사입니다. 이민법, 체류 자격, 법률 상담을 전문으로 합니다."
+    },
+    {
+      "mock_id": "ke2",
+      "db_uuid": "00000000-0000-0000-0000-000000000008",
+      "name": "김태희 노무사",
+      "role": "verified",
+      "avatar": "김",
+      "specialty": "노동법 전문",
+      "verificationProof": "노무법인 대표",
+      "email": "kim.taehee@vietkconnect.com",
+      "bio": "노무법인 대표 노무사입니다. 외국인 근로자의 노동 권리와 근로 조건 상담합니다."
+    },
+    {
+      "mock_id": "ke3",
+      "db_uuid": "00000000-0000-0000-0000-000000000009",
+      "name": "박성준 행정사",
+      "role": "verified",
+      "avatar": "박",
+      "specialty": "비자 행정 전문",
+      "verificationProof": "행정사 자격증",
+      "email": "park.sungjun@vietkconnect.com",
+      "bio": "행정사 자격증 보유. 비자 신청, 체류 자격 변경 등 행정 업무를 도와드립니다."
+    },
+    {
+      "mock_id": "u1",
+      "db_uuid": "00000000-0000-0000-0000-000000000010",
+      "name": "베트남노동자",
+      "role": "user",
+      "avatar": "베",
+      "email": "vietnam.worker1@vietkconnect.com",
+      "bio": "한국에서 일하는 베트남 노동자입니다.",
+      "visaType": "E-9",
+      "yearsInKorea": 2
+    },
+    {
+      "mock_id": "u5",
+      "db_uuid": "00000000-0000-0000-0000-000000000011",
+      "name": "장기체류자",
+      "role": "user",
+      "avatar": "장",
+      "email": "longterm.resident@vietkconnect.com",
+      "bio": "한국 생활 5년차 장기 체류자입니다.",
+      "visaType": "F-2",
+      "yearsInKorea": 5
+    },
+    {
+      "mock_id": "u8",
+      "db_uuid": "00000000-0000-0000-0000-000000000012",
+      "name": "베트남유학생",
+      "role": "user",
+      "avatar": "베",
+      "email": "vietnam.student@vietkconnect.com",
+      "bio": "한국 대학교에 다니는 베트남 유학생입니다.",
+      "visaType": "D-2",
+      "yearsInKorea": 1
+    },
+    {
+      "mock_id": "admin1",
+      "db_uuid": "00000000-0000-0000-0000-000000000099",
+      "name": "VietKConnect 관리자",
+      "role": "admin",
+      "avatar": "관",
+      "specialty": "플랫폼 운영",
+      "verificationProof": "공식 관리자",
+      "email": "admin@vietkconnect.com",
+      "bio": "VietKConnect 플랫폼 공식 관리자입니다."
+    }
+  ],
+  "statistics": {
+    "by_role": {
+      "verified": 9,
+      "user": 3,
+      "admin": 1
+    },
+    "by_visa_type": {
+      "E-9": 3,
+      "F-5": 1,
+      "E-7": 2,
+      "F-6": 1,
+      "D-4": 1,
+      "F-2": 1,
+      "D-2": 1
+    },
+    "by_nationality": {
+      "vietnamese": 6,
+      "korean": 3,
+      "mixed": 4
+    }
+  }
+}

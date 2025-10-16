@@ -8,42 +8,46 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/'
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // 🎭 MOCK: 페이지 플로우 테스트용 - useEffect 제거하고 바로 로그인 폼 표시
+  const supabase = createClient()
 
-  const handleGoogleLogin = () => {
-    console.log('🎯 Google 로그인 버튼 클릭!')
-    console.log('🔗 Redirect URL:', redirectTo)
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
 
-    // 🔍 온보딩 완료 여부 체크
-    const onboardingCompleted = localStorage.getItem('vietkconnect_onboarded')
-    const existingUser = localStorage.getItem('mock_user')
+      console.log('🎯 Google 로그인 시작!')
+      console.log('🔗 Redirect URL after auth:', redirectTo)
 
-    if (onboardingCompleted === 'true' && existingUser) {
-      // ✅ 이미 온보딩 완료한 재방문자 → redirectTo로 이동
-      console.log('✅ 온보딩 완료된 사용자 - redirectTo로 이동:', redirectTo)
-      localStorage.setItem('mock_session', 'true')
-      router.push(redirectTo)
-      return
+      // Supabase Auth: Google OAuth 로그인
+      const { data, error: signInError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      })
+
+      if (signInError) {
+        console.error('❌ Google 로그인 에러:', signInError)
+        setError(signInError.message)
+        setIsLoading(false)
+        return
+      }
+
+      console.log('✅ Google OAuth 리디렉션 시작...')
+      // OAuth 리디렉션은 자동으로 이루어짐 (새 창 또는 현재 창)
+
+    } catch (err) {
+      console.error('❌ 예상치 못한 에러:', err)
+      setError('로그인 중 오류가 발생했습니다. 다시 시도해주세요.')
+      setIsLoading(false)
     }
-
-    // 🎭 MOCK ADMIN LOGIN: 개발자 테스트용 - 온보딩 후 ADMIN 권한 부여
-    console.log('✅ Mock 로그인 성공! (개발자 모드: 온보딩 후 ADMIN 권한 활성화)')
-
-    // Mock session 저장 - ADMIN 모드로 초기화
-    localStorage.setItem('mock_session', 'true')
-    localStorage.setItem('mock_user', JSON.stringify({
-      id: 'mock-admin-dev',
-      email: 'dev@vietkconnect.com',
-      name: '관리자 (개발 모드)',
-      role: 'USER', // 온보딩 전에는 USER, 온보딩 후 ADMIN으로 업그레이드
-      is_dev_mode: true, // 개발자 모드 플래그
-      created_at: new Date().toISOString()
-    }))
-
-    // redirectTo 파라미터를 온보딩 페이지로 전달
-    console.log('→ 온보딩 페이지로 이동 (전체 플로우 체험), 완료 후:', redirectTo)
-    router.push(`/onboarding?redirectTo=${encodeURIComponent(redirectTo)}`)
   }
 
   return (
@@ -53,10 +57,32 @@ export default function LoginPage() {
         <h1 className="login-title">VietKConnect에 오신걸 환영합니다</h1>
         <p className="login-subtitle">한국 생활의 모든 궁금증을 해결하세요</p>
 
+        {/* Error Message */}
+        {error && (
+          <div style={{
+            background: '#fee2e2',
+            border: '1px solid #fca5a5',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginBottom: '16px',
+            color: '#dc2626'
+          }}>
+            {error}
+          </div>
+        )}
+
         {/* Google Login Button */}
-        <button className="google-login-btn" onClick={handleGoogleLogin}>
+        <button
+          className="google-login-btn"
+          onClick={handleGoogleLogin}
+          disabled={isLoading}
+          style={{
+            opacity: isLoading ? 0.6 : 1,
+            cursor: isLoading ? 'not-allowed' : 'pointer'
+          }}
+        >
           <div className="google-icon"></div>
-          <span>Google로 계속하기</span>
+          <span>{isLoading ? '로그인 중...' : 'Google로 계속하기'}</span>
         </button>
 
         {/* Features Section */}

@@ -3,16 +3,23 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const redirectTo = searchParams.get('redirectTo') ?? '/'
+
+  console.log('🔐 OAuth Callback Handler Started')
+  console.log('📍 Redirect destination:', redirectTo)
+  console.log('🔑 Authorization code received:', code ? 'Yes' : 'No')
 
 
   if (code) {
     try {
       const supabase = await (await import('@/lib/supabase-server')).createSupabaseServerClient()
 
+      console.log('🔄 Exchanging code for session...')
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
       if (!error && data.user) {
+        console.log('✅ Session created successfully')
+        console.log('👤 Authenticated user:', data.user.email)
         // 사용자 프로필 생성 또는 업데이트
         const { data: existingUser } = await supabase
           .from('users')
@@ -21,8 +28,9 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (!existingUser) {
+          console.log('🆕 New user - inserting into database...')
           // 신규 사용자 생성
-          await supabase
+          const { error: insertError } = await supabase
             .from('users')
             .insert({
               id: data.user.id,
@@ -41,26 +49,36 @@ export async function GET(request: NextRequest) {
               updated_at: new Date().toISOString()
             })
 
+          if (insertError) {
+            console.error('❌ Failed to insert new user:', insertError)
+          } else {
+            console.log('✅ New user profile created')
+          }
+
           // 신규 사용자는 온보딩 페이지로
-          const response = NextResponse.redirect(`${origin}/onboarding`)
+          console.log('🎯 Redirecting to onboarding...')
+          const response = NextResponse.redirect(`${origin}/onboarding?redirectTo=${encodeURIComponent(redirectTo)}`)
           response.cookies.set('auth-callback-success', 'true', {
             maxAge: 5,
             httpOnly: false
           })
           return response
         } else {
+          console.log('👋 Existing user - welcome back:', existingUser.name)
           // 기존 사용자 체크: 온보딩 완료했는지 확인
           if (existingUser.onboarding_completed === false || existingUser.onboarding_completed === null) {
+            console.log('⚠️ Onboarding not completed - redirecting to onboarding')
             // 온보딩 미완료 사용자는 온보딩 페이지로
-            const response = NextResponse.redirect(`${origin}/onboarding`)
+            const response = NextResponse.redirect(`${origin}/onboarding?redirectTo=${encodeURIComponent(redirectTo)}`)
             response.cookies.set('auth-callback-success', 'true', {
               maxAge: 5,
               httpOnly: false
             })
             return response
           } else {
-            // 온보딩 완료한 사용자는 홈으로
-            const response = NextResponse.redirect(`${origin}${next}`)
+            console.log('🎯 Redirecting to:', redirectTo)
+            // 온보딩 완료한 사용자는 원래 목적지로
+            const response = NextResponse.redirect(`${origin}${redirectTo}`)
             response.cookies.set('auth-callback-success', 'true', {
               maxAge: 5,
               httpOnly: false
@@ -70,14 +88,15 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      console.error('OAuth callback error:', error)
+      console.error('❌ OAuth callback error:', error)
     } catch (error) {
-      console.error('Auth callback failed:', error)
+      console.error('❌ Unexpected error in callback handler:', error)
     }
   }
 
   // Return the user to an error page or login with error
-  const errorUrl = new URL('/login', origin)
+  console.log('⚠️ No authorization code or error occurred - redirecting to login')
+  const errorUrl = new URL('/auth/login', origin)
   errorUrl.searchParams.set('error', 'auth_callback_error')
   return NextResponse.redirect(errorUrl)
 }

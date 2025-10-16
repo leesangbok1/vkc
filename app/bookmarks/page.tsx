@@ -81,22 +81,55 @@ export default function BookmarksPage() {
         {/* Header */}
         <div style={{
           padding: '2rem 0',
-          borderBottom: '1px solid #e9ecef'
+          borderBottom: '1px solid #e9ecef',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem'
         }}>
-          <h1 style={{
-            fontSize: '2rem',
-            fontWeight: 'bold',
-            marginBottom: '0.5rem',
-            color: '#333'
-          }}>
-            🔖 북마크
-          </h1>
-          <p style={{
-            fontSize: '1rem',
-            color: '#666'
-          }}>
-            나중에 다시 보고 싶은 질문과 정보글을 모아보세요
-          </p>
+          <div>
+            <h1 style={{
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              marginBottom: '0.5rem',
+              color: '#333'
+            }}>
+              🔖 북마크
+            </h1>
+            <p style={{
+              fontSize: '1rem',
+              color: '#666'
+            }}>
+              나중에 다시 보고 싶은 질문과 정보글을 모아보세요
+            </p>
+          </div>
+          <button
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              whiteSpace: 'nowrap'
+            }}
+            onClick={() => router.push('/')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)'
+            }}
+          >
+            🔍 북마크할 게시글 찾기
+          </button>
         </div>
 
         {/* Bookmarks List */}

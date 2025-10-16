@@ -660,7 +660,7 @@ export default function MissionsPage() {
               boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
               transition: 'transform 0.2s, box-shadow 0.2s'
             }}
-            onClick={() => router.push('/questions')}
+            onClick={() => router.push('/')}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)'
               e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)'

@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserRole, getRoleDisplayInfo } from '@/lib/utils/permissions'
 import LoginPromptModal from '@/components/modals/LoginPromptModal'
+import { MOCK_QUESTIONS } from '@/lib/data/mockData'
+import { createClient } from '@/lib/supabase-client'
 
 type Notification = {
   id: string
@@ -14,6 +16,16 @@ type Notification = {
   createdAt: string
   isRead: boolean
   icon: string
+}
+
+type Category = {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  icon: string | null
+  color: string
+  sort_order: number
 }
 
 export default function Header() {
@@ -34,14 +46,23 @@ export default function Header() {
   const [currentPath, setCurrentPath] = useState('/')
   const [unreadCount, setUnreadCount] = useState(0)
   const [recentNotifications, setRecentNotifications] = useState<Notification[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [searchPlaceholder, setSearchPlaceholder] = useState('')
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const notificationsRef = useRef<HTMLDivElement>(null)
   const languageMenuRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLDivElement>(null)
 
+  // 랜덤 검색 placeholder 설정
+  useEffect(() => {
+    const randomQuestion = MOCK_QUESTIONS[Math.floor(Math.random() * MOCK_QUESTIONS.length)]
+    setSearchPlaceholder(randomQuestion.title)
+  }, [])
+
   useEffect(() => {
     checkAuth()
     loadNotifications() // 알림 로드
+    loadCategories() // 카테고리 로드
     // 현재 페이지 경로 저장
     setCurrentPath(window.location.pathname)
 
@@ -89,32 +110,80 @@ export default function Header() {
 
   async function checkAuth() {
     try {
-      // 🎭 MOCK: localStorage에서 mock session 체크
-      const mockSession = localStorage.getItem('mock_session')
-      const mockUser = localStorage.getItem('mock_user')
-      const onboardingCompleted = localStorage.getItem('vietkconnect_onboarded')
+      const supabase = createClient()
 
-      // 로그인 + 온보딩 완료된 경우만 로그인 상태로 인정
-      if (mockSession === 'true' && mockUser && onboardingCompleted === 'true') {
-        const user = JSON.parse(mockUser)
-        setIsLoggedIn(true)
-        setUserName(user.name || user.email || '사용자')
-        setUserRole(user.role || UserRole.USER)
+      console.log('🔍 Checking auth session...')
 
-        // 개발자 ADMIN 모드 확인
-        if (user.is_dev_mode && user.role === 'admin') {
-          setIsDevAdmin(true)
-        } else {
-          setIsDevAdmin(false)
-        }
-      } else {
-        // 로그인 안됨 또는 온보딩 미완료
+      // Supabase Auth 세션 확인
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError)
         setIsLoggedIn(false)
         setUserRole(UserRole.GUEST)
         setIsDevAdmin(false)
+        return
       }
+
+      if (!session || !session.user) {
+        console.log('⚪ No active session')
+        setIsLoggedIn(false)
+        setUserRole(UserRole.GUEST)
+        setIsDevAdmin(false)
+        return
+      }
+
+      console.log('✅ Active session found:', session.user.email)
+
+      // users 테이블에서 사용자 프로필 조회
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+
+      if (profileError || !userProfile) {
+        console.error('❌ Failed to load user profile:', profileError)
+        // 세션은 있지만 프로필이 없으면 로그아웃 (데이터 불일치)
+        setIsLoggedIn(false)
+        setUserRole(UserRole.GUEST)
+        setIsDevAdmin(false)
+        return
+      }
+
+      console.log('👤 User profile loaded:', userProfile.name)
+
+      // 온보딩 완료 여부 확인
+      if (!userProfile.onboarding_completed) {
+        console.log('⚠️ Onboarding not completed')
+        setIsLoggedIn(false)
+        setUserRole(UserRole.GUEST)
+        setIsDevAdmin(false)
+        return
+      }
+
+      // 로그인 상태 설정
+      setIsLoggedIn(true)
+      setUserName(userProfile.name || session.user.email || '사용자')
+
+      // 역할 설정 (role 필드는 'user', 'verified', 'admin' 중 하나)
+      const roleMapping: { [key: string]: UserRole } = {
+        'user': UserRole.USER,
+        'verified': UserRole.VERIFIED,
+        'admin': UserRole.ADMIN
+      }
+      setUserRole(roleMapping[userProfile.role] || UserRole.USER)
+
+      // 개발자 ADMIN 모드 확인 (is_dev_mode 필드 확인)
+      if (userProfile.role === 'admin' && userProfile.is_dev_mode) {
+        setIsDevAdmin(true)
+      } else {
+        setIsDevAdmin(false)
+      }
+
+      console.log('✅ Auth check complete:', userProfile.name, userProfile.role)
     } catch (error) {
-      console.error('Auth check failed:', error)
+      console.error('❌ Auth check failed:', error)
       setIsLoggedIn(false)
       setUserRole(UserRole.GUEST)
       setIsDevAdmin(false)
@@ -143,6 +212,22 @@ export default function Header() {
     }
   }
 
+  async function loadCategories() {
+    try {
+      const response = await fetch('/api/categories')
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories')
+      }
+      const result = await response.json()
+      if (result.success && result.data) {
+        setCategories(result.data)
+      }
+    } catch (error) {
+      console.error('Failed to load categories:', error)
+      setCategories([])
+    }
+  }
+
   function getTimeAgo(dateString: string) {
     const now = new Date()
     const past = new Date(dateString)
@@ -159,10 +244,31 @@ export default function Header() {
     return '방금 전'
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     if (confirm('로그아웃 하시겠습니까?')) {
-      localStorage.clear()
-      window.location.href = '/'
+      try {
+        const supabase = createClient()
+        console.log('🚪 Logging out...')
+
+        const { error } = await supabase.auth.signOut()
+
+        if (error) {
+          console.error('❌ Logout error:', error)
+          alert('로그아웃 중 오류가 발생했습니다.')
+          return
+        }
+
+        console.log('✅ Logout successful')
+
+        // localStorage 정리 (알림 등 로컬 데이터)
+        localStorage.clear()
+
+        // 홈으로 리디렉션
+        window.location.href = '/'
+      } catch (error) {
+        console.error('❌ Unexpected logout error:', error)
+        alert('로그아웃 중 오류가 발생했습니다.')
+      }
     }
   }
 
@@ -208,17 +314,6 @@ export default function Header() {
               🏠
             </a>
             <a
-              href="/questions"
-              className="nav-icon"
-              title="답변"
-              style={{
-                background: currentPath === '/questions' ? '#e8f4fd' : 'transparent',
-                borderBottom: currentPath === '/questions' ? '2px solid #3b82f6' : '2px solid transparent'
-              }}
-            >
-              📝
-            </a>
-            <a
               href="/following"
               className="nav-icon"
               title="팔로잉"
@@ -229,6 +324,19 @@ export default function Header() {
             >
               👥
             </a>
+            {isLoggedIn && (
+              <a
+                href="/bookmarks"
+                className="nav-icon"
+                title="북마크"
+                style={{
+                  background: currentPath === '/bookmarks' ? '#e8f4fd' : 'transparent',
+                  borderBottom: currentPath === '/bookmarks' ? '2px solid #3b82f6' : '2px solid transparent'
+                }}
+              >
+                🔖
+              </a>
+            )}
           </nav>
         </div>
 
@@ -239,10 +347,11 @@ export default function Header() {
             <input
               type="text"
               className="search-input"
-              placeholder="Search Quora"
+              placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setShowSearchDropdown(true)}
+              style={{ color: '#1f2937' }}
             />
           </form>
 
@@ -261,154 +370,37 @@ export default function Header() {
               maxHeight: '400px',
               overflowY: 'auto'
             }}>
-              {/* Topic 목록 */}
+              {/* Topic 목록 - 실제 카테고리 데이터 */}
               <div style={{ padding: '0.5rem 0' }}>
-                <a
-                  href="/topics/visa"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    textDecoration: 'none',
-                    color: '#374151',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                >
-                  <span style={{ fontSize: '1.25rem' }}>🛂</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
-                    비자/이민
-                  </span>
-                </a>
-
-                <a
-                  href="/topics/employment"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    textDecoration: 'none',
-                    color: '#374151',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                >
-                  <span style={{ fontSize: '1.25rem' }}>💼</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
-                    취업
-                  </span>
-                </a>
-
-                <a
-                  href="/topics/education"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    textDecoration: 'none',
-                    color: '#374151',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                >
-                  <span style={{ fontSize: '1.25rem' }}>🎓</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
-                    교육
-                  </span>
-                </a>
-
-                <a
-                  href="/topics/daily-life"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    textDecoration: 'none',
-                    color: '#374151',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                >
-                  <span style={{ fontSize: '1.25rem' }}>🌏</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
-                    한국생활
-                  </span>
-                </a>
-
-                <a
-                  href="/topics/legal"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    textDecoration: 'none',
-                    color: '#374151',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                >
-                  <span style={{ fontSize: '1.25rem' }}>⚖️</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
-                    법률
-                  </span>
-                </a>
-
-                <a
-                  href="/topics/finance"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    textDecoration: 'none',
-                    color: '#374151',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                >
-                  <span style={{ fontSize: '1.25rem' }}>💰</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
-                    금융
-                  </span>
-                </a>
-
-                <a
-                  href="/topics/healthcare"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    textDecoration: 'none',
-                    color: '#374151',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                >
-                  <span style={{ fontSize: '1.25rem' }}>🏥</span>
-                  <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
-                    의료
-                  </span>
-                </a>
+                {categories.length > 0 ? (
+                  categories.map((category) => (
+                    <a
+                      key={category.id}
+                      href={`/topics/${category.slug}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.75rem 1rem',
+                        textDecoration: 'none',
+                        color: '#374151',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <span style={{ fontSize: '1.25rem' }}>{category.icon || '📂'}</span>
+                      <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+                        <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
+                        {category.name}
+                      </span>
+                    </a>
+                  ))
+                ) : (
+                  <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
+                    카테고리를 불러오는 중...
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -453,28 +445,6 @@ export default function Header() {
               </div>
             )}
           </div>
-
-          {/* 북마크 - 로그인 상태에서만 표시 */}
-          {isLoggedIn && (
-            <button
-              className="nav-icon"
-              title="북마크"
-              onClick={() => router.push('/bookmarks')}
-            >
-              🔖
-            </button>
-          )}
-
-          {/* 미션 - 로그인 상태에서만 표시 */}
-          {isLoggedIn && (
-            <button
-              className="nav-icon"
-              title="미션"
-              onClick={() => router.push('/missions')}
-            >
-              🎯
-            </button>
-          )}
 
           {/* Notifications - 로그인 상태에서만 표시 */}
           {isLoggedIn && (
@@ -595,6 +565,10 @@ export default function Header() {
                         <a href="/my-questions" className="profile-menu-item">
                           <span className="profile-menu-icon">📝</span>
                           <span className="profile-menu-text">내 질문</span>
+                        </a>
+                        <a href="/missions" className="profile-menu-item">
+                          <span className="profile-menu-icon">🎯</span>
+                          <span className="profile-menu-text">미션</span>
                         </a>
                         <a href="/settings" className="profile-menu-item">
                           <span className="profile-menu-icon">⚙️</span>

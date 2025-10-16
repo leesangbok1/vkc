@@ -9,6 +9,7 @@ import CertificationModal from '@/components/modals/CertificationModal'
 import { MOCK_QUESTIONS, MOCK_POSTS, MOCK_BANNERS, type Question, type Post, type User } from '@/lib/data/mockData'
 import QuickTour from '@/components/tour/QuickTour'
 import { useQuickTour, defaultTourSteps } from '@/lib/hooks/useQuickTour'
+import { truncateToSentences } from '@/lib/utils/text-utils'
 
 // Type alias for Author (compatibility with existing code)
 type Author = User
@@ -301,9 +302,9 @@ export default function HomePage() {
                 </button>
                 <button
                   className="hero-action-btn"
-                  onClick={() => window.location.href = '/following'}
+                  onClick={() => window.location.href = '/questions'}
                 >
-                  👥 Following
+                  💬 Answer
                 </button>
                 <button
                   className="hero-action-btn"
@@ -454,7 +455,7 @@ export default function HomePage() {
 
                 <h3 className="question-title">{item.title}</h3>
                 <p className="question-content">
-                  {item.content.length > 200 ? item.content.substring(0, 200) + '...' : item.content}
+                  {truncateToSentences(item.content, 2)}
                 </p>
 
                 <div className="question-stats">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import BaseModal from '../modals/BaseModal'
 
 interface ShareButtonProps {
   url: string
@@ -30,20 +31,33 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
     }
   }
 
-  const handleKakaoShare = () => {
-    // 카카오톡 공유 - 웹 공유 API 사용 또는 URL 스키마
-    const kakaoUrl = `https://sharer.kakao.com/talk/friends/picker/link?app_key=YOUR_APP_KEY&validation_action=share&validation_params={"link_ver":"4.0","template_object":{"object_type":"feed","content":{"title":"${encodeURIComponent(title)}","link":{"web_url":"${fullUrl}"}}}}`
-
-    // 모바일에서는 카카오톡 앱으로, 웹에서는 공유 페이지로
+  const handleKakaoShare = async () => {
+    // 모바일에서는 카카오톡 앱 공유 시도
     if (typeof window !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-      // 모바일: 카카오톡 앱 실행
-      window.location.href = `kakaotalk://share?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(title)}`
-    } else {
-      // 웹: 클립보드 복사 후 안내
-      handleCopyLink()
-      alert('링크가 복사되었습니다. 카카오톡에서 붙여넣기 해주세요.')
+      try {
+        // Web Share API 사용 (최신 방식)
+        if (navigator.share) {
+          await navigator.share({
+            title: title,
+            url: fullUrl
+          })
+          setShowModal(false)
+          return
+        }
+      } catch (error) {
+        console.log('Web Share API failed, falling back to clipboard')
+      }
     }
-    setShowModal(false)
+
+    // Web Share API가 없거나 실패한 경우: 클립보드 복사
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+      alert('💬 링크가 복사되었습니다!\n카카오톡에서 붙여넣기 해주세요.')
+      setShowModal(false)
+    } catch (error) {
+      console.error('Copy failed:', error)
+      alert('링크 복사에 실패했습니다')
+    }
   }
 
   const shareOptions = [
@@ -103,46 +117,116 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
           <span>공유</span>
         </button>
 
-        {showModal && (
-          <div className="modal-overlay" onClick={() => setShowModal(false)}>
-            <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3 className="modal-title">공유하기</h3>
-                <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
-              </div>
+        <BaseModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          width="500px"
+          adaptiveMode={true}
+        >
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📤</div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1f2937', margin: 0 }}>
+              공유하기
+            </h3>
+          </div>
 
-              <div className="modal-body">
-                <div className="share-url-container">
-                  <input
-                    type="text"
-                    value={fullUrl}
-                    readOnly
-                    className="form-input share-url-input"
-                  />
-                  <button
-                    onClick={handleCopyLink}
-                    className="btn btn-primary share-copy-btn"
-                  >
-                    {copied ? '✅ 복사됨' : '📋 복사'}
-                  </button>
-                </div>
-
-                <div className="share-options">
-                  {shareOptions.map((option) => (
-                    <button
-                      key={option.name}
-                      onClick={option.action}
-                      className="share-option-btn"
-                    >
-                      <span className="share-option-icon">{option.icon}</span>
-                      <span className="share-option-name">{option.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* URL Copy Section */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              링크 주소
+            </label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                value={fullUrl}
+                readOnly
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  background: '#f9fafb',
+                  color: '#6b7280'
+                }}
+              />
+              <button
+                onClick={handleCopyLink}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: 'none',
+                  background: copied ? '#10b981' : '#3b82f6',
+                  color: 'white',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {copied ? '✅ 복사됨' : '📋 복사'}
+              </button>
             </div>
           </div>
-        )}
+
+          {/* Share Options */}
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '0.75rem'
+            }}>
+              공유 방법 선택
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '0.75rem'
+            }}>
+              {shareOptions.map((option) => (
+                <button
+                  key={option.name}
+                  onClick={option.action}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    background: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f9fafb'
+                    e.currentTarget.style.borderColor = '#3b82f6'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white'
+                    e.currentTarget.style.borderColor = '#e5e7eb'
+                  }}
+                >
+                  <span style={{ fontSize: '2rem' }}>{option.icon}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#374151' }}>
+                    {option.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </BaseModal>
       </>
     )
   }

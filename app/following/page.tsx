@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import ActionBar from '@/components/common/ActionBar'
-import { MOCK_QUESTIONS, MOCK_POSTS, type Question, type Post } from '@/lib/data/mockData'
+import { MOCK_QUESTIONS, MOCK_POSTS, MOCK_USERS, type Question, type Post, type User } from '@/lib/data/mockData'
+import { truncateToSentences } from '@/lib/utils/text-utils'
 
 type FeedItem = (Question | Post) & {
   type: 'question' | 'post'
@@ -16,6 +17,7 @@ export default function FollowingPage() {
   const [followedUsers, setFollowedUsers] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     // Check login status
@@ -35,9 +37,9 @@ export default function FollowingPage() {
     // Filter feed to show only followed users' posts
     if (followed.length > 0) {
       const filteredFeed = allFeed.filter(item => followed.includes(item.author.id))
-      // Sort by date
-      filteredFeed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      setFeed(filteredFeed)
+      // Randomize order
+      const shuffled = filteredFeed.sort(() => Math.random() - 0.5)
+      setFeed(shuffled)
     } else {
       setFeed([])
     }
@@ -45,7 +47,26 @@ export default function FollowingPage() {
     setLoading(false)
   }, [])
 
-  const handleUnfollow = (userId: string, userName: string) => {
+  const handleFollow = (userId: string) => {
+    if (!isLoggedIn) {
+      router.push('/auth/login?redirectTo=/following')
+      return
+    }
+
+    const updated = [...followedUsers, userId]
+    localStorage.setItem('followed_users', JSON.stringify(updated))
+    setFollowedUsers(updated)
+
+    // Update feed with new user's posts
+    const questions: FeedItem[] = MOCK_QUESTIONS.map(q => ({ ...q, type: 'question' as const }))
+    const posts: FeedItem[] = MOCK_POSTS.map(p => ({ ...p, type: 'post' as const }))
+    const allFeed = [...questions, ...posts]
+    const filteredFeed = allFeed.filter(item => updated.includes(item.author.id))
+    const shuffled = filteredFeed.sort(() => Math.random() - 0.5)
+    setFeed(shuffled)
+  }
+
+  const handleUnfollow = (userId: string) => {
     const updated = followedUsers.filter(id => id !== userId)
     localStorage.setItem('followed_users', JSON.stringify(updated))
     setFollowedUsers(updated)
@@ -53,8 +74,6 @@ export default function FollowingPage() {
     // Update feed
     const filteredFeed = feed.filter(item => item.author.id !== userId)
     setFeed(filteredFeed)
-
-    alert(`${userName}님을 언팔로우했습니다`)
   }
 
   const handleCardClick = (item: FeedItem) => {
@@ -79,6 +98,25 @@ export default function FollowingPage() {
     if (days < 7) return `${days}일 전`
     return date.toLocaleDateString('ko-KR')
   }
+
+  // Get followed user objects
+  const followedUserObjects = useMemo(() => {
+    return MOCK_USERS.filter(user => followedUsers.includes(user.id))
+  }, [followedUsers])
+
+  // Get suggested users (not followed yet)
+  const suggestedUsers = useMemo(() => {
+    return MOCK_USERS.filter(user => !followedUsers.includes(user.id)).slice(0, 10)
+  }, [followedUsers])
+
+  // Filter suggested users by search
+  const filteredSuggestedUsers = useMemo(() => {
+    if (!searchQuery) return suggestedUsers
+    return suggestedUsers.filter(user =>
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.visaType?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [suggestedUsers, searchQuery])
 
   if (loading) {
     return (
@@ -115,53 +153,249 @@ export default function FollowingPage() {
       </div>
 
       <div className="container">
-        <div className="main-content">
-          {/* Page Header */}
-          <div className="section" style={{ marginBottom: '1.5rem' }}>
-            <h1 className="section-title">Following</h1>
-            <p style={{ color: '#6b7280', fontSize: '0.95rem', marginTop: '0.5rem' }}>
-              팔로우한 사용자들의 최신 게시글
-            </p>
+        {/* 좌우 분할 레이아웃 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '2rem',
+          alignItems: 'start'
+        }}>
+          {/* 왼쪽: 팔로잉 관리 */}
+          <div style={{ width: '100%' }}>
+            {/* Page Header */}
+            <div className="section" style={{ marginBottom: '1.5rem' }}>
+              <h1 className="section-title">👥 Following</h1>
+              <p style={{ color: '#6b7280', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+                관심 있는 사용자를 팔로우하고 최신 게시글을 확인하세요
+              </p>
+            </div>
+
+            {/* 팔로잉 중인 사용자 */}
+            <div className="section" style={{ marginBottom: '2rem' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
+                팔로잉 중인 사용자 ({followedUserObjects.length})
+              </h3>
+
+              {followedUserObjects.length === 0 ? (
+                <div style={{
+                  padding: '2rem',
+                  textAlign: 'center',
+                  background: '#f9fafb',
+                  borderRadius: '12px'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>👥</div>
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                    아직 팔로우한 사용자가 없습니다
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {followedUserObjects.map((user) => (
+                    <div
+                      key={user.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '1rem',
+                        background: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}
+                        onClick={() => router.push(`/users/${user.id}`)}
+                      >
+                        <div className="author-avatar-small">👤</div>
+                        <div>
+                          <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{user.name}</div>
+                          {user.visaType && (
+                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                              {user.visaType}
+                              {user.yearsInKorea && `, 한국 ${user.yearsInKorea}년차`}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleUnfollow(user.id)
+                        }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#f3f4f6',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: '#374151',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        언팔로우
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 팔로우 사용자 찾기 */}
+            <div className="section">
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
+                팔로우 사용자 찾기
+              </h3>
+
+              {/* Search */}
+              <div style={{ marginBottom: '1rem' }}>
+                <input
+                  type="text"
+                  placeholder="사용자 이름 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="form-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem'
+                  }}
+                />
+              </div>
+
+              {/* Suggested Users */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {filteredSuggestedUsers.length === 0 ? (
+                  <div style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    background: '#f9fafb',
+                    borderRadius: '12px'
+                  }}>
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                      {searchQuery ? '검색 결과가 없습니다' : '모든 사용자를 팔로우 중입니다'}
+                    </p>
+                  </div>
+                ) : (
+                  filteredSuggestedUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '1rem',
+                        background: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}
+                        onClick={() => router.push(`/users/${user.id}`)}
+                      >
+                        <div className="author-avatar-small">👤</div>
+                        <div>
+                          <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{user.name}</div>
+                          {user.visaType && (
+                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                              {user.visaType}
+                              {user.yearsInKorea && `, 한국 ${user.yearsInKorea}년차`}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleFollow(user.id)
+                        }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#3b82f6',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: 'white',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        팔로우
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Category Tabs */}
-          <div className="category-tabs">
-            <a href="/" className="category-tab">Popular</a>
-            <a href="/topics" className="category-tab">Topic</a>
-            <a href="/following" className="category-tab active">Following</a>
-          </div>
+          {/* 오른쪽: 팔로잉 피드 */}
+          <div style={{ width: '100%', position: 'sticky', top: '1rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
+              📰 팔로잉 피드
+            </h3>
 
-          {/* Feed Container */}
-          <div className="feed-container">
             {followedUsers.length === 0 ? (
-              // Empty state - no users followed
-              <div className="feed-empty">
-                <div className="feed-empty-icon">👥</div>
-                <h3>팔로우한 사용자가 없습니다</h3>
-                <p>흥미로운 게시글을 올리는 사용자를 팔로우해보세요</p>
-                <button
-                  className="btn-primary"
-                  onClick={() => router.push('/questions')}
-                >
-                  팔로우 사용자 찾아보기
-                </button>
+              <div style={{
+                padding: '2rem',
+                textAlign: 'center',
+                background: '#f9fafb',
+                borderRadius: '12px'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '0.5rem'
+                }}>
+                  팔로우한 사용자가 없습니다
+                </h3>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#6b7280',
+                  lineHeight: '1.6'
+                }}>
+                  왼쪽에서 사용자를 팔로우하면<br />
+                  이곳에서 최신 게시글을 확인할 수 있습니다
+                </p>
               </div>
             ) : feed.length === 0 ? (
-              // Empty state - users followed but no content
-              <div className="feed-empty">
-                <div className="feed-empty-icon">📭</div>
-                <h3>모든 게시글을 확인했습니다</h3>
-                <p>팔로우한 사용자들의 최근 게시글이 없습니다</p>
-                <button
-                  className="btn-primary"
-                  onClick={() => router.push('/questions')}
-                >
-                  더 많은 콘텐츠 보기
-                </button>
+              <div style={{
+                padding: '2rem',
+                textAlign: 'center',
+                background: '#f9fafb',
+                borderRadius: '12px'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '0.5rem'
+                }}>
+                  게시글이 없습니다
+                </h3>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#6b7280',
+                  lineHeight: '1.6'
+                }}>
+                  팔로우한 사용자들의 게시글이 없습니다
+                </p>
               </div>
             ) : (
-              // Feed with followed users' posts
-              <>
+              <div className="feed-container">
                 {feed.map((item) => (
                   <div
                     key={`${item.type}-${item.id}`}
@@ -169,7 +403,6 @@ export default function FollowingPage() {
                     onClick={() => handleCardClick(item)}
                   >
                     <div className="question-header">
-                      {/* Author Info */}
                       <div className="question-meta">
                         <div className="question-author-row">
                           <div
@@ -209,7 +442,6 @@ export default function FollowingPage() {
                         </div>
                       </div>
 
-                      {/* More Button */}
                       <button
                         className="question-more-btn"
                         onClick={(e) => {
@@ -224,7 +456,7 @@ export default function FollowingPage() {
 
                     <h3 className="question-title">{item.title}</h3>
                     <p className="question-content">
-                      {item.content.length > 200 ? item.content.substring(0, 200) + '...' : item.content}
+                      {truncateToSentences(item.content, 2)}
                     </p>
 
                     <div className="question-stats">
@@ -248,7 +480,6 @@ export default function FollowingPage() {
                       </div>
                     </div>
 
-                    {/* ActionBar */}
                     <div onClick={(e) => e.stopPropagation()}>
                       <ActionBar
                         targetId={item.id}
@@ -266,13 +497,10 @@ export default function FollowingPage() {
                     </div>
                   </div>
                 ))}
-              </>
+              </div>
             )}
           </div>
         </div>
-
-        {/* Sidebar */}
-        <Sidebar />
       </div>
     </main>
   )

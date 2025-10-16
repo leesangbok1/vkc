@@ -59,7 +59,7 @@ export default function NotificationSetupModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      width="500px"
+      width="600px"
       adaptiveMode={true}
     >
       {/* Header */}
