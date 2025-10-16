@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { getSubscribedTopics, toggleSubscribeTopic } from '@/lib/utils/follow-manager'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 import RelatedQuestionsFeed from '@/components/topics/RelatedQuestionsFeed'
 
 type Topic = {
@@ -192,7 +192,7 @@ export default function TopicsPage() {
   )
 
   return (
-    <main className="main-layout">
+    <PageLayout variant="centered">
       {/* Mobile Category Grid */}
       <div className="mobile-category-grid">
         <a href="/categories/visa" className="mobile-category-item">
@@ -213,7 +213,7 @@ export default function TopicsPage() {
         </a>
       </div>
 
-      <div className="container">
+      <div>
         {/* 좌우 분할 레이아웃 */}
         <div style={{
           display: 'grid',
@@ -399,6 +399,6 @@ export default function TopicsPage() {
           </div>
         </div>
       </div>
-    </main>
+    </PageLayout>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 import { MOCK_QUESTIONS, MOCK_POSTS, MOCK_ANSWERS, type User, type Question, type Post, type Answer } from '@/lib/data/mockData'
 
 type UserActivity = {
@@ -130,39 +130,29 @@ export default function UserProfilePage() {
 
   if (loading) {
     return (
-      <main className="main-layout">
-        <div className="container">
-          <div className="main-content">
-            <div className="section profile-loading">로딩 중...</div>
-          </div>
-          <Sidebar showContent={false} />
-        </div>
-      </main>
+      <PageLayout variant="centered">
+        <div className="section profile-loading">로딩 중...</div>
+      </PageLayout>
     )
   }
 
   if (!user) {
     return (
-      <main className="main-layout">
-        <div className="container">
-          <div className="main-content">
-            <div className="section profile-error">
-              <div className="profile-error-icon">👤</div>
-              <h1 className="profile-error-title">사용자를 찾을 수 없습니다</h1>
-              <p className="profile-error-message">요청하신 사용자가 존재하지 않습니다.</p>
-              <button onClick={() => router.push('/')} className="btn btn-primary">
-                홈으로 돌아가기
-              </button>
-            </div>
-          </div>
-          <Sidebar showContent={false} />
+      <PageLayout variant="centered">
+        <div className="section profile-error">
+          <div className="profile-error-icon">👤</div>
+          <h1 className="profile-error-title">사용자를 찾을 수 없습니다</h1>
+          <p className="profile-error-message">요청하신 사용자가 존재하지 않습니다.</p>
+          <button onClick={() => router.push('/')} className="btn btn-primary">
+            홈으로 돌아가기
+          </button>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="main-layout">
+    <PageLayout variant="centered">
       <div className="container">
         <div className="main-content">
         <div className="profile-container">
@@ -574,6 +564,6 @@ export default function UserProfilePage() {
           }
         }
       `}</style>
-    </main>
+    </PageLayout>
   )
 }

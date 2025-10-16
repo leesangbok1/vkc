@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { getSubscribedTopics, toggleSubscribeTopic } from '@/lib/utils/follow-manager'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 
 type TopicInfo = {
   id: number
@@ -251,7 +251,7 @@ export default function TopicDetailPage({ params }: { params: { slug: string } }
   }
 
   return (
-    <main className="main-layout">
+    <PageLayout variant="centered">
       {/* Mobile Category Grid */}
       <div className="mobile-category-grid">
         <a href="/categories/visa" className="mobile-category-item">
@@ -272,8 +272,8 @@ export default function TopicDetailPage({ params }: { params: { slug: string } }
         </a>
       </div>
 
-      <div className="container">
-        <div className="main-content">
+      <div>
+        <div>
           {/* Topic Header */}
           <div className="section" style={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -433,10 +433,7 @@ export default function TopicDetailPage({ params }: { params: { slug: string } }
             )}
           </div>
         </div>
-
-        {/* Sidebar */}
-        <Sidebar showContent={false} />
       </div>
-    </main>
+    </PageLayout>
   )
 }

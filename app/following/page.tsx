@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 import ActionBar from '@/components/common/ActionBar'
 import { MOCK_QUESTIONS, MOCK_POSTS, MOCK_USERS, type Question, type Post, type User } from '@/lib/data/mockData'
 import { truncateToSentences } from '@/lib/utils/text-utils'
@@ -120,18 +120,14 @@ export default function FollowingPage() {
 
   if (loading) {
     return (
-      <main className="main-layout">
-        <div className="container">
-          <div className="main-content">
-            <div className="feed-loading">로딩 중...</div>
-          </div>
-        </div>
-      </main>
+      <PageLayout variant="centered">
+        <div className="feed-loading">로딩 중...</div>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="main-layout">
+    <PageLayout variant="centered">
       {/* Mobile Category Grid */}
       <div className="mobile-category-grid">
         <a href="/categories/visa" className="mobile-category-item">
@@ -152,7 +148,7 @@ export default function FollowingPage() {
         </a>
       </div>
 
-      <div className="container">
+      <div>
         {/* 좌우 분할 레이아웃 */}
         <div style={{
           display: 'grid',
@@ -502,6 +498,6 @@ export default function FollowingPage() {
           </div>
         </div>
       </div>
-    </main>
+    </PageLayout>
   )
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 import ActionBar from '@/components/common/ActionBar'
 
 const categoryMap: Record<string, { name: string; icon: string; description: string }> = {
@@ -100,29 +100,24 @@ export default function CategoryPage() {
 
   if (!category) {
     return (
-      <main className="main-layout">
-        <div className="container">
-          <div className="main-content">
-            <div className="section category-error-state">
-              <div className="category-error-icon">🔍</div>
-              <h1 className="category-error-title">카테고리를 찾을 수 없습니다</h1>
-              <p className="category-error-message">요청하신 카테고리가 존재하지 않습니다.</p>
-              <button
-                onClick={() => router.push('/')}
-                className="btn btn-primary"
-              >
-                홈으로 돌아가기
-              </button>
-            </div>
-          </div>
-          <Sidebar showContent={false} />
+      <PageLayout variant="centered">
+        <div className="section category-error-state">
+          <div className="category-error-icon">🔍</div>
+          <h1 className="category-error-title">카테고리를 찾을 수 없습니다</h1>
+          <p className="category-error-message">요청하신 카테고리가 존재하지 않습니다.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="btn btn-primary"
+          >
+            홈으로 돌아가기
+          </button>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="main-layout">
+    <PageLayout variant="centered">
       {/* Mobile Category Grid */}
       <div className="mobile-category-grid">
         <a href="/categories/visa" className="mobile-category-item">
@@ -143,8 +138,8 @@ export default function CategoryPage() {
         </a>
       </div>
 
-      <div className="container">
-        <div className="main-content">
+      <div>
+        <div>
         {/* Category Header */}
         <div className="section card category-header">
           <div className="category-header-content">
@@ -321,10 +316,7 @@ export default function CategoryPage() {
           </div>
         )}
         </div>
-
-        {/* Sidebar */}
-        <Sidebar showContent={false} />
       </div>
-    </main>
+    </PageLayout>
   )
 }

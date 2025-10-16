@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
 import ActionBar from '@/components/common/ActionBar'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 import { MOCK_QUESTIONS, MOCK_ANSWERS, getAnswersByQuestionId, type Question, type Answer } from '@/lib/data/mockData'
 import { notifyAnswerAccepted } from '@/lib/utils/notification-manager'
 import CertificationPromptModal from '@/components/modals/CertificationPromptModal'
@@ -273,27 +273,25 @@ export default function QuestionDetailPage() {
 
   if (loading) {
     return (
-      <div className="main-layout loading-container">
-        <div>로딩 중...</div>
-      </div>
+      <PageLayout variant="centered">
+        <div className="loading-container"><div>로딩 중...</div></div>
+      </PageLayout>
     )
   }
 
   if (!question) {
     return (
-      <div className="main-layout error-container">
-        <h1 className="error-title">질문을 찾을 수 없습니다</h1>
-        <a href="/" className="btn-primary error-btn">
-          홈으로 돌아가기
-        </a>
-      </div>
+      <PageLayout variant="centered">
+        <div className="error-container">
+          <h1 className="error-title">질문을 찾을 수 없습니다</h1>
+          <a href="/" className="btn-primary error-btn">홈으로 돌아가기</a>
+        </div>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="main-layout">
-      <div className="container">
-        <div className="main-content">
+    <PageLayout variant="withSidebar">
           {/* Breadcrumb */}
           <nav className="breadcrumb">
             <a href="/" className="breadcrumb-link">홈</a>
@@ -474,11 +472,6 @@ export default function QuestionDetailPage() {
               ))}
             </div>
           </div>
-        </div>
-
-        {/* Sidebar */}
-        <Sidebar />
-      </div>
 
       {/* Certification Prompt Modal */}
       <CertificationPromptModal
@@ -489,6 +482,6 @@ export default function QuestionDetailPage() {
         }}
         trigger={certificationTrigger}
       />
-    </main>
+    </PageLayout>
   )
 }

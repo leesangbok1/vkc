@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import PageLayout from '@/components/layout/PageLayout'
 import { getBookmarks, removeBookmark as removeBookmarkUtil, Bookmark } from '@/lib/utils/bookmark-manager'
 
 export default function BookmarksPage() {
@@ -52,32 +53,25 @@ export default function BookmarksPage() {
 
   if (isCheckingAuth) {
     return (
-      <main className="main-layout">
-        <div className="container" style={{
+      <PageLayout variant="centered">
+        <div style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           minHeight: '60vh'
         }}>
-          <div style={{
-            textAlign: 'center',
-            color: '#666'
-          }}>
-            <div style={{
-              fontSize: '2rem',
-              marginBottom: '1rem',
-              animation: 'spin 1s linear infinite'
-            }}>⏳</div>
+          <div style={{ textAlign: 'center', color: '#666' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
             <p>로딩 중...</p>
           </div>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="main-layout">
-      <div className="container" style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <PageLayout variant="centered">
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{
           padding: '2rem 0',
@@ -283,6 +277,6 @@ export default function BookmarksPage() {
           )}
         </div>
       </div>
-    </main>
+    </PageLayout>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
+import PageLayout from '@/components/layout/PageLayout'
 import ActionBar from '@/components/common/ActionBar'
 import { useState, useEffect } from 'react'
 import { MOCK_POSTS } from '@/lib/data/mockData'
@@ -232,24 +232,19 @@ export default function PostDetailPage() {
   // 게시글이 없으면 404
   if (!post) {
     return (
-      <main className="main-layout">
-        <div className="container">
-          <div className="main-content">
-            <div className="section post-error-state">
-              <div className="post-error-icon">📄</div>
-              <h1 className="post-error-title">게시글을 찾을 수 없습니다</h1>
-              <p className="post-error-message">요청하신 게시글이 존재하지 않거나 삭제되었습니다.</p>
-              <button
-                onClick={() => router.push('/')}
-                className="btn btn-primary"
-              >
-                홈으로 돌아가기
-              </button>
-            </div>
-          </div>
-          <Sidebar showContent={false} />
+      <PageLayout variant="centered">
+        <div className="section post-error-state">
+          <div className="post-error-icon">📄</div>
+          <h1 className="post-error-title">게시글을 찾을 수 없습니다</h1>
+          <p className="post-error-message">요청하신 게시글이 존재하지 않거나 삭제되었습니다.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="btn btn-primary"
+          >
+            홈으로 돌아가기
+          </button>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
@@ -266,9 +261,7 @@ export default function PostDetailPage() {
   }
 
   return (
-    <main className="main-layout">
-      <div className="container">
-        <div className="main-content">
+    <PageLayout variant="centered">
         {/* 상단 네비게이션 */}
         <div className="section post-navigation">
           <button
@@ -392,10 +385,6 @@ export default function PostDetailPage() {
           </div>
         </div>
         </div>
-
-        {/* Sidebar */}
-        <Sidebar showContent={false} />
-      </div>
-    </main>
+    </PageLayout>
   )
 }

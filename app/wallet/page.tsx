@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import PageLayout from '@/components/layout/PageLayout'
 
 type Transaction = {
   id: string
@@ -137,34 +138,27 @@ export default function WalletPage() {
 
   if (isCheckingAuth) {
     return (
-      <main className="main-layout">
-        <div className="container" style={{
+      <PageLayout variant="centered">
+        <div style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
           minHeight: '60vh'
         }}>
-          <div style={{
-            textAlign: 'center',
-            color: '#666'
-          }}>
-            <div style={{
-              fontSize: '2rem',
-              marginBottom: '1rem',
-              animation: 'spin 1s linear infinite'
-            }}>⏳</div>
+          <div style={{ textAlign: 'center', color: '#666' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
             <p>로딩 중...</p>
           </div>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
   const krwValue = balance
 
   return (
-    <main className="main-layout">
-      <div className="container">
+    <PageLayout variant="centered">
+      <div>
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 350px',
@@ -706,6 +700,6 @@ export default function WalletPage() {
           </div>
         </div>
       )}
-    </main>
+    </PageLayout>
   )
 }
