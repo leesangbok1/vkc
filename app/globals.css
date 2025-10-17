@@ -11070,10 +11070,13 @@ select.question-field-input {
   box-shadow: 0 6px 20px rgba(33, 150, 243, 0.15) !important;
   overflow: hidden !important;
   position: relative;
-  min-height: 180px;
-  /* Reserve space for footer (absolute) to avoid visual clipping */
-  --event-banner-footer-h: 64px; /* ensure enough space for translated CTA/footer */
-  padding-bottom: var(--event-banner-footer-h) !important;
+  /* Uniform card height regardless of language */
+  --event-banner-h: 240px;
+  --event-banner-footer-h: 64px;
+  height: var(--event-banner-h);
+  max-height: var(--event-banner-h);
+  min-height: var(--event-banner-h);
+  padding-bottom: var(--event-banner-footer-h) !important; /* reserve footer space */
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
@@ -11101,7 +11104,8 @@ select.question-field-input {
   position: relative;
   z-index: 1;
   /* Prevent height jump on translation; scroll appears only when needed */
-  max-height: calc(var(--event-banner-content-max-h, 220px) - var(--event-banner-footer-h, 64px));
+  --event-banner-content-max-h: var(--event-banner-h);
+  max-height: calc(var(--event-banner-content-max-h) - var(--event-banner-footer-h));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
@@ -11188,13 +11192,17 @@ select.question-field-input {
   }
   
   .event-banner {
-    min-height: 160px;
+    --event-banner-h-mobile: 210px;
+    height: var(--event-banner-h-mobile);
+    max-height: var(--event-banner-h-mobile);
+    min-height: var(--event-banner-h-mobile);
     border-radius: 16px !important;
   }
   
   .event-banner-content {
     padding: 1.5rem !important;
-    max-height: var(--event-banner-content-max-h-mobile, 180px);
+    --event-banner-content-max-h-mobile: var(--event-banner-h-mobile);
+    max-height: calc(var(--event-banner-content-max-h-mobile) - var(--event-banner-footer-h));
   }
   
   .event-banner-title {
