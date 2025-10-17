@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import PageLayout from '@/components/layout/PageLayout'
 import { createBrowserClient } from '@supabase/ssr'
 import { CATEGORIES } from '@/lib/data/categories-mock'
 
@@ -46,9 +47,7 @@ export default function NewPostPage() {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (!session) {
-        // 로그인 안 된 경우 홈으로 리다이렉트
-        console.warn('직접 URL 접근 감지 - 홈으로 리다이렉트')
-        router.push('/')
+        router.push('/auth/login?redirectTo=/posts/new')
       } else {
         // TODO: Supabase에서 user role 체크 로직 추가
         setIsAuthenticated(true)
@@ -124,17 +123,17 @@ export default function NewPostPage() {
   // 인증 확인 중일 때 로딩 표시
   if (isAuthenticated === null) {
     return (
-      <main className="post-auth-check-layout">
+      <PageLayout variant="centered">
         <div className="post-auth-check-container">
           <div className="post-auth-check-icon">🔐</div>
           <p className="post-auth-check-message">인증 확인 중...</p>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="main-layout post-page-layout">
+    <PageLayout variant="centered">
       <div className="post-page-container">
         <div className="post-form-column">
           {/* Post Form */}
@@ -264,6 +263,6 @@ export default function NewPostPage() {
           </div>
         </div>
       </div>
-    </main>
+    </PageLayout>
   )
 }

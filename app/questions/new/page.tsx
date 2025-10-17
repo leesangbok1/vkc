@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import PageLayout from '@/components/layout/PageLayout'
 import NotificationSetupModal from '@/components/modals/NotificationSetupModal'
 import { CATEGORIES } from '@/lib/data/categories-mock'
 
@@ -33,10 +34,8 @@ export default function NewQuestionPage() {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (!session) {
-        // 로그인 안 된 경우 홈으로 리다이렉트 (Header에서 모달 처리)
-        // 직접 URL 접근 방지용 백업 체크
-        console.warn('직접 URL 접근 감지 - 홈으로 리다이렉트')
-        router.push('/')
+        // 로그인 안 된 경우 로그인 페이지로 리다이렉트
+        router.push('/auth/login?redirectTo=/questions/new')
       } else {
         setIsAuthenticated(true)
       }
@@ -148,17 +147,17 @@ export default function NewQuestionPage() {
   // 인증 확인 중일 때 로딩 표시
   if (isAuthenticated === null) {
     return (
-      <main className="main-layout question-form-loading-container">
+      <PageLayout variant="centered">
         <div className="question-form-loading-content">
           <div className="question-form-loading-icon">🔐</div>
           <p className="question-form-loading-text">인증 확인 중...</p>
         </div>
-      </main>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="main-layout question-form-main-layout">
+    <PageLayout variant="centered">
       <div className="question-form-container">
         <div className="question-form-column">
           {/* Question Form */}
@@ -301,6 +300,6 @@ export default function NewQuestionPage() {
         onComplete={handleNotificationComplete}
         userEmail={userEmail}
       />
-    </main>
+    </PageLayout>
   )
 }
