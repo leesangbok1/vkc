@@ -34,3 +34,17 @@
   - 텍스트 상자 래핑 강화(overflow-wrap:anywhere, word-break:break-word, hyphens:auto)
   - 모달/드롭다운/사이드바 카드: 최대 높이 80vh + 세로 스크롤
   - 작은 UI 컨트롤(탭/배지/필): ellipsis 처리
+
+### 추가 4
+- 작업: 사이드바/배너 높이 통일, 이벤트 배너 푸터 확보, sticky 정렬 개선
+- 커밋: 6153618, 065483f, ad7351d 외
+- 메모:
+  - 사이드바 카드 높이 상한 420px, 본문 내부 스크롤(뉴스/인증 동일)
+  - 이벤트 배너 높이 데스크탑 240px/모바일 210px 고정, 푸터 64px 예약
+  - 수평 배너(파란/보라) 제목 1줄, 설명 2줄 클램프(…)
+  - 사이드바 sticky로 전환(컨테이너 정렬 유지)
+
+### TODO (Responsive Consistency)
+- 토큰/레이아웃 매트릭스 작성 (claudedocs/RESPONSIVE_LAYOUT_CONSISTENCY_PLAN.md 참조)
+- 카드/배너/드롭다운 전수 점검 & 규칙 적용 여부 확인
+- 번역 켠 상태 QA 스냅샷 루틴 수립

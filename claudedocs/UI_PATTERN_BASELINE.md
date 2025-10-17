@@ -23,6 +23,11 @@
 - Header: 공통 헤더 유지, 툴팁/검색/언어 드롭다운 일관
 - ActionBar: 공유/북마크/도움됨 동작 패턴 재사용
 - Cards/Buttons: design-system의 기본 스타일 + 변형만 적용
+- 배너 정책
+  - 대형 이벤트 배너(.event-banner): 데스크톱 240px / 모바일 210px 고정 높이, 푸터 64px 예약, 본문은 내부 스크롤. 제목/설명은 지정 줄수(말줄임) 유지.
+  - 가로 배너(.event-banner-horizontal): 제목 1줄, 설명 2줄 -webkit-line-clamp. 스크롤 금지.
+  - 사이드바 카드(뉴스/인증): 카드 전체 높이 동일(기본 420px), 헤더/푸터 고정, 본문만 overflow-y:auto.
+- 사이드바: 컨테이너 기준 `position: sticky` 사용, 하드코딩 오프셋 금지.
 
 4) 접근성/시멘틱
 - 페이지 내 실제 콘텐츠 루트에 `<main>` 1개만 두는 것을 원칙으로 함
@@ -38,4 +43,3 @@
 6) 커밋/PR 규칙
 - 커밋 메시지 접두사: feat(layout)/refactor(layout)/chore(docs)
 - PR 템플릿 체크리스트 100% 통과
-
