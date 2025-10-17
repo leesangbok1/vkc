@@ -11071,6 +11071,9 @@ select.question-field-input {
   overflow: hidden !important;
   position: relative;
   min-height: 180px;
+  /* Reserve space for footer (absolute) to avoid visual clipping */
+  --event-banner-footer-h: 56px;
+  padding-bottom: var(--event-banner-footer-h) !important;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
@@ -11098,7 +11101,7 @@ select.question-field-input {
   position: relative;
   z-index: 1;
   /* Prevent height jump on translation; scroll appears only when needed */
-  max-height: var(--event-banner-content-max-h, 220px);
+  max-height: calc(var(--event-banner-content-max-h, 220px) - var(--event-banner-footer-h, 56px));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
@@ -11233,9 +11236,13 @@ select.question-field-input {
   border-radius: 12px !important;
   padding: 0 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-  overflow: visible !important; /* hidden → visible (잘림 방지) */
+  overflow: hidden !important; /* keep scrollbars inside */
   margin-bottom: 12px;
-  min-height: auto !important; /* 336px → auto (컨텐츠 맞춤) */
+  min-height: auto !important;
+  /* Enforce comparable card height with news card */
+  max-height: var(--sidebar-banner-card-max-h, 50vh);
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar .sidebar-banner-header {
