@@ -2544,15 +2544,15 @@ a:hover {
 }
 
 .main-layout .sidebar {
-  width: var(--sidebar-width); /* 320px */
-  flex-shrink: 0; /* 너비 고정 */
+  width: var(--sidebar-width);
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem; /* 배너 간격 줄임 (1rem → 0.75rem) */
-  position: fixed !important; /* sticky 대신 fixed 사용 - 강제 고정 */
-  top: 72px !important; /* 상단 여백 증가 (32px → 72px) - 헤더 높이 56px + 여백 16px */
-  right: calc((100vw - 1040px) / 2 + 1rem); /* 중앙 정렬 유지 */
-  max-height: calc(100vh - 88px); /* 화면 높이에서 top 여백 제외 */
+  gap: 0.75rem;
+  position: sticky !important; /* container 기준 sticky로 자연 정렬 */
+  top: 72px !important; /* 헤더 높이 + 여백 */
+  align-self: flex-start; /* 상단 정렬 고정 */
+  max-height: calc(100vh - 88px);
   overflow-y: auto;
   z-index: 10;
 }
