@@ -11332,6 +11332,12 @@ select.question-field-input {
 /* 기사 리스트 영역 */
 .sidebar .sidebar-news-list {
   padding: 0.5rem 0;
+  /* Long translations: keep card height stable and scroll the list */
+  max-height: var(--sidebar-news-list-max-h, 40vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
 }
 
 /* 기사 카드 아이템 */
@@ -11441,6 +11447,11 @@ select.question-field-input {
 
   .sidebar .sidebar-news-header {
     padding: 0.875rem 1rem;
+  }
+
+  /* Reduce list max height on small screens */
+  .sidebar .sidebar-news-list {
+    max-height: var(--sidebar-news-list-max-h-mobile, 32vh);
   }
 
   .sidebar .sidebar-title {
