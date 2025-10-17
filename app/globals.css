@@ -11072,7 +11072,7 @@ select.question-field-input {
   position: relative;
   min-height: 180px;
   /* Reserve space for footer (absolute) to avoid visual clipping */
-  --event-banner-footer-h: 56px;
+  --event-banner-footer-h: 64px; /* ensure enough space for translated CTA/footer */
   padding-bottom: var(--event-banner-footer-h) !important;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -11101,7 +11101,7 @@ select.question-field-input {
   position: relative;
   z-index: 1;
   /* Prevent height jump on translation; scroll appears only when needed */
-  max-height: calc(var(--event-banner-content-max-h, 220px) - var(--event-banner-footer-h, 56px));
+  max-height: calc(var(--event-banner-content-max-h, 220px) - var(--event-banner-footer-h, 64px));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
@@ -11243,6 +11243,13 @@ select.question-field-input {
   max-height: var(--sidebar-banner-card-max-h, 50vh);
   display: flex;
   flex-direction: column;
+}
+
+/* 뉴스/전문가 카드 동일 높이로 고정 (내용은 내부 스크롤) */
+.sidebar .sidebar-news-card,
+.sidebar .sidebar-banner-card {
+  height: var(--sidebar-card-h, 420px);
+  max-height: var(--sidebar-card-h, 420px);
 }
 
 .sidebar .sidebar-banner-header {
