@@ -11323,7 +11323,10 @@ select.question-field-input {
   border-radius: 12px !important;
   padding: 0 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-  overflow: hidden;
+  overflow: hidden; /* keep scrollbars inside the card */
+  display: flex;
+  flex-direction: column;
+  max-height: var(--sidebar-news-card-max-h, 50vh);
 }
 
 /* 헤더 영역 */
@@ -11355,8 +11358,9 @@ select.question-field-input {
 /* 기사 리스트 영역 */
 .sidebar .sidebar-news-list {
   padding: 0.5rem 0;
-  /* Long translations: keep card height stable and scroll the list */
-  max-height: var(--sidebar-news-list-max-h, 40vh);
+  /* Scroll only this list; header/footer stay fixed */
+  flex: 1 1 auto;
+  min-height: 0; /* allow flex child to shrink */
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -11472,9 +11476,9 @@ select.question-field-input {
     padding: 0.875rem 1rem;
   }
 
-  /* Reduce list max height on small screens */
-  .sidebar .sidebar-news-list {
-    max-height: var(--sidebar-news-list-max-h-mobile, 32vh);
+  /* Reduce entire card height on small screens */
+  .sidebar .sidebar-news-card {
+    max-height: var(--sidebar-news-card-max-h-mobile, 42vh);
   }
 
   .sidebar .sidebar-title {
