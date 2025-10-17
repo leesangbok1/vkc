@@ -10269,6 +10269,24 @@ select.question-field-input {
   line-height: 1.4;
 }
 
+/* Truncation to prevent vertical overflow on translation */
+.event-banner-horizontal .event-banner-main-title,
+.event-banner-horizontal .event-banner-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+.event-banner-horizontal .event-banner-main-title {
+  -webkit-line-clamp: 1; /* single line with ellipsis */
+}
+
+.event-banner-horizontal .event-banner-description {
+  -webkit-line-clamp: 2; /* two lines for description */
+}
+
 .event-banner-center {
   flex-shrink: 0;
 }
@@ -10307,6 +10325,11 @@ select.question-field-input {
 
   .event-banner-description {
     font-size: 13px;
+  }
+
+  /* Keep truncation compact on mobile as well */
+  .event-banner-horizontal .event-banner-description {
+    -webkit-line-clamp: 2;
   }
 
   .event-banner-date {
