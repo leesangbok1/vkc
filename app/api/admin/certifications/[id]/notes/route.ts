@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -15,7 +15,7 @@ export async function PATCH(
     const { notes } = body
 
     // Get session to verify admin access
-    const supabase = await createClient()
+    const supabase = await createSupabaseServerClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -27,12 +27,16 @@ export async function PATCH(
 
     // Check if user is admin
     const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('role')
+      .from('users')
+      .select('role, admin_yn')
       .eq('id', session.user.id)
-      .single()
+      .maybeSingle()
 
-    if (userError || userData?.role !== 'ADMIN') {
+    const isAdmin =
+      userData?.admin_yn === 'Y' ||
+      userData?.role === 'admin'
+
+    if (userError || !isAdmin) {
       return NextResponse.json(
         { error: 'Forbidden - Admin access required' },
         { status: 403 }
@@ -50,7 +54,7 @@ export async function PATCH(
       .select()
       .single()
 
-    if (updateError) {
+    if (updateError || !certRequest) {
       console.error('Failed to update admin notes:', updateError)
       return NextResponse.json(
         { error: 'Failed to update admin notes' },

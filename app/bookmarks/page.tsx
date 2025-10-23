@@ -1,15 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
-import { getBookmarks, removeBookmark as removeBookmarkUtil, Bookmark } from '@/lib/utils/bookmark-manager'
+import {
+  getBookmarks,
+  removeBookmark as removeBookmarkUtil,
+  type Bookmark
+} from '@/lib/utils/bookmark-manager'
 
 export default function BookmarksPage() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
+  const [isLoadingBookmarks, setIsLoadingBookmarks] = useState(false)
 
   useEffect(() => {
     checkAuth()
@@ -17,12 +22,10 @@ export default function BookmarksPage() {
 
   async function checkAuth() {
     try {
-      const mockSession = localStorage.getItem('mock_session')
-      const mockUser = localStorage.getItem('mock_user')
-
-      if (mockSession === 'true' && mockUser) {
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+      if (res.ok) {
         setIsLoggedIn(true)
-        loadBookmarks()
+        await loadBookmarks()
       } else {
         router.push('/auth/login?redirectTo=/bookmarks')
       }
@@ -34,21 +37,27 @@ export default function BookmarksPage() {
     }
   }
 
-  function loadBookmarks() {
+  async function loadBookmarks() {
+    setIsLoadingBookmarks(true)
     try {
-      const stored = getBookmarks()
+      const stored = await getBookmarks()
       setBookmarks(stored)
     } catch (error) {
       console.error('Failed to load bookmarks:', error)
       setBookmarks([])
+    } finally {
+      setIsLoadingBookmarks(false)
     }
   }
 
-  function removeBookmark(targetId: string, type: 'question' | 'answer' | 'post') {
-    const success = removeBookmarkUtil(targetId, type)
-    if (success) {
-      loadBookmarks() // Reload from localStorage
+  async function removeBookmark(bookmark: Bookmark) {
+    const success = await removeBookmarkUtil(bookmark.id)
+    if (!success) {
+      alert('북마크 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.')
+      return
     }
+
+    setBookmarks(prev => prev.filter(item => item.id !== bookmark.id))
   }
 
   if (isCheckingAuth) {
@@ -128,7 +137,16 @@ export default function BookmarksPage() {
 
         {/* Bookmarks List */}
         <div style={{ padding: '2rem 0' }}>
-          {bookmarks.length === 0 ? (
+          {isLoadingBookmarks ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '4rem 2rem',
+              color: '#666'
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+              <p>북마크를 불러오는 중입니다...</p>
+            </div>
+          ) : bookmarks.length === 0 ? (
             <div style={{
               textAlign: 'center',
               padding: '4rem 2rem',
@@ -196,7 +214,6 @@ export default function BookmarksPage() {
                     } else if (item.type === 'post') {
                       router.push(`/posts/${item.targetId}`)
                     } else {
-                      // answer type - navigate to question with answer ID
                       router.push(`/questions/${item.targetId}`)
                     }
                   }}
@@ -220,57 +237,56 @@ export default function BookmarksPage() {
                         {item.type === 'question' ? '❓' : item.type === 'post' ? '📝' : '💬'}
                       </span>
                       <span style={{
-                        fontSize: '0.85rem',
-                        color: '#667eea',
-                        fontWeight: '600',
-                        textTransform: 'uppercase'
+                        fontSize: '0.875rem',
+                        color: '#6b7280',
+                        fontWeight: 600,
+                        background: '#f3f4f6',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '999px'
                       }}>
-                        {item.type === 'question' ? 'Question' : item.type === 'post' ? 'Post' : 'Answer'}
+                        {item.type === 'question' ? '질문' : item.type === 'post' ? '게시글' : '답변'}
+                      </span>
+                      <span style={{
+                        fontSize: '0.85rem',
+                        color: '#9ca3af'
+                      }}>
+                        {new Date(item.createdAt).toLocaleString('ko-KR', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
                       </span>
                     </div>
-                    <h3 style={{
-                      fontSize: '1.1rem',
-                      fontWeight: '600',
-                      color: '#333',
-                      marginBottom: '0.5rem'
-                    }}>
-                      {item.title}
-                    </h3>
-                    <p style={{
-                      fontSize: '0.9rem',
-                      color: '#666'
-                    }}>
-                      저장일: {new Date(item.created_at).toLocaleDateString('ko-KR')}
-                    </p>
+                    <div style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1f2937', marginBottom: '0.5rem' }}>
+                      {item.title || '제목 없는 북마크'}
+                    </div>
+                    <div style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.6 }}>
+                      {item.content
+                        ? item.content.length > 200
+                          ? `${item.content.slice(0, 200)}...`
+                          : item.content
+                        : '저장된 미리보기가 없습니다.'}
+                    </div>
                   </div>
-                  <button
-                    style={{
-                      background: '#f8f9fa',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '8px',
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.9rem',
-                      color: '#666',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeBookmark(item.targetId, item.type)
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#dc3545'
-                      e.currentTarget.style.color = 'white'
-                      e.currentTarget.style.borderColor = '#dc3545'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#f8f9fa'
-                      e.currentTarget.style.color = '#666'
-                      e.currentTarget.style.borderColor = '#dee2e6'
-                    }}
-                  >
-                    삭제
-                  </button>
+                  <div>
+                    <button
+                      style={{
+                        background: 'white',
+                        color: '#ef4444',
+                        border: '1px solid #fca5a5',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '8px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        await removeBookmark(item)
+                      }}
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -1,503 +1,430 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
 import PageLayout from '@/components/layout/PageLayout'
-import ActionBar from '@/components/common/ActionBar'
-import { MOCK_QUESTIONS, MOCK_POSTS, MOCK_USERS, type Question, type Post, type User } from '@/lib/data/mockData'
+import FeedCard from '@/components/feed/FeedCard'
+import { FeedSkeleton } from '@/components/questions/FeedSkeleton'
+import { FeedEmptyState } from '@/components/questions/FeedEmptyState'
 import { truncateToSentences } from '@/lib/utils/text-utils'
 
-type FeedItem = (Question | Post) & {
-  type: 'question' | 'post'
+const extractMediaUrls = (source: any): string[] => {
+  if (!source) return []
+  const candidates = [
+    source.attachments,
+    source.images,
+    source.image_urls,
+    source.media_urls,
+    source.media
+  ]
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter((value) => typeof value === 'string' && value.length > 0)
+    }
+  }
+
+  if (typeof source.imageUrl === 'string') {
+    return [source.imageUrl]
+  }
+
+  return []
+}
+
+type FeedQuestion = {
+  id: string
+  title: string
+  content: string
+  created_at?: string
+  answer_count?: number
+  category?: { name?: string | null } | null
+  author?: {
+    id?: string
+    name?: string | null
+    role?: string | null
+    visaType?: string | null
+    yearsInKorea?: number | null
+  }
+}
+
+type RecommendedUser = {
+  id: string
+  name: string
+  role: string
+  avatar_url?: string | null
+  helpful_answer_count?: number | null
+  answer_count?: number | null
+  trust_score?: number | null
+  score?: number | null
+  specialties?: string[] | null
+  interests?: string[] | null
 }
 
 export default function FollowingPage() {
-  const router = useRouter()
-  const [feed, setFeed] = useState<FeedItem[]>([])
-  const [followedUsers, setFollowedUsers] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [feed, setFeed] = useState<FeedQuestion[]>([])
+  const [feedLoading, setFeedLoading] = useState(true)
+  const [feedError, setFeedError] = useState<string | null>(null)
+
+  const [viewerTopics, setViewerTopics] = useState<string[]>([])
+  const [recommended, setRecommended] = useState<RecommendedUser[]>([])
+  const [recommendedLoading, setRecommendedLoading] = useState(true)
+  const [recommendedError, setRecommendedError] = useState<string | null>(null)
+
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    // Check login status
-    const mockSession = localStorage.getItem('mock_session')
-    setIsLoggedIn(mockSession === 'true')
+    let ignore = false
 
-    // Get followed users from localStorage
-    const stored = localStorage.getItem('followed_users')
-    const followed = stored ? JSON.parse(stored) : []
-    setFollowedUsers(followed)
+    async function bootstrap() {
+      try {
+        const profileRes = await fetch('/api/auth/profile', { cache: 'no-store' })
+        if (!profileRes.ok) {
+          if (!ignore) {
+            setIsLoggedIn(false)
+            const redirect = encodeURIComponent('/following')
+            if (typeof window !== 'undefined') {
+              window.location.href = `/auth/login?redirectTo=${redirect}`
+            }
+          }
+          return
+        }
 
-    // Combine questions and posts into unified feed
-    const questions: FeedItem[] = MOCK_QUESTIONS.map(q => ({ ...q, type: 'question' as const }))
-    const posts: FeedItem[] = MOCK_POSTS.map(p => ({ ...p, type: 'post' as const }))
-    const allFeed = [...questions, ...posts]
+        const profileJson = await profileRes.json()
+        const profileData = profileJson?.data || {}
+        const interests: string[] = Array.isArray(profileData.interests)
+          ? profileData.interests
+          : []
 
-    // Filter feed to show only followed users' posts
-    if (followed.length > 0) {
-      const filteredFeed = allFeed.filter(item => followed.includes(item.author.id))
-      // Randomize order
-      const shuffled = filteredFeed.sort(() => Math.random() - 0.5)
-      setFeed(shuffled)
-    } else {
-      setFeed([])
+        const followingRes = await fetch('/api/users/following', { cache: 'no-store' })
+        let followingSet = new Set<string>()
+        if (followingRes.ok) {
+          const followingJson = await followingRes.json()
+          const followingData: string[] = Array.isArray(followingJson?.data) ? followingJson.data : []
+          followingSet = new Set(followingData)
+        }
+
+        if (!ignore) {
+          setIsLoggedIn(true)
+          setViewerTopics(interests)
+          setFollowingIds(followingSet)
+        }
+      } catch (error) {
+        console.error('[FollowingPage] profile load failed', error)
+        if (!ignore) {
+          setIsLoggedIn(false)
+        }
+      }
     }
 
-    setLoading(false)
+    bootstrap()
+    return () => {
+      ignore = true
+    }
   }, [])
 
-  const handleFollow = (userId: string) => {
-    if (!isLoggedIn) {
-      router.push('/auth/login?redirectTo=/following')
-      return
+  useEffect(() => {
+    if (!isLoggedIn) return
+
+    let ignore = false
+
+    async function loadFeed() {
+      setFeedLoading(true)
+      setFeedError(null)
+
+      try {
+        const feedRes = await fetch('/api/questions?following=true&sort=popular&limit=20', { cache: 'no-store' })
+        if (feedRes.status === 401) {
+          if (!ignore) {
+            const redirect = encodeURIComponent('/following')
+            window.location.href = `/auth/login?redirectTo=${redirect}`
+          }
+          return
+        }
+
+        if (!feedRes.ok) {
+          throw new Error(`follow feed failed ${feedRes.status}`)
+        }
+
+        const json = await feedRes.json()
+        const items = Array.isArray(json?.items) ? json.items : []
+
+        if (!ignore) {
+          setFeed(
+            items.map((q: any) => ({
+              id: q.id,
+              title: q.title,
+              content: q.content,
+              author: q.author,
+              answer_count: q.answer_count,
+              created_at: q.created_at,
+            }))
+          )
+        }
+      } catch (error: any) {
+        if (!ignore) {
+          setFeed([])
+          setFeedError(error?.message || '팔로잉 피드를 불러오지 못했습니다.')
+        }
+      } finally {
+        if (!ignore) setFeedLoading(false)
+      }
     }
 
-    const updated = [...followedUsers, userId]
-    localStorage.setItem('followed_users', JSON.stringify(updated))
-    setFollowedUsers(updated)
+    loadFeed()
+    return () => { ignore = true }
+  }, [isLoggedIn])
 
-    // Update feed with new user's posts
-    const questions: FeedItem[] = MOCK_QUESTIONS.map(q => ({ ...q, type: 'question' as const }))
-    const posts: FeedItem[] = MOCK_POSTS.map(p => ({ ...p, type: 'post' as const }))
-    const allFeed = [...questions, ...posts]
-    const filteredFeed = allFeed.filter(item => updated.includes(item.author.id))
-    const shuffled = filteredFeed.sort(() => Math.random() - 0.5)
-    setFeed(shuffled)
-  }
+  useEffect(() => {
+    if (!isLoggedIn) return
 
-  const handleUnfollow = (userId: string) => {
-    const updated = followedUsers.filter(id => id !== userId)
-    localStorage.setItem('followed_users', JSON.stringify(updated))
-    setFollowedUsers(updated)
+    let ignore = false
 
-    // Update feed
-    const filteredFeed = feed.filter(item => item.author.id !== userId)
-    setFeed(filteredFeed)
-  }
+    async function loadRecommended() {
+      setRecommendedLoading(true)
+      setRecommendedError(null)
 
-  const handleCardClick = (item: FeedItem) => {
-    if (item.type === 'question') {
-      router.push(`/questions/${item.id}`)
+      try {
+        const res = await fetch('/api/users/popular?limit=50', { cache: 'no-store' })
+        if (!res.ok) {
+          throw new Error(`popular users failed ${res.status}`)
+        }
+
+        const json = await res.json()
+        const users: RecommendedUser[] = Array.isArray(json?.data) ? json.data : []
+        const ranked = rankRecommendedUsers(users, viewerTopics)
+        if (!ignore) setRecommended(ranked)
+      } catch (error: any) {
+        console.error('[FollowingPage] recommended load failed', error)
+        if (!ignore) {
+          setRecommended([])
+          setRecommendedError(error?.message || '추천 사용자를 불러오지 못했습니다.')
+        }
+      } finally {
+        if (!ignore) setRecommendedLoading(false)
+      }
+    }
+
+    loadRecommended()
+    return () => { ignore = true }
+  }, [isLoggedIn, viewerTopics])
+
+  const toggleFollow = async (userId: string) => {
+    if (!userId) return
+
+    const alreadyFollowing = followingIds.has(userId)
+    const next = new Set(followingIds)
+    if (alreadyFollowing) {
+      next.delete(userId)
     } else {
-      router.push(`/posts/${item.id}`)
+      next.add(userId)
+    }
+    setFollowingIds(next)
+
+    try {
+      const method = alreadyFollowing ? 'DELETE' : 'POST'
+      const res = await fetch(`/api/users/${userId}/follow`, { method })
+      if (!res.ok) {
+        throw new Error('follow toggle failed')
+      }
+      const data = await res.json().catch(() => null)
+      if (typeof data?.isFollowing === 'boolean') {
+        setFollowingIds((prev) => {
+          const update = new Set(prev)
+          if (data.isFollowing) update.add(userId)
+          else update.delete(userId)
+          return update
+        })
+      }
+    } catch (error) {
+      console.error('toggleFollow error', error)
+      // rollback
+      setFollowingIds((prev) => {
+        const rollback = new Set(prev)
+        if (alreadyFollowing) rollback.add(userId)
+        else rollback.delete(userId)
+        return rollback
+      })
+      alert('팔로우 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
     }
   }
 
-  function formatDate(dateString: string) {
-    if (!dateString) return '방금 전'
-    const date = new Date(dateString)
-    const now = new Date()
-    const diff = Math.floor((now.getTime() - date.getTime()) / 1000)
+  const hasRecommended = useMemo(() => recommended.length > 0, [recommended])
 
-    if (diff < 60) return '방금 전'
-    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`
-    if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`
-    const days = Math.floor(diff / 86400)
-    if (days === 1) return '1일 전'
-    if (days < 7) return `${days}일 전`
-    return date.toLocaleDateString('ko-KR')
-  }
-
-  // Get followed user objects
-  const followedUserObjects = useMemo(() => {
-    return MOCK_USERS.filter(user => followedUsers.includes(user.id))
-  }, [followedUsers])
-
-  // Get suggested users (not followed yet)
-  const suggestedUsers = useMemo(() => {
-    return MOCK_USERS.filter(user => !followedUsers.includes(user.id)).slice(0, 10)
-  }, [followedUsers])
-
-  // Filter suggested users by search
-  const filteredSuggestedUsers = useMemo(() => {
-    if (!searchQuery) return suggestedUsers
-    return suggestedUsers.filter(user =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.visaType?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [suggestedUsers, searchQuery])
-
-  if (loading) {
+  if (!isLoggedIn) {
     return (
       <PageLayout variant="centered">
-        <div className="feed-loading">로딩 중...</div>
+        <FeedSkeleton count={3} />
       </PageLayout>
     )
   }
 
   return (
-    <PageLayout variant="centered">
-      {/* Mobile Category Grid */}
-      <div className="mobile-category-grid">
-        <a href="/categories/visa" className="mobile-category-item">
-          <div className="mobile-category-icon">💼</div>
-          <div className="mobile-category-label">한국 취업</div>
-        </a>
-        <a href="/categories/visa" className="mobile-category-item">
-          <div className="mobile-category-icon">✈️</div>
-          <div className="mobile-category-label">한국 비자</div>
-        </a>
-        <a href="/categories/life" className="mobile-category-item">
-          <div className="mobile-category-icon">🏠</div>
-          <div className="mobile-category-label">한국 생활</div>
-        </a>
-        <a href="/categories/legal" className="mobile-category-item">
-          <div className="mobile-category-icon">⚖️</div>
-          <div className="mobile-category-label">한국 법률</div>
-        </a>
-      </div>
-
-      <div>
-        {/* 좌우 분할 레이아웃 */}
-        <div style={{
+    <PageLayout variant="withSidebar" showSidebar={false}>
+      <div
+        style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateColumns: 'minmax(260px, 320px) 1fr',
           gap: '2rem',
-          alignItems: 'start'
-        }}>
-          {/* 왼쪽: 팔로잉 관리 */}
-          <div style={{ width: '100%' }}>
-            {/* Page Header */}
-            <div className="section" style={{ marginBottom: '1.5rem' }}>
-              <h1 className="section-title">👥 Following</h1>
-              <p style={{ color: '#6b7280', fontSize: '0.95rem', marginTop: '0.5rem' }}>
-                관심 있는 사용자를 팔로우하고 최신 게시글을 확인하세요
-              </p>
-            </div>
-
-            {/* 팔로잉 중인 사용자 */}
-            <div className="section" style={{ marginBottom: '2rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
-                팔로잉 중인 사용자 ({followedUserObjects.length})
-              </h3>
-
-              {followedUserObjects.length === 0 ? (
-                <div style={{
-                  padding: '2rem',
-                  textAlign: 'center',
-                  background: '#f9fafb',
-                  borderRadius: '12px'
-                }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>👥</div>
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                    아직 팔로우한 사용자가 없습니다
-                  </p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {followedUserObjects.map((user) => (
-                    <div
-                      key={user.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '1rem',
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}
-                        onClick={() => router.push(`/users/${user.id}`)}
-                      >
-                        <div className="author-avatar-small">👤</div>
-                        <div>
-                          <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{user.name}</div>
-                          {user.visaType && (
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                              {user.visaType}
-                              {user.yearsInKorea && `, 한국 ${user.yearsInKorea}년차`}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUnfollow(user.id)
-                        }}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: '#f3f4f6',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          color: '#374151',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        언팔로우
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 팔로우 사용자 찾기 */}
-            <div className="section">
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
-                팔로우 사용자 찾기
-              </h3>
-
-              {/* Search */}
-              <div style={{ marginBottom: '1rem' }}>
-                <input
-                  type="text"
-                  placeholder="사용자 이름 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="form-input"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem'
-                  }}
-                />
-              </div>
-
-              {/* Suggested Users */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {filteredSuggestedUsers.length === 0 ? (
-                  <div style={{
-                    padding: '2rem',
-                    textAlign: 'center',
-                    background: '#f9fafb',
-                    borderRadius: '12px'
-                  }}>
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                      {searchQuery ? '검색 결과가 없습니다' : '모든 사용자를 팔로우 중입니다'}
-                    </p>
-                  </div>
-                ) : (
-                  filteredSuggestedUsers.map((user) => (
-                    <div
-                      key={user.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '1rem',
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}
-                        onClick={() => router.push(`/users/${user.id}`)}
-                      >
-                        <div className="author-avatar-small">👤</div>
-                        <div>
-                          <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{user.name}</div>
-                          {user.visaType && (
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                              {user.visaType}
-                              {user.yearsInKorea && `, 한국 ${user.yearsInKorea}년차`}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleFollow(user.id)
-                        }}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: '#3b82f6',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          color: 'white',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        팔로우
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+          alignItems: 'flex-start',
+          width: '100%'
+        }}
+      >
+        <aside
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            maxHeight: 'calc(100vh - 160px)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>팔로잉 추천</h2>
+            <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>내 토픽과 인기순 기반</span>
           </div>
 
-          {/* 오른쪽: 팔로잉 피드 */}
-          <div style={{ width: '100%', position: 'sticky', top: '1rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
-              📰 팔로잉 피드
-            </h3>
-
-            {followedUsers.length === 0 ? (
-              <div style={{
-                padding: '2rem',
-                textAlign: 'center',
-                background: '#f9fafb',
-                borderRadius: '12px'
-              }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
-                <h3 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  marginBottom: '0.5rem'
-                }}>
-                  팔로우한 사용자가 없습니다
-                </h3>
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: '#6b7280',
-                  lineHeight: '1.6'
-                }}>
-                  왼쪽에서 사용자를 팔로우하면<br />
-                  이곳에서 최신 게시글을 확인할 수 있습니다
-                </p>
-              </div>
-            ) : feed.length === 0 ? (
-              <div style={{
-                padding: '2rem',
-                textAlign: 'center',
-                background: '#f9fafb',
-                borderRadius: '12px'
-              }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
-                <h3 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  marginBottom: '0.5rem'
-                }}>
-                  게시글이 없습니다
-                </h3>
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: '#6b7280',
-                  lineHeight: '1.6'
-                }}>
-                  팔로우한 사용자들의 게시글이 없습니다
-                </p>
-              </div>
+          <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+            {recommendedLoading ? (
+              <div style={{ textAlign: 'center', color: '#6b7280', padding: '1.5rem 0' }}>추천 사용자를 불러오는 중...</div>
+            ) : recommendedError ? (
+              <div style={{ textAlign: 'center', color: '#ef4444', padding: '1.5rem 0' }}>{recommendedError}</div>
+            ) : !hasRecommended ? (
+              <div style={{ textAlign: 'center', color: '#6b7280', padding: '1.5rem 0' }}>추천할 사용자가 없습니다.</div>
             ) : (
-              <div className="feed-container">
-                {feed.map((item) => (
+              recommended.slice(0, 12).map((user) => {
+                const isFollowing = followingIds.has(user.id)
+                return (
                   <div
-                    key={`${item.type}-${item.id}`}
+                    key={user.id}
                     className="question-card"
-                    onClick={() => handleCardClick(item)}
+                    style={{ marginBottom: '0.75rem', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    onClick={() => window.location.href = `/users/${user.id}`}
                   >
-                    <div className="question-header">
-                      <div className="question-meta">
-                        <div className="question-author-row">
-                          <div
-                            className="author-avatar-small"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              router.push(`/users/${item.author.id}`)
-                            }}
-                          ></div>
-
-                          <div className="question-author-info">
-                            <div className="question-author">
-                              <span
-                                className="question-author-link"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  router.push(`/users/${item.author.id}`)
-                                }}
-                              >
-                                {item.author.name}
-                              </span>
-                              {(item.author.visaType || item.author.yearsInKorea) && (
-                                <span className={`author-verification-box ${item.author.role === 'verified' || item.author.role === 'admin' ? 'verified' : ''}`}>
-                                  <span className="verification-text">
-                                    {item.author.visaType || ''}
-                                    {item.author.yearsInKorea ? `, 한국 ${item.author.yearsInKorea}년차` : ''}
-                                  </span>
-                                </span>
-                              )}
-                            </div>
-                            <div className="question-time-row">
-                              <div className="question-time">
-                                {formatDate(item.createdAt)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        className="question-more-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleCardClick(item)
-                        }}
-                        aria-label="게시글 상세 보기"
-                      >
-                        자세히
-                      </button>
-                    </div>
-
-                    <h3 className="question-title">{item.title}</h3>
-                    <p className="question-content">
-                      {truncateToSentences(item.content, 2)}
-                    </p>
-
-                    <div className="question-stats">
-                      <div className="question-stats-comments">
-                        <span className="answer-expert-icon">🎓</span>
-                        <span>
-                          {item.type === 'question' ? (
-                            item.answerCount === 0 ? (
-                              <span>아직 답변이 없어요</span>
-                            ) : (
-                              <><strong>{item.answerCount}명</strong>이 답변했어요</>
-                            )
-                          ) : (
-                            (item as Post).commentCount === 0 ? (
-                              <span>아직 댓글이 없어요</span>
-                            ) : (
-                              <><strong>{(item as Post).commentCount}명</strong>이 댓글했어요</>
-                            )
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      <div className="author-avatar-small" aria-hidden="true"></div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+                          {user.name}
+                          {user.role === 'verified' && (
+                            <span className="badge" style={{ background: '#2563eb', color: 'white', padding: '2px 6px', borderRadius: 12, fontSize: '0.75rem' }}>
+                              인증
+                            </span>
                           )}
-                        </span>
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          도움됨 {user.helpful_answer_count ?? 0} · 답변 {user.answer_count ?? 0} · 신뢰 {user.trust_score ?? 0}
+                        </div>
+                        {user.specialties && user.specialties.length > 0 && (
+                          <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '0.4rem' }}>
+                            #{user.specialties.slice(0, 3).join(' #')}
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <ActionBar
-                        targetId={item.id}
-                        targetType={item.type === 'question' ? 'question' : 'post'}
-                        title={item.title}
-                        content={item.content}
-                        url={item.type === 'question' ? `/questions/${item.id}` : `/posts/${item.id}`}
-                        initialHelpfulCount={item.votes}
-                        compact={true}
-                        requireLogin={!isLoggedIn}
-                        onLoginRequired={() => {
-                          router.push('/auth/login?redirectTo=/following')
-                        }}
-                      />
-                    </div>
+                    <button
+                      className={`btn ${isFollowing ? 'btn-secondary' : 'btn-primary'}`}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        toggleFollow(user.id)
+                      }}
+                    >
+                      {isFollowing ? '팔로잉' : '팔로우'}
+                    </button>
                   </div>
-                ))}
-              </div>
+                )
+              })
             )}
           </div>
-        </div>
+        </aside>
+
+        <section>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+            👥 팔로잉 피드
+          </h1>
+
+          {feedLoading ? (
+            <FeedSkeleton count={3} />
+          ) : feedError ? (
+            <div className="section all-posts-error">
+              <div className="all-posts-error-icon">⚠️</div>
+              <p>{feedError}</p>
+            </div>
+          ) : feed.length === 0 ? (
+            <FeedEmptyState
+              icon="📭"
+              title="팔로우한 사용자의 게시글이 없습니다"
+              description="왼쪽에서 추천 사용자를 팔로우해 보세요."
+            />
+          ) : (
+            feed.map((item) => {
+              const authorId = item.author?.id ?? ''
+              const isFollowing = authorId ? followingIds.has(authorId) : false
+
+              return (
+                <FeedCard
+                  key={item.id}
+                  id={item.id}
+                  itemType="question"
+                  title={item.title}
+                  body={truncateToSentences(item.content, 2)}
+                href={`/questions/${item.id}`}
+                createdAt={item.created_at || new Date().toISOString()}
+                topic={item.category?.name || '팔로잉 피드'}
+                author={{
+                  id: authorId || 'unknown',
+                  name: item.author?.name,
+                  role: item.author?.role,
+                  visaType: item.author?.visaType ?? null,
+                  yearsInKorea: item.author?.yearsInKorea ?? null,
+                }}
+                stats={
+                  item.answer_count && item.answer_count > 0
+                    ? <span>답변 {item.answer_count}개</span>
+                    : <span>아직 답변이 없어요</span>
+                }
+                mediaUrls={extractMediaUrls(item)}
+                showReportButton
+                showFollowButton={Boolean(authorId)}
+                isFollowing={Boolean(authorId && isFollowing)}
+                onToggleFollow={authorId ? () => toggleFollow(authorId) : undefined}
+                  followLabels={{ follow: '팔로우', following: '팔로잉' }}
+                  actionProps={{
+                    targetType: 'question',
+                    helpfulCount: 0,
+                    requireLogin: false,
+                    compact: true,
+                  }}
+                  onNavigate={(href) => {
+                    window.location.href = href
+                  }}
+                  onAuthorClick={(id) => {
+                    window.location.href = `/users/${id}`
+                  }}
+                />
+              )
+            })
+          )}
+        </section>
       </div>
     </PageLayout>
   )
+}
+
+function rankRecommendedUsers(users: RecommendedUser[], viewerTopics: string[]): RecommendedUser[] {
+  const topicSet = new Set((viewerTopics || []).map((topic) => topic.toLowerCase()))
+
+  return [...users]
+    .map((user) => {
+      const specialties = Array.isArray(user.specialties) ? user.specialties : []
+      const interests = Array.isArray(user.interests) ? user.interests : []
+      const tags = [...specialties, ...interests].map((tag) => String(tag).toLowerCase())
+      const overlap = tags.filter((tag) => topicSet.has(tag)).length
+      const baseScore = user.score ?? 0
+      const boostedScore = baseScore + overlap * 3
+      return { ...user, score: boostedScore }
+    })
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
 }

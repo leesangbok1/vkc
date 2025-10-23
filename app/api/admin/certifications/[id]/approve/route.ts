@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -13,7 +13,7 @@ export async function POST(
     const { id: certificationId } = await params
 
     // Get session to verify admin access
-    const supabase = await createClient()
+    const supabase = await createSupabaseServerClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -25,12 +25,16 @@ export async function POST(
 
     // Check if user is admin
     const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('role')
+      .from('users')
+      .select('role, admin_yn')
       .eq('id', session.user.id)
-      .single()
+      .maybeSingle()
 
-    if (userError || userData?.role !== 'ADMIN') {
+    const isAdmin =
+      userData?.admin_yn === 'Y' ||
+      userData?.role === 'admin'
+
+    if (userError || !isAdmin) {
       return NextResponse.json(
         { error: 'Forbidden - Admin access required' },
         { status: 403 }
@@ -49,7 +53,7 @@ export async function POST(
       .select()
       .single()
 
-    if (updateError) {
+    if (updateError || !certRequest) {
       console.error('Failed to approve certification:', updateError)
       return NextResponse.json(
         { error: 'Failed to approve certification' },
@@ -59,9 +63,9 @@ export async function POST(
 
     // Update user profile to VERIFIED role
     const { error: profileError } = await supabase
-      .from('profiles')
+      .from('users')
       .update({
-        role: 'VERIFIED',
+        role: 'verified',
         is_verified: true,
         verification_type: certRequest.verification_type,
         verified_at: new Date().toISOString()

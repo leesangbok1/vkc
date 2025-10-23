@@ -3,80 +3,111 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
-import { createBrowserClient } from '@supabase/ssr'
-import { CATEGORIES } from '@/lib/data/categories-mock'
+import RichEditor from '@/components/editor/RichEditor'
+import { EDITOR_USAGE_GUIDE } from '@/lib/constants/editor'
 
 export default function NewPostPage() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [isAdmin, setIsAdmin] = useState<boolean>(false)
+  const [categories, setCategories] = useState<Array<{ id: number; name: string; icon?: string | null }>>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [categoryError, setCategoryError] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // 인증 및 관리자 권한 확인 - Mock 세션 지원
   useEffect(() => {
     const checkAuth = async () => {
-      // 🎭 MOCK: localStorage에서 mock session 체크
-      const mockSession = localStorage.getItem('mock_session')
-      const mockUser = localStorage.getItem('mock_user')
-      const onboardingCompleted = localStorage.getItem('vietkconnect_onboarded')
-
-      if (mockSession === 'true' && mockUser && onboardingCompleted === 'true') {
-        const user = JSON.parse(mockUser)
-
-        // 관리자 권한 체크
-        if (user.role !== 'admin') {
-          alert('게시글 작성은 관리자만 가능합니다.')
-          router.push('/')
+      try {
+        const res = await fetch('/api/auth/profile', { cache: 'no-store', credentials: 'include' })
+        if (!res.ok) {
+          router.push('/auth/login?redirectTo=/posts/new')
           return
         }
-
-        setIsAdmin(true)
         setIsAuthenticated(true)
-        return
-      }
-
-      // Real Supabase 인증 체크 (production용)
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-
-      const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session) {
+      } catch (error) {
+        console.error('[PostNew] auth check failed', error)
         router.push('/auth/login?redirectTo=/posts/new')
-      } else {
-        // TODO: Supabase에서 user role 체크 로직 추가
-        setIsAuthenticated(true)
-        setIsAdmin(true) // 임시로 허용
       }
     }
 
     checkAuth()
   }, [router])
 
+  useEffect(() => {
+    if (isAuthenticated === false) return
+    let ignore = false
+
+    const loadCategories = async () => {
+      setLoadingCategories(true)
+      setCategoryError(null)
+      try {
+        const res = await fetch('/api/categories', { cache: 'no-store', credentials: 'include' })
+        if (!res.ok) {
+          throw new Error(`failed ${res.status}`)
+        }
+        const json = await res.json().catch(() => null)
+        const items = Array.isArray(json?.data) ? json.data : []
+        const mapped = items
+          .map((item: any) => ({
+            id: Number(item?.id),
+            name: item?.name ?? '카테고리',
+            icon: item?.icon ?? null,
+          }))
+          .filter((item) => Number.isFinite(item.id))
+
+        if (!ignore) {
+          setCategories(mapped)
+          setCategoryId((prev) => {
+            if (prev) return prev
+            const first = mapped[0]
+            return first ? String(first.id) : ''
+          })
+        }
+      } catch (error) {
+        console.error('[PostNew] failed to load categories', error)
+        if (!ignore) {
+          setCategories([])
+          setCategoryError('카테고리를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+          setCategoryId('')
+        }
+      } finally {
+        if (!ignore) setLoadingCategories(false)
+      }
+    }
+
+    loadCategories()
+    return () => {
+      ignore = true
+    }
+  }, [isAuthenticated])
+
   // 문자 카운터 업데이트
   const updateCharCounter = (current: number, max: number) => {
     return `${current} / ${max}`
   }
 
+  const MIN_TITLE_LENGTH = 5
+  const MIN_CONTENT_LENGTH = 10
+
   // 폼 유효성 검사
-  const isValid = title.trim().length >= 16 && content.trim().length >= 55 && categoryId !== ''
+  const isValid =
+    title.trim().length >= MIN_TITLE_LENGTH &&
+    content.trim().length >= MIN_CONTENT_LENGTH &&
+    categoryId !== ''
 
   // 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (title.trim().length < 16) {
-      alert('제목은 최소 16자 이상 작성해주세요')
+    if (title.trim().length < MIN_TITLE_LENGTH) {
+      alert(`제목은 최소 ${MIN_TITLE_LENGTH}자 이상 작성해주세요`)
       return
     }
 
-    if (content.trim().length < 55) {
-      alert('내용은 최소 55자 이상 작성해주세요')
+    if (content.trim().length < MIN_CONTENT_LENGTH) {
+      alert(`내용은 최소 ${MIN_CONTENT_LENGTH}자 이상 작성해주세요`)
       return
     }
 
@@ -93,19 +124,24 @@ export default function NewPostPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           title: title.trim(),
           content: content.trim(),
-          category_id: categoryId,
+          category_id: Number(categoryId),
         }),
       })
 
+      const json = await response.json().catch(() => null)
+
       if (response.ok) {
-        const data = await response.json()
         alert('정보 글이 성공적으로 등록되었습니다!')
-        router.push(`/`)
+        const highlightId = json?.data?.id
+        router.push(highlightId ? `/posts?highlight=${highlightId}` : '/posts')
       } else {
-        alert('정보 글 작성 중 오류가 발생했습니다.')
+        const message = json?.error || '정보 글 작성 중 오류가 발생했습니다.'
+        const details = json?.details || json?.hint
+        alert(details ? `${message}\n세부 정보: ${details}` : message)
       }
     } catch (error) {
       console.error('Post submission failed:', error)
@@ -117,7 +153,7 @@ export default function NewPostPage() {
 
   // 취소 핸들러
   const handleCancel = () => {
-    router.push('/')
+    router.push('/posts')
   }
 
   // 인증 확인 중일 때 로딩 표시
@@ -151,23 +187,31 @@ export default function NewPostPage() {
                 <label htmlFor="post-category" className="post-field-label">
                   토픽<span className="post-field-required">*</span>
                 </label>
-                <select
-                  id="post-category"
-                  className="post-field-select"
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  required
-                >
-                  <option value="">토픽을 선택하세요</option>
-                  {CATEGORIES.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.icon} {category.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="post-field-help">
-                  정보 글이 속할 토픽을 선택해주세요. 적절한 토픽을 선택하면 더 많은 분들이 찾을 수 있습니다.
-                </div>
+                {loadingCategories ? (
+                  <div className="post-field-help">토픽을 불러오는 중입니다...</div>
+                ) : categoryError ? (
+                  <div className="post-field-error">{categoryError}</div>
+                ) : (
+                  <>
+                    <select
+                      id="post-category"
+                      className="post-field-select"
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      required
+                    >
+                      <option value="">토픽을 선택하세요</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={String(category.id)}>
+                          {category.icon ?? '🏷️'} {category.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="post-field-help">
+                      정보 글이 속할 토픽을 선택해주세요. 적절한 토픽을 선택하면 더 많은 분들이 찾을 수 있습니다.
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Post Title */}
@@ -195,29 +239,20 @@ export default function NewPostPage() {
                 <label htmlFor="post-content" className="post-field-label">
                   내용<span className="post-field-required">*</span>
                 </label>
-                <div className="post-textarea-container">
-                  <div className="post-formatting-toolbar">
-                    <button type="button" className="post-format-btn" title="이미지 첨부">📷</button>
-                    <button type="button" className="post-format-btn" title="목록">📝</button>
-                    <button type="button" className="post-format-btn" title="굵게"><strong>B</strong></button>
-                    <button type="button" className="post-format-btn" title="링크">🔗</button>
-                  </div>
-                  <textarea
-                    id="post-content"
-                    className="post-field-textarea"
-                    placeholder="유용한 정보를 자세히 공유해주세요.
+                <RichEditor
+                  value={content}
+                  onChange={setContent}
+                  minRows={12}
+                  maxLength={10000}
+                  placeholder={`유용한 정보를 자세히 공유해주세요.
 
 예시:
 - 어떤 정보인가요?
 - 언제, 어디서 유용한가요?
 - 주의해야 할 점이 있나요?
-- 추가로 알아두면 좋은 내용은?"
-                    maxLength={10000}
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    required
-                  />
-                </div>
+- 추가로 알아두면 좋은 내용은?`}
+                  helperText={EDITOR_USAGE_GUIDE}
+                />
                 <div className={`post-char-counter ${content.length > 9000 ? 'over-limit' : ''}`}>
                   {updateCharCounter(content.length, 10000)}
                 </div>

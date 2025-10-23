@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import BaseModal from './BaseModal'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -12,6 +13,7 @@ type TabType = 'profile' | 'notifications' | 'security' | 'account'
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('profile')
+  const { user } = useAuth()
 
   // Profile states
   const [userName, setUserName] = useState('')
@@ -29,17 +31,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   // Load user data
   useEffect(() => {
+    if (isOpen && user) {
+      setUserName(user.name || user.email || '사용자')
+      setUserEmail(user.email || '')
+    }
     if (isOpen) {
-      const mockUser = localStorage.getItem('mock_user')
-      if (mockUser) {
-        const user = JSON.parse(mockUser)
-        setUserName(user.name || 'Test User')
-        setUserEmail(user.email || 'test@vietkconnect.com')
-      }
       setUserExpertise('IT 컨설팅')
       setUserBio('10년차 IT 컨설턴트로, 중소기업의 디지털 전환을 도와드립니다.')
     }
-  }, [isOpen])
+  }, [isOpen, user])
 
   // Profile submit handler
   const handleProfileSubmit = (e: React.FormEvent) => {

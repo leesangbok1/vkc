@@ -34,10 +34,8 @@ export default function WalletPage() {
 
   async function checkAuth() {
     try {
-      const mockSession = localStorage.getItem('mock_session')
-      const mockUser = localStorage.getItem('mock_user')
-
-      if (mockSession === 'true' && mockUser) {
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+      if (res.ok) {
         setIsLoggedIn(true)
         loadWalletData()
       } else {

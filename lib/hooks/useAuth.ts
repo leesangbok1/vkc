@@ -10,6 +10,12 @@ export interface MockUser {
   name: string
   role: UserRole
   avatar_url?: string
+  admin_yn?: 'Y' | 'N'
+  onboarding_completed?: boolean
+  residence?: string | null
+  gender?: string | null
+  age?: string | null
+  interests?: string[]
 }
 
 export interface AuthState {
@@ -33,20 +39,34 @@ export function useAuth(): AuthState {
 
   const checkAuth = async () => {
     setIsLoading(true)
-
     try {
-      const mockSession = localStorage.getItem('mock_session')
-      const mockUserStr = localStorage.getItem('mock_user')
-      const onboardingCompleted = localStorage.getItem('vietkconnect_onboarded')
-
-      if (mockSession === 'true' && mockUserStr && onboardingCompleted === 'true') {
-        const parsedUser = JSON.parse(mockUserStr)
-        setUser(parsedUser)
-        setIsLoggedIn(true)
-      } else {
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+      if (!res.ok) {
         setUser(null)
         setIsLoggedIn(false)
+        return
       }
+      const json = await res.json()
+      const data = json.data || {}
+      const onboardingCompleted =
+        Object.prototype.hasOwnProperty.call(data, 'onboarding_completed')
+          ? data.onboarding_completed === false ? false : true
+          : true
+      const isAdmin = data.admin_yn === 'Y' || data.role?.toLowerCase?.() === 'admin'
+      const role = (isAdmin ? 'ADMIN' : (data.role?.toUpperCase?.() as UserRole)) || 'USER'
+      setUser({
+        id: data.id,
+        email: data.email,
+        name: data.name || data.email || '사용자',
+        role,
+        admin_yn: data.admin_yn,
+        onboarding_completed: onboardingCompleted,
+        residence: data.residence ?? null,
+        gender: data.gender ?? null,
+        age: data.age ?? null,
+        interests: Array.isArray(data.interests) ? data.interests as string[] : []
+      })
+      setIsLoggedIn(true)
     } catch (error) {
       console.error('Auth check failed:', error)
       setUser(null)
@@ -56,28 +76,21 @@ export function useAuth(): AuthState {
     }
   }
 
-  const login = (newUser: MockUser) => {
-    localStorage.setItem('mock_session', 'true')
-    localStorage.setItem('mock_user', JSON.stringify(newUser))
-    localStorage.setItem('vietkconnect_onboarded', 'true')
-    setUser(newUser)
-    setIsLoggedIn(true)
+  // For compatibility with existing callers; prefer redirect flow in pages
+  const login = (_newUser: MockUser) => {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/auth/login'
+    }
   }
 
   const logout = () => {
-    localStorage.removeItem('mock_session')
-    localStorage.removeItem('mock_user')
-    localStorage.removeItem('vietkconnect_onboarded')
-    setUser(null)
-    setIsLoggedIn(false)
+    if (typeof window !== 'undefined') {
+      window.location.href = '/'
+    }
   }
 
-  const updateUser = (updates: Partial<MockUser>) => {
-    if (!user) return
-
-    const updatedUser = { ...user, ...updates }
-    localStorage.setItem('mock_user', JSON.stringify(updatedUser))
-    setUser(updatedUser)
+  const updateUser = (_updates: Partial<MockUser>) => {
+    // no-op for server-backed auth; pages should POST to /api/auth/profile
   }
 
   useEffect(() => {

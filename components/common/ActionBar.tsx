@@ -1,8 +1,64 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import BookmarkButton from './BookmarkButton'
 import ShareButton from './ShareButton'
+
+const HELPFUL_STORAGE_PREFIX = 'vk_helpful'
+
+const getHelpfulStorageKey = (targetType: ActionBarProps['targetType'], targetId: string) =>
+  `${HELPFUL_STORAGE_PREFIX}:${targetType}:${targetId}`
+
+const readHelpfulStorage = (
+  targetType: ActionBarProps['targetType'],
+  targetId: string
+): { count?: number; isHelpful?: boolean } | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(getHelpfulStorageKey(targetType, targetId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    const payload: { count?: number; isHelpful?: boolean } = {}
+    if (typeof parsed.count === 'number') payload.count = parsed.count
+    if (typeof parsed.isHelpful === 'boolean') payload.isHelpful = parsed.isHelpful
+    return payload
+  } catch {
+    return null
+  }
+}
+
+const writeHelpfulStorage = (
+  targetType: ActionBarProps['targetType'],
+  targetId: string,
+  state: { count: number; isHelpful: boolean }
+) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(
+      getHelpfulStorageKey(targetType, targetId),
+      JSON.stringify({
+        count: Math.max(0, state.count),
+        isHelpful: state.isHelpful,
+        updatedAt: Date.now(),
+      })
+    )
+  } catch {
+    // ignore storage errors
+  }
+}
+
+const shouldPersistOffline = (error: unknown) => {
+  if (!(error instanceof Error)) return false
+  const message = error.message.toLowerCase()
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('network') ||
+    message.includes('service') ||
+    message.includes('supabase') ||
+    message.includes('toggle helpful')
+  )
+}
 
 interface ActionBarProps {
   // 대상 정보
@@ -13,9 +69,9 @@ interface ActionBarProps {
   url?: string
 
   // 도움됨 관련
-  initialHelpfulCount?: number
+  helpfulCount?: number
   isHelpful?: boolean
-  onHelpfulClick?: () => void
+  onHelpfulClick?: () => Promise<{ helpfulCount?: number; isHelpful?: boolean } | void> | void
 
   // 레이아웃
   compact?: boolean
@@ -34,7 +90,7 @@ export default function ActionBar({
   title = '',
   content = '',
   url,
-  initialHelpfulCount = 0,
+  helpfulCount,
   isHelpful = false,
   onHelpfulClick,
   compact = false,
@@ -44,22 +100,165 @@ export default function ActionBar({
   requireLogin = false,
   onLoginRequired
 }: ActionBarProps) {
-  const [helpfulCount, setHelpfulCount] = useState(initialHelpfulCount)
-  const [isActive, setIsActive] = useState(isHelpful)
+  const [localHelpfulCount, setLocalHelpfulCount] = useState<number>(helpfulCount ?? 0)
+  const [localIsActive, setLocalIsActive] = useState<boolean>(isHelpful)
+  const [pending, setPending] = useState(false)
 
-  const handleHelpfulClick = () => {
+  useEffect(() => {
+    if (targetType === 'answer') return
+    if (typeof window === 'undefined') return
+    if (typeof helpfulCount === 'number' || typeof isHelpful === 'boolean') return
+    const stored = readHelpfulStorage(targetType, targetId)
+    if (!stored) return
+    if (typeof stored.count === 'number') {
+      setLocalHelpfulCount(stored.count)
+    }
+    if (typeof stored.isHelpful === 'boolean') {
+      setLocalIsActive(stored.isHelpful)
+    }
+  }, [targetId, targetType, helpfulCount, isHelpful])
+
+  // 외부 props 변화에 맞춰 내부 상태 동기화
+  useEffect(() => {
+    if (typeof helpfulCount === 'number') {
+      setLocalHelpfulCount(helpfulCount)
+      return
+    }
+
+    if (targetType !== 'answer') {
+      const stored = readHelpfulStorage(targetType, targetId)
+      if (stored && typeof stored.count === 'number') {
+        setLocalHelpfulCount(stored.count)
+      }
+    }
+  }, [helpfulCount, targetId, targetType])
+
+  useEffect(() => {
+    if (typeof isHelpful === 'boolean') {
+      setLocalIsActive(isHelpful)
+      return
+    }
+
+    if (targetType !== 'answer') {
+      const stored = readHelpfulStorage(targetType, targetId)
+      if (stored && typeof stored.isHelpful === 'boolean') {
+        setLocalIsActive(stored.isHelpful)
+      }
+    }
+  }, [isHelpful, targetId, targetType])
+
+  const defaultHelpfulRequest = useMemo(() => {
+    const buildRequest = (apiPath: string) => async () => {
+      const response = await fetch(apiPath, {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'include',
+      })
+      if (response.status === 401) {
+        throw new Error('로그인이 필요한 기능입니다.')
+      }
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        const message = data?.error || '도움됨 처리 중 오류가 발생했습니다.'
+        throw new Error(message)
+      }
+      return {
+        helpfulCount: typeof data?.helpfulCount === 'number' ? data.helpfulCount : undefined,
+        isHelpful: typeof data?.isHelpful === 'boolean' ? data.isHelpful : undefined,
+      }
+    }
+
+    if (targetType === 'question') {
+      return buildRequest(`/api/questions/${targetId}/helpful`)
+    }
+    if (targetType === 'post') {
+      return buildRequest(`/api/posts/${targetId}/helpful`)
+    }
+    if (targetType === 'answer') {
+      return async () => {
+        const response = await fetch(`/api/answers/${targetId}/vote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ vote_type: 'helpful' }),
+        })
+        if (response.status === 401) {
+          throw new Error('로그인이 필요한 기능입니다.')
+        }
+        const data = await response.json().catch(() => null)
+        if (!response.ok) {
+          const message = data?.error || '도움됨 처리 중 오류가 발생했습니다.'
+          throw new Error(message)
+        }
+        const helpfulCount =
+          typeof data?.data?.helpful_count === 'number'
+            ? data.data.helpful_count
+            : undefined
+        const voteType = data?.data?.vote_type
+        return {
+          helpfulCount,
+          isHelpful: voteType === 'helpful',
+        }
+      }
+    }
+    return null
+  }, [targetId, targetType])
+
+  const handleHelpfulClick = async () => {
+    if (pending) return
+
     if (requireLogin && onLoginRequired) {
       onLoginRequired()
       return
     }
 
-    if (onHelpfulClick) {
-      onHelpfulClick()
+    const handler = onHelpfulClick ?? defaultHelpfulRequest
+
+    if (!handler) {
+      return
     }
 
-    // Toggle helpful state
-    setIsActive(!isActive)
-    setHelpfulCount(prev => isActive ? prev - 1 : prev + 1)
+    const previousActive = localIsActive
+    const previousCount = localHelpfulCount
+
+    const optimisticNext = !previousActive
+    const optimisticCount = Math.max(0, previousCount + (optimisticNext ? 1 : -1))
+    setLocalIsActive(optimisticNext)
+    setLocalHelpfulCount(optimisticCount)
+    setPending(true)
+
+    let finalIsHelpful = optimisticNext
+    let finalCount = optimisticCount
+
+    try {
+      const result = await handler()
+      if (result && typeof result === 'object') {
+        if (typeof result.isHelpful === 'boolean') {
+          finalIsHelpful = result.isHelpful
+        }
+        if (typeof result.helpfulCount === 'number') {
+          finalCount = Math.max(0, result.helpfulCount)
+        }
+      }
+    } catch (error) {
+      if (!shouldPersistOffline(error)) {
+        setLocalIsActive(previousActive)
+        setLocalHelpfulCount(previousCount)
+        if (error instanceof Error && typeof window !== 'undefined') {
+          window.alert(error.message)
+        }
+        setPending(false)
+        return
+      }
+    }
+
+    setLocalIsActive(finalIsHelpful)
+    setLocalHelpfulCount(finalCount)
+    if (targetType !== 'answer') {
+      writeHelpfulStorage(targetType, targetId, { count: finalCount, isHelpful: finalIsHelpful })
+    }
+
+    setPending(false)
   }
 
   return (
@@ -72,7 +271,7 @@ export default function ActionBar({
       {/* 도움됨 버튼 */}
       <button
         onClick={handleHelpfulClick}
-        className={`action-btn ${isActive ? 'active' : ''}`}
+        className={`action-btn ${localIsActive ? 'active' : ''}`}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -80,17 +279,19 @@ export default function ActionBar({
           padding: compact ? '0.25rem 0.5rem' : '0.5rem 0.75rem',
           border: '1px solid #e5e7eb',
           borderRadius: '8px',
-          background: isActive ? '#f0fdf4' : 'white',
-          color: isActive ? '#16a34a' : '#6b7280',
-          cursor: 'pointer',
+          background: localIsActive ? '#f0fdf4' : 'white',
+          color: localIsActive ? '#16a34a' : '#6b7280',
+          cursor: pending ? 'default' : 'pointer',
           fontSize: compact ? '0.875rem' : '0.95rem',
-          fontWeight: isActive ? 600 : 400,
+          fontWeight: localIsActive ? 600 : 400,
           transition: 'all 0.2s',
+          opacity: pending ? 0.6 : 1,
         }}
+        disabled={pending}
       >
-        <span>{isActive ? '✅' : '👍'}</span>
+        <span>{localIsActive ? '✅' : '👍'}</span>
         <span>도움됨</span>
-        {helpfulCount > 0 && <span>{helpfulCount}</span>}
+        {localHelpfulCount > 0 && <span>{localHelpfulCount}</span>}
       </button>
 
       {/* 북마크 버튼 */}

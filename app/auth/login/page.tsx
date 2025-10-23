@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase-client'
+import { BRAND_NAME, BRAND_SHORT_DESCRIPTION, LOGIN_CTA_TEXT } from '@/lib/constants/branding'
 import PageLayout from '@/components/layout/PageLayout'
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/'
@@ -56,8 +57,8 @@ export default function LoginPage() {
       <div className="login-page-layout" suppressHydrationWarning>
         <div className="login-container">
         {/* Login Header */}
-        <h1 className="login-title" translate="no" data-no-translate="true">VietKConnect에 오신걸 환영합니다</h1>
-        <p className="login-subtitle" translate="no" data-no-translate="true">한국 생활의 모든 궁금증을 해결하세요</p>
+        <h1 className="login-title" translate="no" data-no-translate="true">{BRAND_NAME}에 오신 걸 환영합니다</h1>
+        <p className="login-subtitle" translate="no" data-no-translate="true">{BRAND_SHORT_DESCRIPTION}</p>
 
         {/* Error Message */}
         {error && (
@@ -84,12 +85,12 @@ export default function LoginPage() {
           }}
         >
           <div className="google-icon"></div>
-          <span>{isLoading ? '로그인 중...' : 'Google로 계속하기'}</span>
+          <span>{isLoading ? '로그인 중...' : LOGIN_CTA_TEXT}</span>
         </button>
 
         {/* Features Section */}
         <div className="features-section">
-          <h3 className="features-title">VietKConnect의 특별한 점</h3>
+          <h3 className="features-title">{BRAND_NAME}의 특별한 점</h3>
           <ul className="features-list">
             <li className="feature-item">
               <span className="feature-icon">🛂</span>
@@ -117,5 +118,13 @@ export default function LoginPage() {
         </div>
       </div>
     </PageLayout>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<PageLayout variant="centered"><div className="login-page-layout"><div className="login-container">로딩 중...</div></div></PageLayout>}>
+      <LoginPageInner />
+    </Suspense>
   )
 }

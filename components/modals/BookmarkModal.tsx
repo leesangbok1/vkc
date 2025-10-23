@@ -1,9 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import BaseModal from './BaseModal'
-import { getBookmarks, removeBookmark, type Bookmark } from '@/lib/utils/bookmark-manager'
+import {
+  getBookmarks,
+  removeBookmark,
+  type Bookmark
+} from '@/lib/utils/bookmark-manager'
 
 interface BookmarkModalProps {
   isOpen: boolean
@@ -16,25 +20,35 @@ export default function BookmarkModal({ isOpen, onClose }: BookmarkModalProps) {
   const router = useRouter()
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [filter, setFilter] = useState<FilterType>('all')
+  const [isLoading, setIsLoading] = useState(false)
 
   // Load bookmarks when modal opens
   useEffect(() => {
+    let ignore = false
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const list = await getBookmarks()
+        if (!ignore) setBookmarks(list)
+      } finally {
+        if (!ignore) setIsLoading(false)
+      }
+    }
+
     if (isOpen) {
-      loadBookmarks()
+      load()
+    }
+
+    return () => {
+      ignore = true
     }
   }, [isOpen])
 
-  const loadBookmarks = () => {
-    const allBookmarks = getBookmarks()
-    setBookmarks(allBookmarks)
-  }
-
-  // Filter bookmarks
   const filteredBookmarks = filter === 'all'
     ? bookmarks
     : bookmarks.filter(b => b.type === filter)
 
-  // Handle bookmark click
   const handleBookmarkClick = (bookmark: Bookmark) => {
     let url = ''
 
@@ -43,31 +57,33 @@ export default function BookmarkModal({ isOpen, onClose }: BookmarkModalProps) {
         url = `/questions/${bookmark.targetId}`
         break
       case 'answer':
-        // Answer는 질문 페이지로 이동 (해당 답변으로 스크롤)
         url = `/questions/${bookmark.targetId}#answer-${bookmark.targetId}`
         break
       case 'post':
         url = `/posts/${bookmark.targetId}`
         break
+      default:
+        url = '/'
     }
 
     onClose()
     router.push(url)
   }
 
-  // Handle bookmark remove
-  const handleRemove = (e: React.MouseEvent, bookmark: Bookmark) => {
-    e.stopPropagation() // Prevent bookmark click
+  const handleRemove = async (e: React.MouseEvent, bookmark: Bookmark) => {
+    e.stopPropagation()
 
-    if (confirm('북마크를 삭제하시겠습니까?')) {
-      const success = removeBookmark(bookmark.targetId, bookmark.type)
-      if (success) {
-        loadBookmarks() // Reload bookmarks
-      }
+    const confirmed = window.confirm('북마크를 삭제하시겠습니까?')
+    if (!confirmed) return
+
+    const success = await removeBookmark(bookmark.id)
+    if (success) {
+      setBookmarks(prev => prev.filter(item => item.id !== bookmark.id))
+    } else {
+      alert('북마크 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.')
     }
   }
 
-  // Get type icon and label
   const getTypeInfo = (type: Bookmark['type']) => {
     switch (type) {
       case 'question':
@@ -79,7 +95,6 @@ export default function BookmarkModal({ isOpen, onClose }: BookmarkModalProps) {
     }
   }
 
-  // Filter button style
   const filterStyle = (filterType: FilterType) => ({
     padding: '0.5rem 1rem',
     border: 'none',
@@ -146,7 +161,16 @@ export default function BookmarkModal({ isOpen, onClose }: BookmarkModalProps) {
         maxHeight: '60vh',
         overflowY: 'auto'
       }}>
-        {filteredBookmarks.length === 0 ? (
+        {isLoading ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '3rem 1rem',
+            color: '#6b7280'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+            <p>북마크를 불러오는 중입니다...</p>
+          </div>
+        ) : filteredBookmarks.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '3rem 1rem',
@@ -164,7 +188,7 @@ export default function BookmarkModal({ isOpen, onClose }: BookmarkModalProps) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {filteredBookmarks.map((bookmark) => {
               const typeInfo = getTypeInfo(bookmark.type)
-              const date = new Date(bookmark.created_at).toLocaleDateString('ko-KR', {
+              const date = new Date(bookmark.createdAt).toLocaleDateString('ko-KR', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
@@ -191,81 +215,47 @@ export default function BookmarkModal({ isOpen, onClose }: BookmarkModalProps) {
                     e.currentTarget.style.borderColor = '#e5e7eb'
                   }}
                 >
-                  {/* Type Badge */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     marginBottom: '0.5rem'
                   }}>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      padding: '0.25rem 0.5rem',
-                      background: '#f0f9ff',
-                      color: '#0369a1',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600'
-                    }}>
-                      {typeInfo.icon} {typeInfo.label}
-                    </span>
-                    <button
-                      onClick={(e) => handleRemove(e, bookmark)}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        border: 'none',
-                        background: 'transparent',
-                        color: '#ef4444',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        borderRadius: '4px',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#fee2e2'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent'
-                      }}
-                    >
-                      🗑️
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.25rem' }}>{typeInfo?.icon}</span>
+                      <span style={{ fontWeight: 600, color: '#374151' }}>{typeInfo?.label}</span>
+                    </div>
+                    <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>{date}</span>
                   </div>
 
-                  {/* Title */}
-                  <h3 style={{
-                    fontSize: '0.95rem',
-                    fontWeight: '600',
-                    color: '#1f2937',
-                    marginBottom: '0.5rem',
-                    lineHeight: '1.4'
-                  }}>
-                    {bookmark.title}
-                  </h3>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1f2937' }}>
+                    {bookmark.title || '제목 없는 북마크'}
+                  </div>
 
-                  {/* Content Preview */}
-                  <p style={{
-                    fontSize: '0.875rem',
-                    color: '#6b7280',
-                    marginBottom: '0.5rem',
-                    lineHeight: '1.5',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical'
-                  }}>
-                    {bookmark.content}
-                  </p>
+                  <div style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.6 }}>
+                    {bookmark.content
+                      ? bookmark.content.length > 200
+                        ? `${bookmark.content.slice(0, 200)}...`
+                        : bookmark.content
+                      : '저장된 미리보기가 없습니다.'}
+                  </div>
 
-                  {/* Date */}
-                  <div style={{
-                    fontSize: '0.75rem',
-                    color: '#9ca3af'
-                  }}>
-                    저장일: {date}
+                  <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      style={{
+                        background: 'white',
+                        color: '#ef4444',
+                        border: '1px solid #fca5a5',
+                        padding: '0.4rem 0.9rem',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                      onClick={(e) => handleRemove(e, bookmark)}
+                    >
+                      삭제
+                    </button>
                   </div>
                 </div>
               )
@@ -273,32 +263,6 @@ export default function BookmarkModal({ isOpen, onClose }: BookmarkModalProps) {
           </div>
         )}
       </div>
-
-      {/* Footer */}
-      {filteredBookmarks.length > 0 && (
-        <div style={{
-          padding: '1rem 1.5rem',
-          borderTop: '1px solid #e5e7eb',
-          background: '#f9fafb'
-        }}>
-          <button
-            onClick={onClose}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
-              color: '#374151',
-              borderRadius: '8px',
-              fontSize: '0.95rem',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            닫기
-          </button>
-        </div>
-      )}
     </BaseModal>
   )
 }

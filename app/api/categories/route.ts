@@ -7,14 +7,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
 
-    // 실제 Supabase 클라이언트 생성
     const supabase = await createClient()
 
     if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, error: 'Database connection failed' }, { status: 503 })
     }
 
     // 쿼리 파라미터 파싱
@@ -44,17 +40,14 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Categories query error:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch categories' },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, error: 'Failed to load categories' }, { status: 500 })
     }
 
     // 각 카테고리별 질문 수 조회 (선택적)
     const includeQuestionCount = searchParams.get('include_count') === 'true'
     if (includeQuestionCount && categories) {
       for (const category of categories) {
-        // @ts-ignore - Supabase type inference issue with schema
+        // @ts-expect-error - Supabase type inference issue with schema
         const { count } = await supabase
           .from('questions')
           .select('*', { count: 'exact', head: true })
@@ -62,7 +55,7 @@ export async function GET(request: NextRequest) {
           .eq('is_approved', true)
           .eq('status', 'open')
 
-        // @ts-ignore - Adding dynamic property to category
+        // @ts-expect-error - Adding dynamic property to category
         category.question_count = count || 0
       }
     }
@@ -79,10 +72,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Categories API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, error: 'Failed to load categories' }, { status: 500 })
   }
 }
 
@@ -99,10 +89,6 @@ export async function POST(request: NextRequest) {
     }
 
     // TODO: 관리자 권한 확인
-    // const user = await getCurrentUser(request)
-    // if (!user || user.role !== 'admin') {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    // }
 
     const body = await request.json()
     const {
@@ -139,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 카테고리 생성
-    // @ts-ignore - Supabase type inference issue with schema
+    // @ts-expect-error - Supabase type inference issue with schema
     const { data: category, error } = await supabase
       .from('categories')
       .insert({

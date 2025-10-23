@@ -4,7 +4,33 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
-import ActionBar from '@/components/common/ActionBar'
+import FeedCard from '@/components/feed/FeedCard'
+import { FeedSkeleton } from '@/components/questions/FeedSkeleton'
+import { FeedEmptyState } from '@/components/questions/FeedEmptyState'
+import StatusBadge from '@/components/common/StatusBadge'
+
+const extractMediaUrls = (source: any): string[] => {
+  if (!source) return []
+  const candidates = [
+    source.attachments,
+    source.images,
+    source.image_urls,
+    source.media_urls,
+    source.media
+  ]
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter((value) => typeof value === 'string' && value.length > 0)
+    }
+  }
+
+  if (typeof source.imageUrl === 'string') {
+    return [source.imageUrl]
+  }
+
+  return []
+}
 
 const categoryMap: Record<string, { name: string; icon: string; description: string }> = {
   visa: {
@@ -56,38 +82,33 @@ export default function CategoryPage() {
 
   // Check login status
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const mockSession = localStorage.getItem('mock_session')
-      setIsLoggedIn(mockSession === 'true')
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/profile', { cache: 'no-store', credentials: 'include' })
+        setIsLoggedIn(res.ok)
+      } catch {
+        setIsLoggedIn(false)
+      }
     }
+    checkAuth()
   }, [])
-
-  // Format date helper
-  function formatDate(dateString: string) {
-    if (!dateString) return '방금 전'
-    const date = new Date(dateString)
-    const now = new Date()
-    const diff = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-    if (diff < 60) return '방금 전'
-    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`
-    if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`
-    const days = Math.floor(diff / 86400)
-    if (days === 1) return '1일 전'
-    if (days < 7) return `${days}일 전`
-    return date.toLocaleDateString('ko-KR')
-  }
 
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const response = await fetch(`/api/questions?category=${slug}`)
+        const response = await fetch(`/api/questions?category=${slug}&sort=recent`, {
+          cache: 'no-store',
+          credentials: 'include',
+        })
         if (response.ok) {
           const data = await response.json()
-          setQuestions(data.questions || [])
+          setQuestions(Array.isArray(data.items) ? data.items : [])
+        } else {
+          setQuestions([])
         }
       } catch (error) {
-        console.error('Failed to fetch questions:', error)
+        console.error('Failed to fetch questions:', { slug, error })
+        setQuestions([])
       } finally {
         setLoading(false)
       }
@@ -182,136 +203,58 @@ export default function CategoryPage() {
         </div>
 
         {loading ? (
-          <div className="section">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="card loading-card">
-                <div className="loading-line loading-line-title"></div>
-                <div className="loading-line loading-line-subtitle"></div>
-                <div className="loading-line loading-line-small"></div>
-              </div>
-            ))}
-          </div>
+          <FeedSkeleton count={4} />
         ) : questions.length === 0 ? (
-          <div className="section card category-empty-state">
-            <div className="category-empty-icon">{category.icon}</div>
-            <h3 className="category-empty-title">
-              아직 {category.name} 질문이 없습니다
-            </h3>
-            <p className="category-empty-message">
-              첫 번째 {category.name} 질문을 작성해보세요!
-            </p>
-            <Link href="/questions/new">
-              <button className="btn btn-primary">
-                첫 질문 작성하기
-              </button>
-            </Link>
-          </div>
+          <FeedEmptyState
+            icon={category.icon}
+            title={`아직 ${category.name} 질문이 없습니다`}
+            description={`첫 번째 ${category.name} 질문을 작성해보세요!`}
+            actionHref="/questions/new"
+            actionLabel="첫 질문 작성하기"
+          />
         ) : (
           <div className="feed-container">
             {questions.map((question: any) => (
-              <div
+              <FeedCard
                 key={question.id}
-                className="question-card"
-                onClick={() => router.push(`/questions/${question.id}`)}
-              >
-                <div className="question-header">
-                  {/* Author Info */}
-                  <div className="question-meta">
-                    <div className="question-author-row">
-                      <div
-                        className="author-avatar-small"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (question.author?.id) {
-                            router.push(`/users/${question.author.id}`)
-                          }
-                        }}
-                      ></div>
-
-                      <div className="question-author-info">
-                        <div className="question-author">
-                          <span
-                            className="question-author-link"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (question.author?.id) {
-                                router.push(`/users/${question.author.id}`)
-                              }
-                            }}
-                          >
-                            {question.author?.name || '익명'}
-                          </span>
-                          {question.author && (question.author.visaType || question.author.yearsInKorea) && (
-                            <span className={`author-verification-box ${question.author.role === 'verified' || question.author.role === 'admin' ? 'verified' : ''}`}>
-                              <span className="verification-text">
-                                {question.author.visaType || ''}
-                                {question.author.yearsInKorea ? `, 한국 ${question.author.yearsInKorea}년차` : ''}
-                              </span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="question-time-row">
-                          <div className="question-time">
-                            {formatDate(question.created_at)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* More Button */}
-                  <button
-                    className="question-more-btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      router.push(`/questions/${question.id}`)
-                    }}
-                    aria-label="게시글 상세 보기"
-                  >
-                    자세히
-                  </button>
-                </div>
-
-                <h3 className="question-title">{question.title}</h3>
-                <p className="question-content">
-                  {question.content?.length > 200 ? question.content.substring(0, 200) + '...' : question.content}
-                </p>
-
-                <div className="question-stats">
-                  <div className="question-stats-comments">
-                    <span className="answer-expert-icon">🎓</span>
-                    <span>
-                      {question.answer_count === 0 ? (
-                        <span>아직 답변이 없어요</span>
-                      ) : (
-                        <><strong>{question.answer_count}명</strong>이 답변했어요</>
-                      )}
-                    </span>
-                  </div>
-                  {question.status === 'resolved' && (
-                    <span className="status-badge status-badge-resolved">
-                      ✓ 해결됨
-                    </span>
-                  )}
-                </div>
-
-                {/* ActionBar */}
-                <div onClick={(e) => e.stopPropagation()}>
-                  <ActionBar
-                    targetId={question.id}
-                    targetType="question"
-                    title={question.title}
-                    content={question.content}
-                    url={`/questions/${question.id}`}
-                    initialHelpfulCount={question.votes || 0}
-                    compact={true}
-                    requireLogin={!isLoggedIn}
-                    onLoginRequired={() => {
-                      router.push(`/auth/login?redirectTo=/categories/${slug}`)
-                    }}
-                  />
-                </div>
-              </div>
+                id={question.id}
+                itemType="question"
+                title={question.title}
+                body={question.content}
+                href={`/questions/${question.id}`}
+                createdAt={question.created_at}
+                topic={category.name}
+                author={{
+                  id: question.author?.id ?? 'unknown',
+                  name: question.author?.name,
+                  role: question.author?.role,
+                  visaType: question.author?.visaType ?? null,
+                  yearsInKorea: question.author?.yearsInKorea ?? null,
+                }}
+                stats={
+                  question.answer_count && question.answer_count > 0
+                    ? (
+                        <span>
+                          <strong>{question.answer_count}명</strong>이 답변했어요
+                        </span>
+                      )
+                    : <span>아직 답변이 없어요</span>
+                }
+                badge={<StatusBadge resolved={question.status === 'resolved'} compact />}
+                mediaUrls={extractMediaUrls(question)}
+                showReportButton
+                actionProps={{
+                  targetType: 'question',
+                  helpfulCount: question.votes || 0,
+                  requireLogin: !isLoggedIn,
+                  onLoginRequired: () => {
+                    router.push(`/auth/login?redirectTo=/categories/${slug}`)
+                  },
+                  compact: true,
+                }}
+                onNavigate={(href) => router.push(href)}
+                onAuthorClick={(authorId) => router.push(`/users/${authorId}`)}
+              />
             ))}
           </div>
         )}

@@ -1,5 +1,6 @@
 import { Database } from '@/lib/supabase'
 import { createServerLogger } from '@/lib/utils/server-logger'
+import { BRAND_NAME } from '@/lib/constants/branding'
 
 type Answer = Database['public']['Tables']['answers']['Row']
 type Question = Database['public']['Tables']['questions']['Row']
@@ -331,7 +332,7 @@ class NotificationTriggers {
     await this.sendNotification({
       target_user_id: userId,
       type: 'weekly_digest',
-      title: '이번 주 VietKConnect 활동 요약 📊',
+      title: `이번 주 ${BRAND_NAME} 활동 요약 📊`,
       message: `이번 주에 ${digestData.newQuestions}개의 새로운 질문이 있었고, 회원님의 답변 ${digestData.acceptedAnswers}개가 채택되었습니다.`,
       priority: 'low',
       action_url: '/dashboard',

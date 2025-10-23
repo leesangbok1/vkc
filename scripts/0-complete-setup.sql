@@ -345,7 +345,7 @@ INSERT INTO users (id, email, name, avatar_url, bio, role, verification_status, 
 
 -- 관리자 1명
 INSERT INTO users (id, email, name, avatar_url, bio, role, verification_status, specialty_areas, preferred_language, is_verified, trust_score, question_count, answer_count, helpful_answer_count) VALUES
-('00000000-0000-0000-0000-000000000099', 'admin@vietkconnect.com', 'VietKConnect 관리자', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'VietKConnect 플랫폼 공식 관리자입니다.', 'admin', 'approved', ARRAY['platform', 'moderation', 'support'], 'ko', true, 100, 0, 0, 0);
+('00000000-0000-0000-0000-000000000099', 'admin@vietkconnect.com', 'Viet K-Connect 관리자', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'Viet K-Connect 플랫폼 공식 관리자입니다.', 'admin', 'approved', ARRAY['platform', 'moderation', 'support'], 'ko', true, 100, 0, 0, 0);
 
 -- ============================================
 -- 검증 쿼리

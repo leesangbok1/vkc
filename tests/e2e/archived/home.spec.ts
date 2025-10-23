@@ -29,7 +29,7 @@ test.describe('Home Page', () => {
 
   test('should display Vietnamese community features', async ({ page }) => {
     // Check for Vietnamese-specific content in main content area
-    await expect(page.getByText('한국 생활의 모든 궁금증을 베트남 커뮤니티에서 해결하세요')).toBeVisible()
+    await expect(page.getByText('베트남 커뮤니티를 위한 한국생활 Q&A 플랫폼')).toBeVisible()
     await expect(page.locator('main').getByText(/비자/).first()).toBeVisible()
 
     // Check for question categories
@@ -42,7 +42,7 @@ test.describe('Home Page', () => {
     await page.getByRole('button', { name: '로그인' }).click()
 
     // Check if modal appears
-    await expect(page.getByText('VietKConnect에 오신 것을 환영합니다')).toBeVisible()
+    await expect(page.getByText('Viet K-Connect에 오신 걸 환영합니다')).toBeVisible()
     await expect(page.getByText('Google로 로그인')).toBeVisible()
     await expect(page.getByText('Facebook으로 로그인')).toBeVisible()
     await expect(page.getByText('Kakao로 로그인')).toBeVisible()

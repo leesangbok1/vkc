@@ -165,3 +165,20 @@ https://supabase.com/dashboard/project/aamzgmhfshsgosjoywlu
 
 **설정 완료 후 알려주세요!** 🚀
 다음 단계 코드 구현을 진행하겠습니다.
+
+---
+
+## 📅 진행 현황 업데이트 (2025-10-17)
+
+- [x] 로그인 페이지 구현(`/auth/login`): Supabase Auth `signInWithOAuth('google')` + 로딩/에러 UI
+- [x] 콜백 라우트 구현(`/auth/callback`): `exchangeCodeForSession` → 신규 사용자 `users` insert/onboarding 분기
+- [x] Header 사용자 정보 연동: 세션 기반 프로필 로딩/역할 배지
+- [ ] Google Console/Supabase Provider 설정(사용자 액션) — 진행 대기
+  - [ ] 승인된 자바스크립트 원본/Redirect URI 확인
+  - [ ] 테스트 사용자(Gmail) 추가
+- [ ] 로컬 검증 체크리스트
+  - [ ] 로그인 성공 후 세션 유지/로그아웃 동작
+  - [ ] `/following` 등 인증 요구 페이지 접근 시 리다이렉션 정상
+
+메모
+- 개발 중 자동 번역(브라우저 확장) 사용 시 하이드레이션 경고가 발생할 수 있어, 주요 텍스트 블록을 CSR로 전환하여 경고를 억제했습니다. OAuth 플로우 자체에는 영향 없습니다.

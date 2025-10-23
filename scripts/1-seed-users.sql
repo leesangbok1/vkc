@@ -366,7 +366,7 @@ INSERT INTO users (
 -- 👑 관리자 (1명)
 -- ============================================
 
--- 13. admin1 - VietKConnect 관리자
+-- 13. admin1 - Viet K-Connect 관리자
 INSERT INTO users (
   id, email, name, avatar_url, bio,
   role, verification_status,
@@ -376,9 +376,9 @@ INSERT INTO users (
 ) VALUES (
   '00000000-0000-0000-0000-000000000099',
   'admin@vietkconnect.com',
-  'VietKConnect 관리자',
+  'Viet K-Connect 관리자',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
-  'VietKConnect 플랫폼 공식 관리자입니다.',
+  'Viet K-Connect 플랫폼 공식 관리자입니다.',
   'admin',
   'approved',
   ARRAY['platform', 'moderation', 'support'],

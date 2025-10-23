@@ -1,11 +1,11 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import PageLayout from '@/components/layout/PageLayout'
 
-export default function SearchPage() {
+function SearchPageInner() {
   const searchParams = useSearchParams()
   const query = searchParams.get('q') || ''
   const [results, setResults] = useState([])
@@ -103,5 +103,13 @@ export default function SearchPage() {
         )}
       </div>
     </PageLayout>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<PageLayout variant="centered"><div className="search-page-container">로딩 중...</div></PageLayout>}>
+      <SearchPageInner />
+    </Suspense>
   )
 }

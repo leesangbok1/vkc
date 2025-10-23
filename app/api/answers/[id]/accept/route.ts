@@ -29,7 +29,7 @@ export async function POST(
       .from('answers')
       .select(`
         id, question_id, author_id, is_accepted,
-        question:questions!question_id(id, title, author_id),
+        question:questions!question_id(id, title, author_id, status),
         author:users!author_id(id, name, email, trust_score)
       `)
       .eq('id', answerId)
@@ -62,7 +62,7 @@ export async function POST(
     }
 
     // 기존에 채택된 답변이 있는지 확인하고 해제
-    // @ts-ignore - Supabase type inference issue with schema
+    // @ts-expect-error - Supabase type inference issue with schema
     const { error: unacceptError } = await supabase
       .from('answers')
       .update({
@@ -77,7 +77,7 @@ export async function POST(
     }
 
     // 새 답변 채택
-    // @ts-ignore - Supabase type inference issue with schema
+    // @ts-expect-error - Supabase type inference issue with schema
     const { data: updatedAnswer, error: acceptError } = await supabase
       .from('answers')
       .update({
@@ -96,29 +96,17 @@ export async function POST(
       )
     }
 
-    // 질문 상태를 '해결됨'으로 변경
-    // @ts-ignore - Supabase type inference issue with schema
-    await supabase
-      .from('questions')
-      .update({
-        status: 'resolved',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', answer.question_id)
-
-    // 답변 작성자의 신뢰도 점수 증가 (+10)
-    // @ts-ignore - Supabase type inference issue with schema
-    await supabase
-      .from('users')
-      .update({
-        // @ts-ignore - Supabase RPC type inference issue
-        trust_score: supabase.rpc('adjust_trust_score', { adjustment: 10 }),
-        // @ts-ignore - Supabase RPC type inference issue
-        helpful_answer_count: supabase.rpc('increment_helpful_count'),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', answer.author_id)
-
+    try {
+      await supabase
+        .from('questions')
+        .update({
+          status: 'resolved',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', answer.question_id)
+    } catch (questionUpdateError) {
+      console.error('Failed to update question status:', questionUpdateError)
+    }
 
     return NextResponse.json({
       data: updatedAnswer,

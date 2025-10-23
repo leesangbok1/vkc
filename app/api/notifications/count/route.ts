@@ -19,12 +19,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Get count of unread notifications
-    const { count, error } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('is_read', false)
-      .gt('expires_at', new Date().toISOString())
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('is_read', false)
 
     if (error) {
       logger.error('Get notification count error', error as Error, {

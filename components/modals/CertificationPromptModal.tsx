@@ -17,6 +17,36 @@ export default function CertificationPromptModal({
 }: CertificationPromptModalProps) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'domestic' | 'international'>('domestic')
+  const STORAGE_KEY = 'certification_prompt_data'
+
+  const upsertPromptState = (patch: Record<string, unknown>) => {
+    if (typeof window === 'undefined') return
+    try {
+      const existingRaw = localStorage.getItem(STORAGE_KEY)
+      const existing = existingRaw ? JSON.parse(existingRaw) : {}
+      const next = {
+        ...existing,
+        ...patch,
+        last_shown: new Date().toISOString(),
+        trigger_type: trigger,
+        completed: true,
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    } catch (error) {
+      console.warn('[CertificationPromptModal] failed to persist prompt state', error)
+      const fallback = {
+        ...patch,
+        last_shown: new Date().toISOString(),
+        trigger_type: trigger,
+        completed: true,
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fallback))
+      } catch (storageError) {
+        console.warn('[CertificationPromptModal] unable to write fallback prompt state', storageError)
+      }
+    }
+  }
 
   // Load user's residence from profile
   useEffect(() => {
@@ -32,12 +62,10 @@ export default function CertificationPromptModal({
 
   const handleApply = () => {
     // Save that user clicked certification prompt
-    const promptData = {
-      last_shown: new Date().toISOString(),
-      trigger_type: trigger,
-      clicked: true
-    }
-    localStorage.setItem('certification_prompt_data', JSON.stringify(promptData))
+    upsertPromptState({
+      status: 'applied',
+      dismissed: false,
+    })
 
     // Redirect to experts apply page
     router.push('/experts/apply')
@@ -46,12 +74,10 @@ export default function CertificationPromptModal({
 
   const handleSkip = () => {
     // Save skip action with 24-hour cooldown
-    const promptData = {
-      last_shown: new Date().toISOString(),
-      trigger_type: trigger,
-      skipped: true
-    }
-    localStorage.setItem('certification_prompt_data', JSON.stringify(promptData))
+    upsertPromptState({
+      status: 'dismissed',
+      dismissed: true,
+    })
     onClose()
   }
 
@@ -86,6 +112,9 @@ export default function CertificationPromptModal({
       onClose={handleSkip}
       width="650px"
       adaptiveMode={true}
+      closeOnOverlayClick={false}
+      closeOnEscape={false}
+      showCloseButton={false}
     >
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>

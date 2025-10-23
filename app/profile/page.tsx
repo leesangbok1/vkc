@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
+import { getSubscribedTopics, subscribeTopic, unsubscribeTopic } from '@/lib/utils/follow-manager'
 
 type UserRole = 'GUEST' | 'USER' | 'VERIFIED' | 'ADMIN'
 
@@ -18,6 +19,11 @@ interface UserProfile {
   region: string
   company: string
   yearsInKorea: number
+  residence: string
+  gender: string
+  ageRange: string
+  primaryCategory: string
+  interests: string[]
 
   // Admin-assigned fields
   role: UserRole
@@ -43,74 +49,169 @@ export default function ProfilePage() {
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({})
   const [showSuccess, setShowSuccess] = useState(false)
 
-  const profilePictureInputRef = useRef<HTMLInputElement>(null)
-  const registrationCardInputRef = useRef<HTMLInputElement>(null)
+const profilePictureInputRef = useRef<HTMLInputElement>(null)
+const registrationCardInputRef = useRef<HTMLInputElement>(null)
+
+const RESIDENCE_OPTIONS = [
+  { value: 'korea', label: '한국 거주' },
+  { value: 'abroad', label: '해외 거주' }
+]
+
+const GENDER_OPTIONS = [
+  { value: 'male', label: '남성' },
+  { value: 'female', label: '여성' },
+  { value: 'other', label: '기타' }
+]
+
+const AGE_RANGE_OPTIONS = [
+  { value: '10s', label: '10대' },
+  { value: '20s', label: '20대' },
+  { value: '30s', label: '30대' },
+  { value: '40s', label: '40대' },
+  { value: '50s', label: '50대' },
+  { value: '60s', label: '60대 이상' }
+]
+
+const CATEGORY_OPTIONS = [
+  { value: 'student', label: '학생' },
+  { value: 'worker', label: '직장인' },
+  { value: 'resident', label: '장기 체류자' },
+  { value: 'business', label: '사업자' },
+  { value: 'other', label: '기타' }
+]
+
+const TOPIC_OPTIONS = [
+  { id: 1, name: '한국 비자·체류', icon: '🛂' },
+  { id: 2, name: '한국 직장생활', icon: '💼' },
+  { id: 4, name: '한국 생활 정착', icon: '🌏' },
+  { id: 6, name: '한국에서 집 구하기', icon: '🏠' },
+  { id: 8, name: '베트남 송금·금융', icon: '💰' },
+  { id: 9, name: '한국어 배우기', icon: '📚' }
+]
 
   useEffect(() => {
     loadProfile()
   }, [])
 
-  function loadProfile() {
-    // Load from localStorage (mock system)
-    const mockUser = localStorage.getItem('mock_user')
-    const mockProfile = localStorage.getItem('mock_profile')
-
-    if (mockUser && mockProfile) {
-      const user = JSON.parse(mockUser)
-      const savedProfile = JSON.parse(mockProfile)
-      setProfile(savedProfile)
-      setEditForm(savedProfile)
-    } else if (mockUser) {
-      // Create initial profile from user data
-      const user = JSON.parse(mockUser)
+  async function loadProfile() {
+    try {
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+      if (!res.ok) {
+        router.push('/auth/login?redirectTo=/profile')
+        return
+      }
+      const { data } = await res.json()
       const initialProfile: UserProfile = {
-        name: user.name || 'Test User',
-        nickname: user.nickname || 'test_user',
-        email: user.email || 'test@vietkconnect.com',
-        bio: '',
-        profilePictureUrl: '',
-        visaType: 'E-7',
-        region: '서울',
-        company: '',
-        yearsInKorea: 2,
-        role: user.role || 'USER',
-        trustScore: 100,
-        questionCount: 0,
-        answerCount: 0,
-        helpfulAnswerCount: 0,
+        name: data?.name || data?.email || '사용자',
+        nickname: data?.name || 'user',
+        email: data?.email || '',
+        bio: data?.bio || '',
+        profilePictureUrl: data?.avatar_url || '',
+        visaType: data?.visa_type || '',
+        region: data?.region || '',
+        company: data?.company || '',
+        yearsInKorea: data?.years_in_korea || 0,
+        residence: data?.residence || '',
+        gender: data?.gender || '',
+        ageRange: data?.age || '',
+        primaryCategory: data?.category || '',
+        interests: Array.isArray(data?.interests) ? data.interests as string[] : [],
+        role: (data?.role?.toUpperCase?.() as UserRole) || 'USER',
+        trustScore: data?.trust_score || 0,
+        questionCount: data?.question_count || 0,
+        answerCount: data?.answer_count || 0,
+        helpfulAnswerCount: data?.helpful_answer_count || 0,
         registrationCardUrl: '',
-        registrationCardVerified: false,
+        registrationCardVerified: !!data?.is_verified,
         badges: {
-          verified: false,
+          verified: !!data?.is_verified,
           expert: false,
-          helpful: false
+          helpful: (data?.helpful_answer_count || 0) > 0
         }
       }
       setProfile(initialProfile)
       setEditForm(initialProfile)
-      // Save initial profile
-      localStorage.setItem('mock_profile', JSON.stringify(initialProfile))
-    } else {
-      // Not logged in, redirect to login
-      router.push('/auth/login')
+    } catch (e) {
+      console.error('Failed to load profile:', e)
+      router.push('/auth/login?redirectTo=/profile')
     }
   }
 
-  function handleSave() {
-    if (!profile) return
+async function handleSave() {
+  if (!profile) return
 
-    const updatedProfile = {
-      ...profile,
-      ...editForm
+  const payload = {
+    name: editForm.name ?? profile.name,
+    bio: editForm.bio ?? profile.bio,
+    visa_type: editForm.visaType ?? profile.visaType,
+    company: editForm.company ?? profile.company,
+    years_in_korea: editForm.yearsInKorea ?? profile.yearsInKorea,
+    region: editForm.region ?? profile.region,
+    residence: editForm.residence ?? profile.residence,
+    gender: editForm.gender ?? profile.gender,
+    age: editForm.ageRange ?? profile.ageRange,
+    category: editForm.primaryCategory ?? profile.primaryCategory,
+    interests: editForm.interests ?? profile.interests
+  }
+
+  try {
+    const response = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(text || '프로필 저장 중 오류가 발생했습니다.')
     }
 
+    const json = await response.json().catch(() => ({ data: null }))
+    const serverData = json?.data || {}
+    const updatedProfile: UserProfile = {
+      ...profile,
+      ...editForm,
+      visaType: serverData.visa_type ?? (editForm.visaType ?? profile.visaType),
+      company: serverData.company ?? (editForm.company ?? profile.company),
+      yearsInKorea: serverData.years_in_korea ?? (editForm.yearsInKorea ?? profile.yearsInKorea),
+      region: serverData.region ?? (editForm.region ?? profile.region),
+      residence: serverData.residence ?? (editForm.residence ?? profile.residence),
+      gender: serverData.gender ?? (editForm.gender ?? profile.gender),
+      ageRange: serverData.age ?? (editForm.ageRange ?? profile.ageRange),
+      primaryCategory: serverData.category ?? (editForm.primaryCategory ?? profile.primaryCategory),
+      interests: Array.isArray(serverData.interests)
+        ? serverData.interests
+        : (editForm.interests ?? profile.interests)
+    }
     setProfile(updatedProfile)
-    localStorage.setItem('mock_profile', JSON.stringify(updatedProfile))
+    setEditForm(updatedProfile)
+
+    try {
+      const currentTopics = await getSubscribedTopics(true)
+      await Promise.all(currentTopics.map((topic) => unsubscribeTopic(topic.subscriptionId)))
+
+      await Promise.all(
+        (updatedProfile.interests || []).map(async (topicName) => {
+          const meta = TOPIC_OPTIONS.find((item) => item.name === topicName)
+          if (!meta) return
+          await subscribeTopic({
+            id: meta.id,
+            slug: meta.name.replace(/\s+/g, '-').toLowerCase()
+          })
+        })
+      )
+    } catch (topicError) {
+      console.warn('관심 토픽 동기화 실패:', topicError)
+    }
 
     setIsEditing(false)
     setShowSuccess(true)
     setTimeout(() => setShowSuccess(false), 3000)
+  } catch (error: any) {
+    console.error('Profile update failed:', error)
+    alert(error?.message || '프로필 저장 중 오류가 발생했습니다.')
   }
+}
 
   function handleCancel() {
     setEditForm(profile || {})
@@ -148,6 +249,15 @@ export default function ProfilePage() {
       ADMIN: { label: '관리자', icon: '👑', color: 'purple' }
     }
     return roleMap[role] || roleMap.USER
+  }
+
+  const resolveLabel = (
+    value: string | undefined,
+    options: { value: string; label: string }[],
+    fallback: string = '미설정'
+  ) => {
+    if (!value) return fallback
+    return options.find((option) => option.value === value)?.label ?? fallback
   }
 
   if (!profile) {
@@ -380,6 +490,210 @@ export default function ProfilePage() {
                   />
                 ) : (
                   <p style={{ padding: '0.5rem 0', fontWeight: 500 }}>{profile.yearsInKorea}년</p>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">거주 상태</label>
+                {isEditing ? (
+                  <div className="option-grid">
+                    {RESIDENCE_OPTIONS.map((option) => {
+                      const current = editForm.residence ?? profile.residence ?? ''
+                      const checked = current === option.value
+                      return (
+                        <label key={option.value} className={`option-card ${checked ? 'selected' : ''}`}>
+                          <input
+                            type="radio"
+                            name="residence"
+                            value={option.value}
+                            checked={checked}
+                            onChange={(e) => setEditForm({ ...editForm, residence: e.target.value })}
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ padding: '0.5rem 0', fontWeight: 500 }}>
+                    {resolveLabel(profile.residence, RESIDENCE_OPTIONS)}
+                  </p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">성별</label>
+                {isEditing ? (
+                  <div className="option-grid">
+                    {GENDER_OPTIONS.map((option) => {
+                      const current = editForm.gender ?? profile.gender ?? ''
+                      const checked = current === option.value
+                      return (
+                        <label key={option.value} className={`option-card ${checked ? 'selected' : ''}`}>
+                          <input
+                            type="radio"
+                            name="gender"
+                            value={option.value}
+                            checked={checked}
+                            onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ padding: '0.5rem 0', fontWeight: 500 }}>
+                    {resolveLabel(profile.gender, GENDER_OPTIONS)}
+                  </p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">연령대</label>
+                {isEditing ? (
+                  <select
+                    className="form-input"
+                    value={editForm.ageRange ?? profile.ageRange ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, ageRange: e.target.value })}
+                  >
+                    <option value="">선택</option>
+                    {AGE_RANGE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p style={{ padding: '0.5rem 0', fontWeight: 500 }}>
+                    {resolveLabel(profile.ageRange, AGE_RANGE_OPTIONS)}
+                  </p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">관심 카테고리</label>
+                {isEditing ? (
+                  <select
+                    className="form-input"
+                    value={editForm.primaryCategory ?? profile.primaryCategory ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, primaryCategory: e.target.value })}
+                  >
+                    <option value="">선택</option>
+                    {CATEGORY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p style={{ padding: '0.5rem 0', fontWeight: 500 }}>
+                    {resolveLabel(profile.primaryCategory, CATEGORY_OPTIONS)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1.25rem' }}>
+              <label className="form-label">관심 토픽</label>
+              {isEditing ? (
+                <div className="option-grid two-columns">
+                  {TOPIC_OPTIONS.map((topic) => {
+                    const current = editForm.interests ?? profile.interests ?? []
+                    const checked = current.includes(topic.name)
+                    return (
+                      <label key={topic.id} className={`option-card ${checked ? 'selected' : ''}`}>
+                        <input
+                          type="checkbox"
+                          value={topic.name}
+                          checked={checked}
+                          onChange={(e) => {
+                            const interests = editForm.interests ?? profile.interests ?? []
+                            const next = e.target.checked
+                              ? Array.from(new Set([...interests, topic.name]))
+                              : interests.filter((name) => name !== topic.name)
+                            setEditForm({ ...editForm, interests: next })
+                          }}
+                        />
+                        <span>{topic.icon} {topic.name}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {(profile.interests && profile.interests.length > 0)
+                    ? profile.interests.map((interest) => {
+                        const topicMeta = TOPIC_OPTIONS.find((item) => item.name === interest)
+                        return (
+                          <span
+                            key={interest}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              padding: '0.35rem 0.8rem',
+                              borderRadius: '999px',
+                              background: '#eef2ff',
+                              color: '#3730a3',
+                              fontWeight: 600,
+                              fontSize: '0.85rem'
+                            }}
+                          >
+                            {topicMeta?.icon || '⭐'} {interest}
+                          </span>
+                        )
+                      })
+                    : <span style={{ color: '#9ca3af' }}>관심 토픽을 설정하지 않았습니다</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Onboarding Snapshot */}
+            <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>🌱</span> 온보딩 기본 정보
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>거주 지역</div>
+                  <div style={{ fontWeight: 600 }}>{profile.residence || '미설정'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>성별</div>
+                  <div style={{ fontWeight: 600 }}>{profile.gender || '미설정'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>연령대</div>
+                  <div style={{ fontWeight: 600 }}>{profile.ageRange || '미설정'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>관심 카테고리</div>
+                  <div style={{ fontWeight: 600 }}>{profile.primaryCategory || '미설정'}</div>
+                </div>
+              </div>
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>관심 토픽</div>
+                {profile.interests.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {profile.interests.map(topic => (
+                      <span
+                        key={topic}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: '999px',
+                          background: '#eef2ff',
+                          color: '#3730a3',
+                          fontSize: '0.85rem',
+                          fontWeight: 600
+                        }}
+                      >
+                        #{topic}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: '#9ca3af' }}>관심 토픽이 없습니다</div>
                 )}
               </div>
             </div>

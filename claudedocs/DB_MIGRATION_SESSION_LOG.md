@@ -1,5 +1,7 @@
 # 🕒 DB 연동 세션 로그
 
+> 기록 아카이브입니다. 진행 현황의 단일 기준점은 `claudedocs/PROGRESS.md` 입니다.
+
 **목적**: 각 세션별 작업 내역을 시간순으로 기록하여 콘텍스트 한계 극복
 
 ---
@@ -194,3 +196,33 @@
 - [마스터 플랜](./DB_MIGRATION_MASTER_PLAN.md) - 전체 4 Phase 계획
 - [진행 상황](./DB_MIGRATION_PROGRESS.md) - 95개 작업 체크리스트
 - [백업 가이드](./backup-mockdata/README.md) - Mock 데이터 백업 방법
+
+---
+
+## 📅 2025-10-17
+
+### Session 5: 인기순 fallback 및 내 질문 DB 연동 (현재 세션)
+**시작**: 2025-10-17 10:00  
+**종료**: 2025-10-17 12:00  
+**작업자**: Human  
+**목표**: 새 질문 노출 개선 및 My Questions 페이지 DB화
+
+**완료 사항**:
+- ✅ `/api/questions` popular 정렬 시 업보트가 모두 0이면 최신순으로 자동 재조회
+- ✅ `listQuestions`에 `authorId` 필터 추가, Mock 경로 포함
+- ✅ `/api/questions` 응답에 `items` 필드 추가(클라이언트 호환성)
+- ✅ `/my-questions` 페이지를 Supabase 데이터 기반으로 재구성 (프로필 조회 + 최신순 질문 목록)
+ - ✅ `/following` 피드 인기 정렬 적용(폴백 유지) 및 빈 상태 CTA(팔로우 사용자 찾아보기) 추가
+ - ✅ 인기 사용자 API `GET /api/users/popular` 구현(임시 점수식) + 페이지 `/users/discover` 신설
+
+**진행 중**:
+- 🔄 `/questions/[id]` 상세 데이터 매핑 보강 (author/category join)
+
+**이슈 및 해결**:
+- ⚠️ `npm run build` 실행 시 `_not-found`, `/admin/certifications` 경로 누락으로 기존 오류 발생 → 현 단계에서는 코드 변경과 무관한 기 등록 이슈, 추후 전용 브랜치에서 해결 필요
+
+**다음 작업**:
+- `/api/questions` 상세 응답에 author/category 정보 join
+- `/my-questions` 삭제/편집 액션 서버 연동 검토
+- Supabase 타입 정의(`lib/database.types.ts`) 생성 및 적용
+ - 인기 사용자 점수식에 follower_count 반영(뷰/집계 추가), 인증 가중치 보정

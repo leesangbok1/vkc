@@ -2,6 +2,16 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from './supabase'
 
+const sanitizeCookieValue = (value?: string | null) => {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1)
+  }
+  return trimmed.replace(/"/g, '')
+}
+
 // 서버 사이드 Supabase 클라이언트 (API Routes, Server Components용)
 export const createSupabaseServerClient = async () => {
   // 환경변수 검증
@@ -18,7 +28,7 @@ export const createSupabaseServerClient = async () => {
       {
         cookies: {
           get(name: string) {
-            return cookieStore.get(name)?.value
+            return sanitizeCookieValue(cookieStore.get(name)?.value)
           },
           set(name: string, value: string, options: CookieOptions) {
             // API Routes에서는 쿠키 설정 가능
@@ -36,6 +46,7 @@ export const createSupabaseServerClient = async () => {
             }
           },
         },
+        cookieEncoding: 'base64url',
       }
     )
   } catch (error) {
@@ -59,7 +70,7 @@ export const createSupabaseServerReadClient = async () => {
       {
         cookies: {
           get(name: string) {
-            return cookieStore.get(name)?.value
+            return sanitizeCookieValue(cookieStore.get(name)?.value)
           },
           set() {
             // 읽기 전용 클라이언트는 쿠키 설정 안함
@@ -68,6 +79,7 @@ export const createSupabaseServerReadClient = async () => {
             // 읽기 전용 클라이언트는 쿠키 삭제 안함
           },
         },
+        cookieEncoding: 'base64url',
       }
     )
   } catch (error) {

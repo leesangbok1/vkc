@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { shouldShowTour, completeTour, skipTour, hasTourCompleted } from '@/lib/utils/tour-manager'
+import { shouldShowTour, completeTour, skipTour, hasTourCompleted, markTourShown } from '@/lib/utils/tour-manager'
 
 interface TourStep {
   id: string
   title: string
   description: string
   targetSelector: string
-  position: 'top' | 'bottom' | 'left' | 'right'
+  position: 'top' | 'bottom' | 'left' | 'right' | 'top-left'
   icon: string
   actionUrl?: string // Optional URL to navigate when "이동하기" is clicked
 }
@@ -16,12 +16,31 @@ interface TourStep {
  * @param isLoggedIn - Only show tour for logged-in users
  * @param isEventModalOpen - Don't show tour if event modal is open
  */
-export function useQuickTour(isLoggedIn: boolean = false, isEventModalOpen: boolean = false) {
+export function useQuickTour(
+  isLoggedIn: boolean = false,
+  isEventModalOpen: boolean = false,
+  userId: string | null = null
+) {
   const [isOpen, setIsOpen] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
   const [shouldStartAfterModal, setShouldStartAfterModal] = useState(false)
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    setIsCompleted(hasTourCompleted(userId))
+  }, [userId])
+
+  useEffect(() => {
+    const tryOpenTour = () => {
+      if (shouldShowTour(userId)) {
+        markTourShown(userId)
+        setIsOpen(true)
+      } else {
+        setIsOpen(false)
+      }
+      setIsCompleted(hasTourCompleted(userId))
+    }
+
     // Only show tour for logged-in users
     if (!isLoggedIn) {
       setIsOpen(false)
@@ -32,7 +51,7 @@ export function useQuickTour(isLoggedIn: boolean = false, isEventModalOpen: bool
     if (isEventModalOpen) {
       setIsOpen(false)
       // Mark that we should start tour after modal closes
-      const shouldShow = shouldShowTour()
+      const shouldShow = shouldShowTour(userId)
       if (shouldShow) {
         setShouldStartAfterModal(true)
       }
@@ -42,7 +61,11 @@ export function useQuickTour(isLoggedIn: boolean = false, isEventModalOpen: bool
     // If event modal just closed and we should start tour
     if (shouldStartAfterModal && !isEventModalOpen) {
       const timer = setTimeout(() => {
-        setIsOpen(true)
+        if (shouldShowTour(userId)) {
+          markTourShown(userId)
+          setIsOpen(true)
+          setIsCompleted(hasTourCompleted(userId))
+        }
         setShouldStartAfterModal(false)
       }, 500) // Short delay after modal closes
       return () => clearTimeout(timer)
@@ -50,28 +73,28 @@ export function useQuickTour(isLoggedIn: boolean = false, isEventModalOpen: bool
 
     // Normal tour start logic (when no event modal)
     const timer = setTimeout(() => {
-      const shouldShow = shouldShowTour()
-      const completed = hasTourCompleted()
-      setIsOpen(shouldShow)
-      setIsCompleted(completed)
+      tryOpenTour()
     }, 1500) // Increased delay to 1.5s to ensure DOM is ready
 
     return () => clearTimeout(timer)
-  }, [isLoggedIn, isEventModalOpen, shouldStartAfterModal])
+  }, [isLoggedIn, isEventModalOpen, shouldStartAfterModal, userId])
 
   const handleComplete = () => {
-    completeTour()
+    completeTour(userId)
     setIsOpen(false)
     setIsCompleted(true)
   }
 
   const handleSkip = () => {
-    skipTour()
+    skipTour(userId)
     setIsOpen(false)
   }
 
   const startTour = () => {
-    setIsOpen(true)
+    if (shouldShowTour(userId)) {
+      markTourShown(userId)
+      setIsOpen(true)
+    }
   }
 
   return {
@@ -92,7 +115,7 @@ export const defaultTourSteps: TourStep[] = [
     title: '질문 올리기',
     description: '궁금한 점이 있으신가요? 버튼을 클릭해서 한국 생활에 대한 질문을 올려보세요. Certified User들이 도움을 드릴 거예요!',
     targetSelector: '[data-tour="ask-question"]',
-    position: 'bottom',
+    position: 'top-left',
     icon: '❓',
     actionUrl: '/questions/new'
   },

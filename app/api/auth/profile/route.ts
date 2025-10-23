@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase-server'
+import { upsertUserWithFallback } from '@/lib/utils/supabase-user'
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>
 
 // GET /api/auth/profile - 사용자 프로필 조회
 export async function GET(request: NextRequest) {
@@ -9,10 +12,7 @@ export async function GET(request: NextRequest) {
       return getMockProfile()
     }
 
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
-    }
+    const supabase = await createSupabaseServerClient()
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -23,15 +23,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 사용자 프로필 조회
-    const { data: profile, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (error) {
-      console.error('Profile fetch error:', error)
+    const profile = await ensureUserProfile(supabase, user)
+    if (!profile) {
+      console.error('Profile fetch error: bootstrap failed')
       return NextResponse.json(
         { error: 'Failed to fetch profile' },
         { status: 500 }
@@ -62,10 +56,7 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json()
 
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
-    }
+    const supabase = await createSupabaseServerClient()
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -76,24 +67,33 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // 업데이트 가능한 필드만 필터링
+    const currentProfile = await ensureUserProfile(supabase, user)
+    if (!currentProfile) {
+      console.error('Current profile fetch error: bootstrap failed')
+      return NextResponse.json({ error: 'Failed to fetch profile for update', code: 'profile_missing' }, { status: 500 })
+    }
+
+    // 업데이트 가능한 필드 + 실제 존재하는 컬럼 교집합만 업데이트
     const allowedFields = [
       'name', 'bio', 'visa_type', 'company', 'years_in_korea',
       'region', 'preferred_language', 'specialties', 'interests',
-      'languages', 'notification_settings'
+      'languages', 'notification_settings',
+      'onboarding_completed', 'residence', 'gender', 'age', 'category'
     ]
-
+    const existingColumns = Object.keys(currentProfile || {})
     const updateData = Object.keys(body)
-      .filter(key => allowedFields.includes(key))
+      .filter(key => allowedFields.includes(key) && existingColumns.includes(key))
       .reduce((obj, key) => {
         obj[key] = body[key]
         return obj
       }, {} as Record<string, unknown>)
 
-    updateData.updated_at = new Date().toISOString()
+    ;(updateData as any).updated_at = new Date().toISOString()
 
-    // 프로필 업데이트
-    // @ts-ignore - Supabase type inference issue with schema
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ success: true, data: currentProfile, message: 'No updatable fields present' })
+    }
+
     const { data: updatedProfile, error } = await supabase
       .from('users')
       .update(updateData)
@@ -103,10 +103,7 @@ export async function PUT(request: NextRequest) {
 
     if (error) {
       console.error('Profile update error:', error)
-      return NextResponse.json(
-        { error: 'Failed to update profile' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Failed to update profile', code: (error as any).code, details: (error as any).details }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -286,4 +283,69 @@ async function putMockProfile(request: NextRequest) {
       { status: 400 }
     )
   }
+}
+
+async function ensureUserProfile(supabase: SupabaseServerClient, user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }) {
+  const basePayload = {
+    id: user.id,
+    email: user.email ?? '',
+    name: (user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'New User') as string,
+    updated_at: new Date().toISOString()
+  }
+
+  const existing = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (existing.error && existing.error.code !== 'PGRST116') {
+    console.error('ensureUserProfile: initial fetch error', existing.error)
+    return null
+  }
+  if (existing.data) {
+    return existing.data
+  }
+
+  const reread = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (reread.error && reread.error.code !== 'PGRST116') {
+    console.error('ensureUserProfile: reread error', reread.error)
+    return null
+  }
+
+  if (!reread.data) {
+    try {
+      const service = createSupabaseServiceClient()
+      const upsertResult = await upsertUserWithFallback(service, {
+        ...basePayload,
+        created_at: new Date().toISOString()
+      }, { onConflict: 'id' })
+      if (upsertResult.error && upsertResult.error.code !== '23505') {
+        console.error('ensureUserProfile: upsert error', upsertResult.error)
+        return null
+      }
+    } catch (serviceError) {
+      console.error('ensureUserProfile: service upsert exception', serviceError)
+      return null
+    }
+
+    const recheck = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (recheck.error) {
+      console.error('ensureUserProfile: recheck error', recheck.error)
+      return null
+    }
+    return recheck.data ?? null
+  }
+
+  return reread.data ?? null
 }

@@ -1,5 +1,5 @@
 /**
- * VietKConnect Mock Data
+ * Viet K-Connect Mock Data
  * 중앙집중식 Mock 데이터 파일
  *
  * 철학: "검증된 선경험자의 답변으로 해결합니다"
@@ -76,6 +76,7 @@ export interface Banner {
   linkUrl: string
   backgroundColor?: string
 }
+
 
 // ============================================
 // 베트남인 VERIFIED 선경험자 (70%)
@@ -603,7 +604,7 @@ export const REGULAR_USERS: User[] = [
 
 export const ADMIN_USER: User = {
   id: 'admin1',
-  name: 'VietKConnect 관리자',
+  name: 'Viet K-Connect 관리자',
   role: 'admin',
   avatar: '관',
   specialty: '플랫폼 운영',
@@ -4660,5 +4661,12 @@ export const MOCK_BANNERS: Banner[] = [
     description: '전문가 답변 10개 작성하고 10,000원 받아가세요! 9월 15일 ~ 10월 31일',
     linkUrl: '/events/visa-challenge',
     backgroundColor: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+  },
+  {
+    id: 'banner4',
+    title: '💡 생활 꿀팁 아카이브 업데이트',
+    description: '보험, 의료, 주거 정보를 한눈에 정리한 신규 아카이브를 확인하세요.',
+    linkUrl: '/posts',
+    backgroundColor: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)'
   }
 ]

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import BaseModal from './BaseModal'
+import RichEditor from '@/components/editor/RichEditor'
+import { EDITOR_USAGE_GUIDE } from '@/lib/constants/editor'
 
 interface PostCreateModalProps {
   isOpen: boolean
@@ -34,25 +36,22 @@ export default function PostCreateModal({
   const [category, setCategory] = useState('기타') // 기본값
   const [submitting, setSubmitting] = useState(false)
 
-  // 문자 카운터
-  const updateCharCounter = (current: number, max: number) => {
-    return `${current} / ${max}`
-  }
+  const MIN_TITLE_LENGTH = 5
+  const MIN_CONTENT_LENGTH = 20
 
-  // 폼 유효성 검사
-  const isValid = title.trim().length >= 5 && content.trim().length >= 20
+  const isValid = title.trim().length >= MIN_TITLE_LENGTH && content.trim().length >= MIN_CONTENT_LENGTH
 
-  // 제출 핸들러
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const submitPost = async () => {
+    const trimmedTitle = title.trim()
+    const trimmedContent = content.trim()
 
-    if (title.trim().length < 5) {
-      alert('제목은 최소 5자 이상 작성해주세요')
+    if (trimmedTitle.length < MIN_TITLE_LENGTH) {
+      alert(`제목은 최소 ${MIN_TITLE_LENGTH}자 이상 작성해주세요`)
       return
     }
 
-    if (content.trim().length < 20) {
-      alert('내용은 최소 20자 이상 작성해주세요')
+    if (trimmedContent.length < MIN_CONTENT_LENGTH) {
+      alert(`내용은 최소 ${MIN_CONTENT_LENGTH}자 이상 작성해주세요`)
       return
     }
 
@@ -65,8 +64,8 @@ export default function PostCreateModal({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: title.trim(),
-          content: content.trim(),
+          title: trimmedTitle,
+          content: trimmedContent,
           category: category,
         }),
       })
@@ -98,6 +97,13 @@ export default function PostCreateModal({
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // 제출 핸들러
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (submitting) return
+    await submitPost()
   }
 
   // 취소 핸들러
@@ -198,12 +204,12 @@ export default function PostCreateModal({
               제목<span style={{ color: '#ef4444' }}>*</span>
             </label>
             <input
-              type="text"
-              id="post-title"
-              placeholder="명확하고 흥미로운 제목을 작성해주세요"
-              maxLength={100}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+                type="text"
+                id="post-title"
+                placeholder="명확하고 흥미로운 제목을 작성해주세요"
+                maxLength={100}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               required
               style={{
                 width: '100%',
@@ -222,11 +228,11 @@ export default function PostCreateModal({
               color: title.length > 90 ? '#ef4444' : '#6b7280'
             }}>
               <span>
-                {title.length > 0 && title.length < 5 && (
-                  <span style={{ color: '#ef4444' }}>최소 5자</span>
+                {title.length > 0 && title.length < MIN_TITLE_LENGTH && (
+                  <span style={{ color: '#ef4444' }}>최소 {MIN_TITLE_LENGTH}자</span>
                 )}
               </span>
-              <span>{updateCharCounter(title.length, 100)}</span>
+              <span>{`${title.length} / 100`}</span>
             </div>
           </div>
 
@@ -244,92 +250,12 @@ export default function PostCreateModal({
             >
               내용<span style={{ color: '#ef4444' }}>*</span>
             </label>
-
-            {/* Formatting Toolbar */}
-            <div style={{
-              display: 'flex',
-              gap: '0.5rem',
-              padding: '0.5rem',
-              background: '#f9fafb',
-              borderRadius: '8px 8px 0 0',
-              border: '1px solid #d1d5db',
-              borderBottom: 'none'
-            }}>
-              <button
-                type="button"
-                title="제목"
-                style={{
-                  padding: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '0.875rem'
-                }}
-              >
-                H
-              </button>
-              <button
-                type="button"
-                title="굵게"
-                style={{
-                  padding: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                B
-              </button>
-              <button
-                type="button"
-                title="기울임"
-                style={{
-                  padding: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontStyle: 'italic'
-                }}
-              >
-                I
-              </button>
-              <button
-                type="button"
-                title="링크"
-                style={{
-                  padding: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
-                }}
-              >
-                🔗
-              </button>
-              <button
-                type="button"
-                title="이미지"
-                style={{
-                  padding: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
-                }}
-              >
-                📷
-              </button>
-            </div>
-
-            <textarea
-              id="post-content"
+            <RichEditor
+              value={content}
+              onChange={setContent}
+              minRows={12}
+              maxLength={20000}
+              disabled={submitting}
               placeholder="마크다운 형식으로 작성할 수 있습니다.
 
 예시:
@@ -338,35 +264,19 @@ export default function PostCreateModal({
 - 목록 항목
 **굵은 글씨**
 [링크](https://example.com)"
-              maxLength={20000}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                minHeight: '300px',
-                padding: '0.75rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0 0 8px 8px',
-                fontSize: '0.95rem',
-                resize: 'vertical',
-                fontFamily: 'inherit'
-              }}
+              onSubmitShortcut={submitPost}
+              helperText={EDITOR_USAGE_GUIDE}
             />
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               marginTop: '0.5rem',
-              fontSize: '0.8125rem',
-              color: content.length > 18000 ? '#ef4444' : '#6b7280'
+              fontSize: '0.75rem',
+              color: content.trim().length < MIN_CONTENT_LENGTH ? '#ef4444' : '#6b7280'
             }}>
-              <span>
-                {content.length > 0 && content.length < 20 && (
-                  <span style={{ color: '#ef4444' }}>최소 20자</span>
-                )}
-              </span>
-              <span>{updateCharCounter(content.length, 20000)}</span>
+              <span>최소 {MIN_CONTENT_LENGTH}자 이상 작성해주세요.</span>
+              <span>Ctrl + Enter로 빠른 등록</span>
             </div>
           </div>
 

@@ -31,20 +31,14 @@ export async function GET(request: NextRequest) {
         type,
         title,
         message,
-        priority,
+        is_read,
+        created_at,
         related_id,
         related_type,
-        action_url,
-        metadata,
-        is_read,
         channels,
-        read_at,
-        expires_at,
-        created_at,
         user_id
       `)
       .eq('user_id', user.id)
-      .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -101,12 +95,8 @@ export async function POST(request: NextRequest) {
       type,
       title,
       message,
-      priority = 'medium',
       related_id = null,
       related_type = null,
-      action_url = null,
-      metadata = {},
-      expires_at = null,
       channels = ['in_app']
     } = body
 
@@ -117,18 +107,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    // Validate priority
-    if (!['low', 'medium', 'high', 'urgent'].includes(priority)) {
-      return NextResponse.json(
-        { error: 'priority must be one of: low, medium, high, urgent' },
-        { status: 400 }
-      )
-    }
-
-    // Set default expiration (30 days from now)
-    const defaultExpiration = new Date()
-    defaultExpiration.setDate(defaultExpiration.getDate() + 30)
 
     const supabase = await createSupabaseServerClient()
     if (!supabase) {
@@ -143,12 +121,8 @@ export async function POST(request: NextRequest) {
         type,
         title,
         message,
-        priority,
         related_id,
         related_type,
-        action_url,
-        metadata,
-        expires_at: expires_at || defaultExpiration.toISOString(),
         is_read: false,
         is_email_sent: false,
         is_push_sent: false,

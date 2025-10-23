@@ -5,6 +5,16 @@ import { Database } from './lib/supabase'
 import { addSecurityHeaders, validateCSRFToken } from '@/lib/middleware/security-headers'
 import { systemMetrics } from '@/lib/monitoring/system-metrics'
 
+const sanitizeCookieValue = (value?: string | null) => {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1)
+  }
+  return trimmed.replace(/"/g, '')
+}
+
 export async function middleware(request: NextRequest) {
   const start = Date.now()
 
@@ -35,7 +45,7 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         get(name: string) {
-          return request.cookies.get(name)?.value
+          return sanitizeCookieValue(request.cookies.get(name)?.value)
         },
         set(name: string, value: string, options: any) {
           // Apply the cookie to the request
@@ -78,11 +88,11 @@ export async function middleware(request: NextRequest) {
           })
         },
       },
+      cookieEncoding: 'base64url',
     }
   )
 
-  // 🎭 MOCK MODE: 개발 중에는 인증 체크 비활성화
-  const isMockMode = process.env.NODE_ENV === 'development'
+  const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true'
 
   let session = null
 

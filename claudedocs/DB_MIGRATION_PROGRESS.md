@@ -1,7 +1,18 @@
-# 🗄️ DB 연동 진행 상황
+# 🗄️ DB 연동 진행 상황 (히스토리 전용)
+
+> 진행 상황 체크리스트의 단일 기준점은 `claudedocs/PROGRESS.md` 입니다. 이 문서는 히스토리/세부 계획 참고용으로 유지됩니다.
 
 **진행률**: 18% (완료 19 / 전체 108)
 **현재 Phase**: Phase 1.1.5 - Google 로그인 연동 (최우선)
+
+---
+
+### 2025-10-27 점검 메모
+- [ ] Supabase 환경 변수 미설정 시 mock 모드 진입 확인 (`lib/supabase-client.ts`, `lib/hooks/useAuth.ts`), 예외처리 및 배포 체크리스트 필요
+- [ ] `app/page.tsx` 타입 오류(중복 타입 선언, 존재하지 않는 `User` 타입 참조) → DTO 정리 후 TS 빌드 통과 확인
+- [ ] 검색/전문가 매칭/알림 API mock 가드 제거 및 최소 조회 기능 실데이터 연결 계획 수립
+- [ ] 온보딩/알림 설정 로컬스토리지 의존 → 서버 저장 전환 로드맵 명시
+- [ ] Persona 기반 QA 시나리오(질문 작성 → 답변 확인) 문서화 및 Supabase 실데이터 확보(시드 + 기본 콘텐츠)
 
 ---
 
@@ -68,17 +79,17 @@
 ---
 
 ### 1.2 질문 데이터 (questions 테이블)
-- [ ] Mock 데이터 분석 및 선정 (카테고리별 2-3개, 총 16-24개)
-- [ ] category_id 매핑 (17-24)
-- [ ] author_id 매핑 (1.1 사용자 UUID 사용)
-- [ ] scripts/2-seed-questions.sql 작성
+- [x] Mock 데이터 분석 및 선정 (카테고리별 2-3개, 총 16-24개)
+- [x] category_id 매핑 (17-24)
+- [x] author_id 매핑 (1.1 사용자 UUID 사용)
+- [x] scripts/2-seed-questions.sql 작성 (24개)
 - [ ] claudedocs/backup-mockdata/questions-full.json 백업 생성
 - [ ] SQL 실행 (Supabase SQL Editor)
 - [ ] 검증: questions 테이블 데이터 확인
-- [ ] 검증: 메인 페이지 질문 표시 확인 (http://localhost:3000)
+- [ ] 검증: 메인/카테고리/팔로잉에서 질문 표시 확인
 - [ ] 검증: 질문 상세 페이지 동작 확인
 
-**상태**: ⚪ 대기 중
+**상태**: 🟡 스크립트 작성 완료 → 실행 대기
 **의존성**: 1.1 완료 필요
 **담당**: -
 **시작**: -
@@ -87,18 +98,18 @@
 ---
 
 ### 1.3 답변 데이터 (answers 테이블)
-- [ ] Mock 데이터 분석 및 선정 (질문당 2-4개, 총 32-96개)
+- [x] Mock 데이터 분석 및 선정 (질문당 2-4개, 총 32-96개)
+- [x] scripts/3-seed-answers.sql 작성
 - [ ] question_id 매핑 (1.2 질문 UUID 사용)
 - [ ] author_id 매핑 (1.1 사용자 UUID 사용)
 - [ ] Certified User 답변 우선 포함
-- [ ] scripts/3-seed-answers.sql 작성
 - [ ] claudedocs/backup-mockdata/answers-full.json 백업 생성
 - [ ] SQL 실행 (Supabase SQL Editor)
 - [ ] 검증: answers 테이블 데이터 확인
 - [ ] 검증: 질문 상세 페이지 답변 표시 확인
 - [ ] 검증: Certified User 답변 배지 표시 확인
 
-**상태**: ⚪ 대기 중
+**상태**: 🟡 스크립트 작성 완료 → 실행 대기
 **의존성**: 1.2 완료 필요
 **담당**: -
 **시작**: -
@@ -145,8 +156,7 @@
 ---
 
 ### 2.3 북마크 시스템 (bookmarks 테이블 - 신규)
-- [ ] bookmarks 테이블 스키마 설계
-- [ ] scripts/6-create-bookmarks-table.sql 작성
+- [x] scripts/6-create-bookmarks-table.sql 작성
 - [ ] SQL 실행 (Supabase SQL Editor)
 - [ ] API 개발: GET /api/bookmarks (사용자 북마크 목록)
 - [ ] API 개발: POST /api/bookmarks (북마크 추가)
@@ -155,7 +165,7 @@
 - [ ] 검증: /bookmarks 페이지 동작 확인
 - [ ] 검증: 북마크 추가/삭제 동작
 
-**상태**: ⚪ 대기 중
+**상태**: 🟡 스키마 스크립트 완료 → 실행 대기
 **의존성**: Phase 1 완료 필요
 **담당**: -
 **시작**: -
@@ -198,19 +208,16 @@
 ---
 
 ### 3.3 팔로우 시스템 (user_follows, topic_subscriptions 테이블 - 신규)
-- [ ] user_follows 테이블 스키마 작성
+- [x] user_follows 테이블 스키마 + RLS 작성(`supabase/migrations/009_create_user_follows.sql`)
 - [ ] topic_subscriptions 테이블 스키마 작성
-- [ ] scripts/9-create-follows-table.sql 작성
-- [ ] SQL 실행 (Supabase SQL Editor)
-- [ ] API 개발: GET /api/following/feed (팔로잉 피드)
-- [ ] API 개발: POST /api/users/[id]/follow (사용자 팔로우)
-- [ ] API 개발: DELETE /api/users/[id]/follow (언팔로우)
-- [ ] API 개발: POST /api/topics/[id]/subscribe (토픽 구독)
-- [ ] 팔로우 버튼 DB 연동 (localStorage 대체)
-- [ ] 검증: /following 페이지 동작
+- [x] API 개발: POST /api/users/[id]/follow (사용자 팔로우)
+- [x] API 개발: DELETE /api/users/[id]/follow (언팔로우)
+- [ ] API 개발: GET /api/following/feed (옵션)
+- [x] 팔로우 버튼 DB 연동(일부 페이지 적용, 낙관적 갱신 최소형)
+- [ ] 검증: /following 페이지 서버 피드 완전 전환(로그인 필요)
 - [ ] 검증: 토픽 구독 버튼 동작
 
-**상태**: ⚪ 대기 중
+**상태**: 🟡 API/DDL 일부 완료 → 마이그레이션/페이지 반영 진행 중
 **의존성**: Phase 1 완료 필요
 **담당**: -
 **시작**: -

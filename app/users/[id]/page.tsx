@@ -3,12 +3,49 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
-import { MOCK_QUESTIONS, MOCK_POSTS, MOCK_ANSWERS, type User, type Question, type Post, type Answer } from '@/lib/data/mockData'
+import Sidebar from '@/components/layout/Sidebar'
+
+type ActivityQuestion = {
+  id: string
+  title: string
+  content: string
+  votes: number
+  answerCount: number
+  views: number
+  createdAt: string
+}
+
+type ActivityPost = {
+  id: string
+  title: string
+  content: string
+  votes: number
+  commentCount: number
+  views: number
+  createdAt: string
+}
+
+type ActivityAnswer = {
+  id: string
+  content: string
+  helpful: number
+  questionId: string
+  questionTitle: string | null
+  createdAt: string
+}
 
 type UserActivity = {
-  questions: Question[]
-  posts: Post[]
-  answers: Answer[]
+  questions: ActivityQuestion[]
+  posts: ActivityPost[]
+  answers: ActivityAnswer[]
+}
+
+type ProfileUser = {
+  id: string
+  name: string
+  role: string | null
+  visa_type?: string | null
+  years_in_korea?: number | null
 }
 
 export default function UserProfilePage() {
@@ -16,86 +53,132 @@ export default function UserProfilePage() {
   const router = useRouter()
   const userId = params.id as string
 
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<ProfileUser | null>(null)
   const [activity, setActivity] = useState<UserActivity>({ questions: [], posts: [], answers: [] })
   const [activeTab, setActiveTab] = useState<'questions' | 'posts' | 'answers'>('questions')
   const [isFollowing, setIsFollowing] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
     checkAuth()
-    loadUserProfile()
+    void loadUserProfile()
   }, [userId])
+
+  useEffect(() => {
+    if (!userId || !isLoggedIn) return
+    void refreshFollowStatus()
+  }, [isLoggedIn, userId])
 
   async function checkAuth() {
     try {
-      const mockSession = localStorage.getItem('mock_session')
-      const mockUser = localStorage.getItem('mock_user')
-      const onboardingCompleted = localStorage.getItem('vietkconnect_onboarded')
-
-      if (mockSession === 'true' && mockUser && onboardingCompleted === 'true') {
-        setIsLoggedIn(true)
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error)
-    }
-  }
-
-  function loadUserProfile() {
-    try {
-      // Find user from questions, posts, or answers
-      let foundUser: User | null = null
-
-      // Search in questions
-      const userQuestion = MOCK_QUESTIONS.find(q => q.author?.id === userId)
-      if (userQuestion) {
-        foundUser = userQuestion.author
-      }
-
-      // Search in posts
-      if (!foundUser) {
-        const userPost = MOCK_POSTS.find(p => p.author?.id === userId)
-        if (userPost) {
-          foundUser = userPost.author
-        }
-      }
-
-      // Search in answers
-      if (!foundUser) {
-        const userAnswer = MOCK_ANSWERS.find(a => a.author?.id === userId)
-        if (userAnswer) {
-          foundUser = userAnswer.author
-        }
-      }
-
-      if (!foundUser) {
-        console.error('User not found:', userId)
-        setLoading(false)
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+      if (!res.ok) {
+        setIsLoggedIn(false)
+        setCurrentUserId(null)
         return
       }
 
-      setUser(foundUser)
+      const json = await res.json().catch(() => null)
+      const profile = json?.data
+      setIsLoggedIn(true)
+      setCurrentUserId(profile?.id ?? null)
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      setIsLoggedIn(false)
+      setCurrentUserId(null)
+    }
+  }
 
-      // Load user activity
-      const userQuestions = MOCK_QUESTIONS.filter(q => q.author?.id === userId)
-      const userPosts = MOCK_POSTS.filter(p => p.author?.id === userId)
-      const userAnswers = MOCK_ANSWERS.filter(a => a.author?.id === userId)
+  async function loadUserProfile(): Promise<void> {
+    try {
+      setLoading(true)
+      const res = await fetch(`/api/users/${userId}`, { cache: 'no-store' })
+      if (!res.ok) {
+        setUser(null)
+        setActivity({ questions: [], posts: [], answers: [] })
+        return
+      }
 
-      setActivity({
-        questions: userQuestions,
-        posts: userPosts,
-        answers: userAnswers
+      const json = await res.json().catch(() => null)
+      const apiUser = json?.data?.user
+      if (!apiUser) {
+        setUser(null)
+        return
+      }
+
+      setUser({
+        id: apiUser.id,
+        name: apiUser.name || apiUser.email || '사용자',
+        role: apiUser.role ?? null,
+        visa_type: apiUser.visa_type ?? null,
+        years_in_korea: apiUser.years_in_korea ?? null,
       })
 
-      // Check follow status
-      const followedUsers = JSON.parse(localStorage.getItem('followed_users') || '[]')
-      setIsFollowing(followedUsers.includes(userId))
+      const apiActivity = json?.data?.activity ?? {}
+      const mappedQuestions: ActivityQuestion[] = Array.isArray(apiActivity.questions)
+        ? apiActivity.questions.map((question: any) => ({
+            id: question.id,
+            title: question.title,
+            content: question.content,
+            votes: question.upvote_count ?? question.votes ?? 0,
+            answerCount: question.answer_count ?? 0,
+            views: question.view_count ?? 0,
+            createdAt: question.created_at ?? new Date().toISOString(),
+          }))
+        : []
 
-      setLoading(false)
+      const mappedPosts: ActivityPost[] = Array.isArray(apiActivity.posts)
+        ? apiActivity.posts.map((post: any) => ({
+            id: post.id,
+            title: post.title,
+            content: post.content,
+            votes: post.helpful_count ?? post.votes ?? 0,
+            commentCount: post.comment_count ?? 0,
+            views: post.view_count ?? 0,
+            createdAt: post.created_at ?? new Date().toISOString(),
+          }))
+        : []
+
+      const mappedAnswers: ActivityAnswer[] = Array.isArray(apiActivity.answers)
+        ? apiActivity.answers.map((answer: any) => ({
+            id: answer.id,
+            content: answer.content,
+            helpful: answer.helpful_count ?? answer.helpful ?? 0,
+            questionId: answer.question_id ?? '',
+            questionTitle: answer.questionTitle ?? answer.question?.title ?? null,
+            createdAt: answer.created_at ?? new Date().toISOString(),
+          }))
+        : []
+
+      setActivity({
+        questions: mappedQuestions,
+        posts: mappedPosts,
+        answers: mappedAnswers,
+      })
     } catch (error) {
       console.error('Failed to load user profile:', error)
+      setUser(null)
+      setActivity({ questions: [], posts: [], answers: [] })
+    } finally {
       setLoading(false)
+    }
+  }
+
+  async function refreshFollowStatus() {
+    try {
+      const res = await fetch('/api/users/following', { cache: 'no-store' })
+      if (!res.ok) {
+        setIsFollowing(false)
+        return
+      }
+      const json = await res.json().catch(() => null)
+      const followedIds: string[] = Array.isArray(json?.data) ? json.data : []
+      setIsFollowing(followedIds.includes(userId))
+    } catch (error) {
+      console.error('Failed to refresh follow status:', error)
+      setIsFollowing(false)
     }
   }
 
@@ -106,21 +189,36 @@ export default function UserProfilePage() {
       return
     }
 
-    const followedUsers = JSON.parse(localStorage.getItem('followed_users') || '[]')
-
-    if (isFollowing) {
-      // Unfollow
-      const updated = followedUsers.filter((id: string) => id !== userId)
-      localStorage.setItem('followed_users', JSON.stringify(updated))
-      setIsFollowing(false)
-      alert(`${user?.name}님을 언팔로우했습니다`)
-    } else {
-      // Follow
-      followedUsers.push(userId)
-      localStorage.setItem('followed_users', JSON.stringify(followedUsers))
-      setIsFollowing(true)
-      alert(`${user?.name}님을 팔로우했습니다`)
+    if (currentUserId && currentUserId === userId) {
+      alert('자기 자신은 팔로우할 수 없습니다.')
+      return
     }
+
+    const method = isFollowing ? 'DELETE' : 'POST'
+
+    fetch(`/api/users/${userId}/follow`, { method })
+      .then(async (response) => {
+        const json = await response.json().catch(() => null)
+
+        if (!response.ok || json?.success === false) {
+          const message = json?.error || '팔로우 처리 중 오류가 발생했습니다.'
+          alert(message)
+          return
+        }
+
+        const nextStatus =
+          typeof json?.isFollowing === 'boolean' ? json.isFollowing : !isFollowing
+        setIsFollowing(nextStatus)
+        alert(
+          nextStatus
+            ? `${user?.name ?? '사용자'}님을 팔로우했습니다`
+            : `${user?.name ?? '사용자'}님을 언팔로우했습니다`
+        )
+      })
+      .catch((error) => {
+        console.error('Follow toggle failed:', error)
+        alert('팔로우 처리 중 오류가 발생했습니다.')
+      })
   }
 
   function formatDate(dateString: string) {
@@ -131,7 +229,7 @@ export default function UserProfilePage() {
   if (loading) {
     return (
       <PageLayout variant="centered">
-        <div className="section profile-loading">로딩 중...</div>
+        <div className="section profile-loading notranslate" translate="no" suppressHydrationWarning>로딩 중...</div>
       </PageLayout>
     )
   }
@@ -163,18 +261,20 @@ export default function UserProfilePage() {
             <div className="profile-info">
               <h1 className="profile-name">{user.name}</h1>
               <div className="profile-meta">
-                {user.visaType && <span className="profile-meta-item">📋 {user.visaType}</span>}
-                {user.yearsInKorea && <span className="profile-meta-item">🇰🇷 한국 {user.yearsInKorea}년차</span>}
+                {user.visa_type && <span className="profile-meta-item">📋 {user.visa_type}</span>}
+                {user.years_in_korea && <span className="profile-meta-item">🇰🇷 한국 {user.years_in_korea}년차</span>}
                 {user.role === 'verified' && <span className="profile-meta-item">✅ Certified User</span>}
                 {user.role === 'admin' && <span className="profile-meta-item">👑 관리자</span>}
               </div>
             </div>
-            <button
-              className={`profile-follow-btn ${isFollowing ? 'following' : ''}`}
-              onClick={handleFollow}
-            >
-              {isFollowing ? 'Following' : 'Follow'}
-            </button>
+            {user && currentUserId !== userId && (
+              <button
+                className={`profile-follow-btn ${isFollowing ? 'following' : ''}`}
+                onClick={handleFollow}
+              >
+                {isFollowing ? 'Following' : 'Follow'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -236,9 +336,9 @@ export default function UserProfilePage() {
                         : question.content}
                     </p>
                     <div className="activity-meta">
-                      <span>👍 {question.votes}</span>
-                      <span>💬 {question.answerCount}개 답변</span>
-                      <span>👁️ {question.views}</span>
+                      <span>👍 {question.votes ?? 0}</span>
+                      <span>💬 {question.answerCount ?? 0}개 답변</span>
+                      <span>👁️ {question.views ?? 0}</span>
                       <span className="activity-date">{formatDate(question.createdAt)}</span>
                     </div>
                   </div>
@@ -265,9 +365,9 @@ export default function UserProfilePage() {
                         : post.content}
                     </p>
                     <div className="activity-meta">
-                      <span>👍 {post.votes}</span>
-                      <span>💬 {post.commentCount}개 댓글</span>
-                      <span>👁️ {post.views}</span>
+                      <span>👍 {post.votes ?? 0}</span>
+                      <span>💬 {post.commentCount ?? 0}개 댓글</span>
+                      <span>👁️ {post.views ?? 0}</span>
                       <span className="activity-date">{formatDate(post.createdAt)}</span>
                     </div>
                   </div>
@@ -290,7 +390,7 @@ export default function UserProfilePage() {
                     <p className="activity-content">{answer.content}</p>
                     <div className="activity-meta">
                       <span>👍 {answer.helpful}</span>
-                      <span>💬 {answer.commentCount}개 댓글</span>
+                      {answer.questionTitle && <span>📌 {answer.questionTitle}</span>}
                       <span className="activity-date">{formatDate(answer.createdAt)}</span>
                     </div>
                   </div>

@@ -13,19 +13,21 @@
   - centered: <main.main-layout> → <div.main-container.centered> 또는 <div>
 - Sidebar 정책
   - 기본: 질문/답변/홈에서는 노출, 그 외 페이지는 미노출(또는 centered)
+  - sticky top 오프셋: `top = var(--header-height) + var(--sidebar-gap-top, -32px)` 유지, 필요 시 페이지 단위 override
 
 2) CSS/토큰
 - 디자인 토큰: styles/design-system.css:1 기준 사용
 - 전역 유틸은 Tailwind와 중복되지 않게 유지. 신규 커스텀 유틸은 접두사 `vk-` 권장
 - 레이아웃 변수: app/globals.css:200-260의 `--content-width`, `--sidebar-width`, `--layout-gap` 활용
+- 사이드바 상단 여백: sticky top 24px 고정(헤더 높이 포함). 상단 배너는 독립 컨테이너(`.sidebar-upper`)로 분리하고 뉴스 카드만 sticky.
 
 3) 컴포넌트 패턴
 - Header: 공통 헤더 유지, 툴팁/검색/언어 드롭다운 일관
 - ActionBar: 공유/북마크/도움됨 동작 패턴 재사용
 - Cards/Buttons: design-system의 기본 스타일 + 변형만 적용
 - 배너 정책
-  - 대형 이벤트 배너(.event-banner): 데스크톱 240px / 모바일 210px 고정 높이, 푸터 64px 예약, 본문은 내부 스크롤. 제목/설명은 지정 줄수(말줄임) 유지.
-  - 가로 배너(.event-banner-horizontal): 제목 1줄, 설명 2줄 -webkit-line-clamp. 스크롤 금지.
+  - 홈 이벤트 캐러셀: `components/banners/BannerCarousel.tsx`, 슬라이드 최대 높이 180px(모바일 160px), 다국어 텍스트는 내부 스크롤로 처리.
+  - 가로 배너(.event-banner, legacy): 제목 1줄, 설명 2줄 `-webkit-line-clamp` 유지. 단계적으로 재정비 예정.
   - 사이드바 카드(뉴스/인증): 카드 전체 높이 동일(기본 420px), 헤더/푸터 고정, 본문만 overflow-y:auto.
 - 사이드바: 컨테이너 기준 `position: sticky` 사용, 하드코딩 오프셋 금지.
 

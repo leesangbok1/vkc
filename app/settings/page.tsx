@@ -26,18 +26,22 @@ export default function SettingsPage() {
     loadUserProfile()
   }, [])
 
-  function loadUserProfile() {
-    // Mock user data - 실제로는 API에서 가져옴
-    setTimeout(() => {
-      const mockUser = localStorage.getItem('mock_user')
-      if (mockUser) {
-        const user = JSON.parse(mockUser)
-        setUserName(user.name || 'Test User')
-        setUserEmail(user.email || 'test@vietkconnect.com')
+  async function loadUserProfile() {
+    try {
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+      if (!res.ok) {
+        router.push('/auth/login?redirectTo=/settings')
+        return
       }
+      const { data } = await res.json()
+      setUserName(data?.name || '사용자')
+      setUserEmail(data?.email || '')
       setUserExpertise('IT 컨설팅')
       setUserBio('10년차 IT 컨설턴트로, 중소기업의 디지털 전환을 도와드립니다.')
-    }, 500)
+    } catch (e) {
+      console.error('Failed to load settings profile:', e)
+      router.push('/auth/login?redirectTo=/settings')
+    }
   }
 
   function handleProfileSubmit(e: React.FormEvent) {

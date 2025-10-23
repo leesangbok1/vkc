@@ -1,6 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import BannerCarousel from '@/components/banners/BannerCarousel'
+
+type Banner = {
+  id: string
+  title: string
+  description: string
+  linkUrl: string
+  backgroundColor?: string
+}
+
+type NewsItem = {
+  id: string
+  title: string
+  created_at: string
+  category?: { name?: string | null; icon?: string | null } | null
+}
 
 /**
  * Sidebar Component
@@ -16,8 +32,16 @@ import { useState, useEffect } from 'react'
  * <Sidebar showContent={true} />  // 메인, 질문 페이지
  * <Sidebar showContent={false} /> // 설정, 알림 등
  */
-export default function Sidebar({ showContent = true }: { showContent?: boolean }) {
+type SidebarProps = {
+  showContent?: boolean
+  banners?: Banner[]
+}
+
+export default function Sidebar({ showContent = true, banners }: SidebarProps) {
   const [currentTime, setCurrentTime] = useState('')
+  const [newsLoading, setNewsLoading] = useState(true)
+  const [newsError, setNewsError] = useState<string | null>(null)
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([])
 
   useEffect(() => {
     // 실시간 시계 업데이트
@@ -34,31 +58,51 @@ export default function Sidebar({ showContent = true }: { showContent?: boolean 
     return () => clearInterval(interval) // cleanup
   }, [])
 
+  useEffect(() => {
+    async function loadNews() {
+      setNewsLoading(true)
+      setNewsError(null)
+      try {
+        const res = await fetch('/api/posts?sort=recent&limit=5&post_type=news', { cache: 'no-store' })
+        if (!res.ok) {
+          throw new Error(`failed ${res.status}`)
+        }
+        const json = await res.json().catch(() => null)
+        const items = Array.isArray(json?.items)
+          ? json.items.map((item: any) => ({
+              id: String(item?.id ?? ''),
+              title: item?.title ?? '제목 없음',
+              created_at: item?.created_at ?? new Date().toISOString(),
+              category: item?.category ?? null,
+            }))
+          : []
+        setNewsItems(items.filter((item) => item.id.length > 0))
+      } catch (error) {
+        console.error('[Sidebar] failed to load news', error)
+        setNewsItems([])
+        setNewsError('최근 정보 글을 불러오지 못했습니다.')
+      } finally {
+        setNewsLoading(false)
+      }
+    }
+
+    loadNews()
+  }, [])
+
   // 빈 사이드바 (질문/답변 페이지가 아닌 경우)
   if (!showContent) {
     return <div className="sidebar sidebar-sticky"></div>
   }
 
+  const bannerSlides = useMemo(() => (
+    (banners ?? []).slice(0, 4)
+  ), [banners])
+
   return (
     <div className="sidebar sidebar-sticky">
-      {/* Advertisement Banner - Certified User 인증 (최근 기사 스타일) */}
-      <div className="sidebar-card sidebar-banner-card">
-        <div className="sidebar-banner-header">
-          <h3 className="sidebar-title">✅ 경험 인증으로 신뢰도 높이기</h3>
-        </div>
-
-        <div className="sidebar-banner-content">
-          <p className="banner-description" style={{ textAlign: 'center', fontSize: '0.95rem', fontWeight: 500 }}>
-            "<span style={{ color: '#2563eb', fontWeight: 700 }}>실제 경험</span>을 <span style={{ color: '#059669', fontWeight: 700 }}>검증된 지식</span>으로 전환하세요"
-          </p>
-          <ul className="banner-benefits">
-            <li>외국인등록증, 재직/재학증명서로 인증</li>
-            <li>24시간 내 관리자 심사 완료</li>
-            <li>프로필에 <strong>인증 뱃지</strong> 표시</li>
-          </ul>
-          <a href="/experts/apply" className="banner-action-btn">Certified User 인증 신청하기</a>
-        </div>
-      </div>
+      {bannerSlides.length > 0 && (
+        <BannerCarousel banners={bannerSlides} variant="sidebar" />
+      )}
 
       {/* Popular News */}
       <div className="sidebar-card sidebar-news-card">
@@ -67,46 +111,65 @@ export default function Sidebar({ showContent = true }: { showContent?: boolean 
         </div>
 
         <div className="sidebar-news-list">
-          <div className="news-item-card">
-            <div className="news-item-content">
-              <div className="news-item-title">2025년 E-9 비자 쿼터 확대 발표</div>
-              <div className="news-item-meta">
-                <span className="news-item-time">2시간 전</span>
-                <a href="/posts/1" className="news-detail-btn">자세히</a>
+          {newsLoading ? (
+            <div className="news-item-card">
+              <div className="news-item-content">
+                <div className="news-item-title" style={{ color: '#9ca3af' }}>기사 정보를 불러오는 중...</div>
               </div>
             </div>
-          </div>
-
-          <div className="news-item-card">
-            <div className="news-item-content">
-              <div className="news-item-title">한국어능력시험(TOPIK) 접수 안내</div>
-              <div className="news-item-meta">
-                <span className="news-item-time">5시간 전</span>
-                <a href="/posts/2" className="news-detail-btn">자세히</a>
+          ) : newsError ? (
+            <div className="news-item-card">
+              <div className="news-item-content">
+                <div className="news-item-title" style={{ color: '#ef4444' }}>{newsError}</div>
               </div>
             </div>
-          </div>
-
-          <div className="news-item-card">
-            <div className="news-item-content">
-              <div className="news-item-title">베트남인 근로자 최저임금 인상</div>
-              <div className="news-item-meta">
-                <span className="news-item-time">1일 전</span>
-                <a href="/posts/3" className="news-detail-btn">자세히</a>
+          ) : newsItems.length === 0 ? (
+            <div className="news-item-card">
+              <div className="news-item-content">
+                <div className="news-item-title" style={{ color: '#9ca3af' }}>등록된 정보 글이 없습니다.</div>
               </div>
             </div>
-          </div>
+          ) : (
+            newsItems.map((item) => {
+              const timeLabel = formatRelativeTime(item.created_at)
+              return (
+                <a
+                  key={item.id}
+                  className="news-item-card news-item-link"
+                  href={`/posts/${item.id}`}
+                >
+                  <div className="news-item-content">
+                    <div className="news-item-title">
+                      {item.category?.icon && <span style={{ marginRight: '0.5rem' }}>{item.category.icon}</span>}
+                      {item.title}
+                    </div>
+                    <div className="news-item-meta">
+                      <span className="news-item-time">{timeLabel}</span>
+                      <span className="news-detail-btn">자세히</span>
+                    </div>
+                  </div>
+                </a>
+              )
+            })
+          )}
         </div>
 
-        <div className="sidebar-news-footer">
-          <a href="/posts" className="news-more-button">
-            전체 기사 보기
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </a>
-        </div>
       </div>
     </div>
   )
+}
+
+function formatRelativeTime(dateString: string) {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+
+  if (diffMs < minute) return '방금 전'
+  if (diffMs < hour) return `${Math.floor(diffMs / minute)}분 전`
+  if (diffMs < day) return `${Math.floor(diffMs / hour)}시간 전`
+  if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}일 전`
+  return date.toLocaleDateString('ko-KR')
 }

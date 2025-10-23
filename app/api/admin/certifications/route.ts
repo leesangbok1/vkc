@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 export async function GET(request: NextRequest) {
   try {
     // Get session to verify admin access
-    const supabase = await createClient()
+    const supabase = await createSupabaseServerClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -16,12 +16,16 @@ export async function GET(request: NextRequest) {
 
     // Check if user is admin
     const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('role')
+      .from('users')
+      .select('role, admin_yn')
       .eq('id', session.user.id)
-      .single()
+      .maybeSingle()
 
-    if (userError || userData?.role !== 'ADMIN') {
+    const isAdmin =
+      userData?.admin_yn === 'Y' ||
+      userData?.role === 'admin'
+
+    if (userError || !isAdmin) {
       return NextResponse.json(
         { error: 'Forbidden - Admin access required' },
         { status: 403 }
@@ -39,11 +43,12 @@ export async function GET(request: NextRequest) {
       .from('certification_requests')
       .select(`
         *,
-        user:profiles!user_id(
+        user:users!user_id(
           id,
           name,
           email,
-          role
+          role,
+          admin_yn
         )
       `)
       .order('created_at', { ascending: false })

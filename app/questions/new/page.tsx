@@ -2,90 +2,177 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
 import PageLayout from '@/components/layout/PageLayout'
 import NotificationSetupModal from '@/components/modals/NotificationSetupModal'
-import { CATEGORIES } from '@/lib/data/categories-mock'
+import RichEditor from '@/components/editor/RichEditor'
+import { EDITOR_USAGE_GUIDE } from '@/lib/constants/editor'
 
 export default function NewQuestionPage() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [categories, setCategories] = useState<Array<{ id: number; name: string; icon?: string | null }>>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [categoryError, setCategoryError] = useState<string | null>(null)
 
-  // 인증 확인 - Mock 세션 지원
+  // 인증 확인
   useEffect(() => {
+    let cancelled = false
+
     const checkAuth = async () => {
-      // 🎭 MOCK: localStorage에서 mock session 체크
-      const mockSession = localStorage.getItem('mock_session')
-      const mockUser = localStorage.getItem('mock_user')
-      const onboardingCompleted = localStorage.getItem('vietkconnect_onboarded')
-
-      if (mockSession === 'true' && mockUser && onboardingCompleted === 'true') {
-        // Mock 로그인 사용자 - 인증 완료
-        setIsAuthenticated(true)
-        return
-      }
-
-      // Real Supabase 인증 체크 (production용)
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-
-      const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session) {
-        // 로그인 안 된 경우 로그인 페이지로 리다이렉트
+      try {
+        const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+        if (!res.ok) {
+          router.push('/auth/login?redirectTo=/questions/new')
+          return
+        }
+        if (!cancelled) {
+          setIsAuthenticated(true)
+        }
+      } catch (error) {
+        console.error('[QuestionNew] auth check failed', error)
         router.push('/auth/login?redirectTo=/questions/new')
-      } else {
-        setIsAuthenticated(true)
       }
     }
 
     checkAuth()
+
+    return () => {
+      cancelled = true
+    }
   }, [router])
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [categoryId, setCategoryId] = useState('1') // 기본값: 첫 번째 카테고리
+  const [categoryId, setCategoryId] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
   const [showNotificationModal, setShowNotificationModal] = useState(false)
   const [userEmail, setUserEmail] = useState('')
 
   // 사용자 이메일 로드
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('mock_user') || '{}')
-    setUserEmail(user.email || '')
+    async function loadProfileEmail() {
+      try {
+        const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+        if (!res.ok) return
+        const json = await res.json()
+        const email = json?.data?.email
+        if (typeof email === 'string') {
+          setUserEmail(email)
+        }
+      } catch (profileError) {
+        console.warn('[QuestionNew] failed to load user email', profileError)
+      }
+    }
+
+    loadProfileEmail()
   }, [])
 
-  // 문자 카운터 업데이트
-  const updateCharCounter = (current: number, max: number) => {
-    return `${current} / ${max}`
-  }
+  useEffect(() => {
+    if (isAuthenticated === false) return
+    let ignore = false
 
-  // 폼 유효성 검사
-  const isValid = title.trim().length >= 5 && content.trim().length >= 10
+    const loadCategories = async () => {
+      setLoadingCategories(true)
+      setCategoryError(null)
+      try {
+        const res = await fetch('/api/categories', { cache: 'no-store', credentials: 'include' })
+        if (!res.ok) {
+          throw new Error(`failed ${res.status}`)
+        }
+        const json = await res.json().catch(() => null)
+        const items = Array.isArray(json?.data) ? json.data : []
+        const mapped = items
+          .map((item: any) => ({
+            id: Number(item?.id),
+            name: item?.name ?? '카테고리',
+            icon: item?.icon ?? null,
+          }))
+          .filter((item) => Number.isFinite(item.id))
+
+        if (!ignore) {
+          setCategories(mapped)
+          setCategoryId((prev) => {
+            if (prev) return prev
+            const first = mapped[0]
+            return first ? String(first.id) : ''
+          })
+        }
+      } catch (error) {
+        console.error('[QuestionNew] failed to load categories', error)
+        if (!ignore) {
+          setCategories([])
+          setCategoryError('카테고리를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+          setCategoryId('')
+        }
+      } finally {
+        if (!ignore) setLoadingCategories(false)
+      }
+    }
+
+    loadCategories()
+    return () => {
+      ignore = true
+    }
+  }, [isAuthenticated])
+
+  const MIN_TITLE_LENGTH = 5
+  const MIN_CONTENT_LENGTH = 10
+
+  const isValid =
+    title.trim().length >= MIN_TITLE_LENGTH &&
+    content.trim().length >= MIN_CONTENT_LENGTH &&
+    categoryId !== ''
+
+  const persistNotificationSettings = (patch: Record<string, unknown>) => {
+    if (typeof window === 'undefined') return
+    try {
+      const currentRaw = window.localStorage.getItem('notification_settings')
+      const current = currentRaw ? JSON.parse(currentRaw) : {}
+      const next = {
+        ...current,
+        ...patch,
+      }
+      window.localStorage.setItem('notification_settings', JSON.stringify(next))
+    } catch (error) {
+      console.warn('[QuestionNew] failed to persist notification settings', error)
+    }
+  }
 
   // 알림 설정 완료 여부 체크
   const shouldShowNotificationModal = () => {
-    const notifSettings = localStorage.getItem('notification_settings')
+    if (typeof window === 'undefined') return false
+    const notifSettings = window.localStorage.getItem('notification_settings')
     if (!notifSettings) {
       return true // 알림 설정 안 함 → 모달 표시
     }
 
-    const settings = JSON.parse(notifSettings)
-    return !settings.setup_completed // setup_completed가 false면 모달 표시
+    try {
+      const settings = JSON.parse(notifSettings)
+      if (settings?.dismissed) {
+        return false
+      }
+      return !settings?.setup_completed // setup_completed가 false면 모달 표시
+    } catch (error) {
+      console.warn('[QuestionNew] failed to parse notification settings', error)
+      return true
+    }
   }
 
-  // 제출 핸들러
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const submitQuestion = async () => {
+    const trimmedTitle = title.trim()
+    const trimmedContent = content.trim()
 
-    if (title.trim().length < 5) {
-      alert('제목은 최소 5자 이상 작성해주세요')
+    if (trimmedTitle.length < MIN_TITLE_LENGTH) {
+      alert(`제목은 최소 ${MIN_TITLE_LENGTH}자 이상 작성해주세요`)
       return
     }
 
-    if (content.trim().length < 10) {
-      alert('내용은 최소 10자 이상 작성해주세요')
+    if (trimmedContent.length < MIN_CONTENT_LENGTH) {
+      alert(`내용은 최소 ${MIN_CONTENT_LENGTH}자 이상 작성해주세요`)
+      return
+    }
+
+    if (!categoryId) {
+      alert('카테고리를 선택해주세요')
       return
     }
 
@@ -97,25 +184,31 @@ export default function NewQuestionPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
-          title: title.trim(),
-          content: content.trim(),
-          category_id: categoryId,
+          title: trimmedTitle,
+          content: trimmedContent,
+          category_id: Number(categoryId),
         }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
+      const json = await response.json().catch(() => null)
 
+      if (response.ok) {
         // 질문 등록 성공 후 알림 설정 모달 표시 여부 확인
         if (shouldShowNotificationModal()) {
           setShowNotificationModal(true)
+          persistNotificationSettings({
+            last_prompted_at: new Date().toISOString(),
+          })
         } else {
           alert('질문이 성공적으로 등록되었습니다!')
-          router.push(`/questions/${data.id}`)
+          router.push('/my-questions?tab=questions')
         }
       } else {
-        alert('질문 작성 중 오류가 발생했습니다.')
+        const message = json?.error || '질문 작성 중 오류가 발생했습니다.'
+        const details = json?.details || json?.hint
+        alert(details ? `${message}\n세부 정보: ${details}` : message)
       }
     } catch (error) {
       console.error('Question submission failed:', error)
@@ -125,18 +218,35 @@ export default function NewQuestionPage() {
     }
   }
 
+  // 제출 핸들러
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (submitting) return
+    await submitQuestion()
+  }
+
   // 알림 설정 완료 핸들러
   const handleNotificationComplete = () => {
+    persistNotificationSettings({
+      setup_completed: true,
+      dismissed: false,
+      completed_at: new Date().toISOString(),
+    })
     setShowNotificationModal(false)
     alert('질문이 성공적으로 등록되었습니다!\n답변 알림을 받으실 수 있습니다.')
-    router.push('/questions')
+    router.push('/my-questions?tab=questions')
   }
 
   // 모달 닫기 핸들러 (나중에 설정)
   const handleNotificationClose = () => {
+    persistNotificationSettings({
+      dismissed: true,
+      dismissed_at: new Date().toISOString(),
+      setup_completed: false,
+    })
     setShowNotificationModal(false)
     alert('질문이 성공적으로 등록되었습니다!')
-    router.push('/questions')
+    router.push('/my-questions?tab=questions')
   }
 
   // 취소 핸들러
@@ -150,7 +260,7 @@ export default function NewQuestionPage() {
       <PageLayout variant="centered">
         <div className="question-form-loading-content">
           <div className="question-form-loading-icon">🔐</div>
-          <p className="question-form-loading-text">인증 확인 중...</p>
+          <p className="question-form-loading-text" suppressHydrationWarning>인증 확인 중...</p>
         </div>
       </PageLayout>
     )
@@ -175,19 +285,26 @@ export default function NewQuestionPage() {
                 <label htmlFor="question-category" className="question-field-label">
                   카테고리<span className="required">*</span>
                 </label>
-                <select
-                  id="question-category"
-                  className="question-field-input"
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  required
-                >
-                  {CATEGORIES.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.icon} {category.name}
-                    </option>
-                  ))}
-                </select>
+                {loadingCategories ? (
+                  <div className="question-field-help">카테고리를 불러오는 중입니다...</div>
+                ) : categoryError ? (
+                  <div className="question-field-error">{categoryError}</div>
+                ) : (
+                  <select
+                    id="question-category"
+                    className="question-field-input"
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    required
+                  >
+                    <option value="">카테고리를 선택하세요</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={String(category.id)}>
+                        {category.icon ?? '🏷️'} {category.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Question Title */}
@@ -206,10 +323,10 @@ export default function NewQuestionPage() {
                   required
                 />
                 <div className={`question-char-counter ${title.length > 72 ? 'warning' : ''}`}>
-                  {updateCharCounter(title.length, 80)}
-                  {title.length > 0 && title.length < 5 && (
+                  {`${title.length} / 80`}
+                  {title.length > 0 && title.length < MIN_TITLE_LENGTH && (
                     <span className="validation-message">
-                      (최소 5자)
+                      (최소 {MIN_TITLE_LENGTH}자)
                     </span>
                   )}
                 </div>
@@ -220,33 +337,26 @@ export default function NewQuestionPage() {
                 <label htmlFor="question-content" className="question-field-label">
                   질문 내용<span className="required">*</span>
                 </label>
-                <div className="question-textarea-container">
-                  <div className="question-formatting-toolbar">
-                    <button type="button" className="question-format-btn" title="이미지 첨부">📷</button>
-                    <button type="button" className="question-format-btn" title="목록">📝</button>
-                    <button type="button" className="question-format-btn" title="굵게"><strong>B</strong></button>
-                    <button type="button" className="question-format-btn" title="링크">🔗</button>
-                  </div>
-                  <textarea
-                    id="question-content"
-                    className="question-field-textarea"
-                    placeholder="구체적인 상황과 궁금한 점을 자세히 설명해주세요.
+                <RichEditor
+                  value={content}
+                  onChange={setContent}
+                  minRows={12}
+                  maxLength={10000}
+                  disabled={submitting}
+                  placeholder={`구체적인 상황과 궁금한 점을 자세히 설명해주세요.
 
 예시:
 - 현재 상황은 어떤가요?
 - 어떤 도움이 필요한가요?
-- 시도해본 방법이 있나요?"
-                    maxLength={10000}
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    required
-                  />
-                </div>
+- 시도해본 방법이 있나요?`}
+                  onSubmitShortcut={submitQuestion}
+                  helperText={EDITOR_USAGE_GUIDE}
+                />
                 <div className={`question-char-counter ${content.length > 9000 ? 'warning' : ''}`}>
-                  {updateCharCounter(content.length, 10000)}
-                  {content.length > 0 && content.length < 10 && (
+                  {`${content.length} / 10000`}
+                  {content.trim().length > 0 && content.trim().length < MIN_CONTENT_LENGTH && (
                     <span className="validation-message">
-                      (최소 10자)
+                      (최소 {MIN_CONTENT_LENGTH}자)
                     </span>
                   )}
                 </div>

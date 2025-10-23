@@ -1,15 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-
 interface TourStep {
   id: string
   title: string
   description: string
   targetSelector: string
-  position: 'top' | 'bottom' | 'left' | 'right'
+  position: 'top' | 'bottom' | 'left' | 'right' | 'top-left'
   icon: string
-  actionUrl?: string // Optional URL to navigate when "이동하기" is clicked
+  actionUrl?: string
 }
 
 interface QuickTourProps {
@@ -20,182 +18,197 @@ interface QuickTourProps {
 }
 
 export default function QuickTour({ steps, isOpen, onComplete, onSkip }: QuickTourProps) {
-  const [currentStep, setCurrentStep] = useState(0)
-  const [targetPosition, setTargetPosition] = useState({ top: 0, left: 0, width: 0, height: 0 })
+  if (!isOpen) return null
 
-  useEffect(() => {
-    if (!isOpen || !steps[currentStep]) return
-
-    const updatePosition = () => {
-      const targetElement = document.querySelector(steps[currentStep].targetSelector)
-      if (targetElement) {
-        const rect = targetElement.getBoundingClientRect()
-        setTargetPosition({
-          top: rect.top + window.scrollY,
-          left: rect.left + window.scrollX,
-          width: rect.width,
-          height: rect.height
-        })
-      }
-    }
-
-    // Initial position update
-    updatePosition()
-
-    // Update on scroll and resize
-    window.addEventListener('scroll', updatePosition)
-    window.addEventListener('resize', updatePosition)
-
-    return () => {
-      window.removeEventListener('scroll', updatePosition)
-      window.removeEventListener('resize', updatePosition)
-    }
-  }, [currentStep, isOpen, steps])
-
-  if (!isOpen || !steps[currentStep]) return null
-
-  const step = steps[currentStep]
-  const isLastStep = currentStep === steps.length - 1
-
-  const handleNext = () => {
-    if (isLastStep) {
-      onComplete()
-    } else {
-      setCurrentStep(prev => prev + 1)
-    }
-  }
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1)
-    }
-  }
-
-  const handleGoToAction = () => {
-    // If the step has an actionUrl, navigate to it and complete the tour
+  const handleCardAction = (step: TourStep) => {
     if (step.actionUrl) {
-      onComplete() // Mark tour as completed
+      onComplete()
       window.location.href = step.actionUrl
+      return
+    }
+
+    const targetElement = document.querySelector(step.targetSelector) as HTMLElement | null
+    if (targetElement) {
+      onComplete()
+      targetElement.click()
     } else {
-      // If no actionUrl, try to click the target element
-      const targetElement = document.querySelector(step.targetSelector) as HTMLElement
-      if (targetElement) {
-        onComplete()
-        targetElement.click()
-      } else {
-        // Fallback to just completing the tour
-        onComplete()
-      }
+      onComplete()
     }
   }
-
-  const handleOverlayClick = () => {
-    // 오버레이 클릭 시 해당 기능으로 자동 이동
-    handleGoToAction()
-  }
-
-  // Calculate tooltip position based on step position preference
-  const getTooltipPosition = () => {
-    const padding = 16
-    const tooltipWidth = 320
-
-    switch (step.position) {
-      case 'bottom':
-        return {
-          top: targetPosition.top + targetPosition.height + padding,
-          left: targetPosition.left + (targetPosition.width / 2) - (tooltipWidth / 2)
-        }
-      case 'top':
-        return {
-          top: targetPosition.top - 200 - padding,
-          left: targetPosition.left + (targetPosition.width / 2) - (tooltipWidth / 2)
-        }
-      case 'left':
-        return {
-          top: targetPosition.top + (targetPosition.height / 2) - 100,
-          left: targetPosition.left - tooltipWidth - padding
-        }
-      case 'right':
-        return {
-          top: targetPosition.top + (targetPosition.height / 2) - 100,
-          left: targetPosition.left + targetPosition.width + padding
-        }
-      default:
-        return {
-          top: targetPosition.top + targetPosition.height + padding,
-          left: targetPosition.left
-        }
-    }
-  }
-
-  const tooltipPos = getTooltipPosition()
 
   return (
-    <>
-      {/* Overlay with spotlight effect */}
-      <div className="tour-overlay" onClick={handleOverlayClick}>
-        {/* Spotlight highlight */}
-        <div
-          className="tour-spotlight"
-          style={{
-            top: targetPosition.top - 8,
-            left: targetPosition.left - 8,
-            width: targetPosition.width + 16,
-            height: targetPosition.height + 16
-          }}
-        />
-      </div>
+    <div className="tour-overlay-centered" role="dialog" aria-modal="true">
+      <div className="tour-modal">
+        <header className="tour-modal-header">
+          <h2 className="tour-modal-title">빠르게 둘러보기</h2>
+          <p className="tour-modal-subtitle">첫 방문을 축하드립니다! 아래 기능으로 Viet K-Connect를 빠르게 알아보세요.</p>
+        </header>
 
-      {/* Tour tooltip */}
-      <div
-        className="tour-tooltip"
-        style={{
-          top: tooltipPos.top,
-          left: tooltipPos.left
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="tour-header">
-          <div className="tour-icon">{step.icon}</div>
-          <div className="tour-step-counter">
-            {currentStep + 1} / {steps.length}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="tour-content">
-          <h3 className="tour-title">{step.title}</h3>
-          <p className="tour-description">{step.description}</p>
-        </div>
-
-        {/* Footer */}
-        <div className="tour-footer">
-          <button onClick={handleGoToAction} className="tour-btn tour-btn-skip">
-            이동하기
-          </button>
-          <div className="tour-navigation">
-            {currentStep > 0 && (
-              <button onClick={handlePrevious} className="tour-btn tour-btn-secondary">
-                이전
+        <div className="tour-card-grid">
+          {steps.map((step) => (
+            <article key={step.id} className="tour-card">
+              <div className="tour-card-icon" aria-hidden="true">{step.icon}</div>
+              <h3 className="tour-card-title">{step.title}</h3>
+              <p className="tour-card-description">{step.description}</p>
+              <button
+                type="button"
+                className="tour-card-action"
+                onClick={() => handleCardAction(step)}
+              >
+                바로가기
               </button>
-            )}
-            <button onClick={handleNext} className="tour-btn tour-btn-primary">
-              {isLastStep ? '완료' : '다음'}
-            </button>
-          </div>
-        </div>
-
-        {/* Progress dots */}
-        <div className="tour-progress">
-          {steps.map((_, index) => (
-            <div
-              key={index}
-              className={`tour-progress-dot ${index === currentStep ? 'active' : ''} ${index < currentStep ? 'completed' : ''}`}
-            />
+            </article>
           ))}
         </div>
+
+        <div className="tour-modal-actions">
+          <button type="button" className="tour-action-secondary" onClick={onSkip}>
+            다음에 보기
+          </button>
+          <button type="button" className="tour-action-primary" onClick={onComplete}>
+            둘러보기 완료
+          </button>
+        </div>
       </div>
-    </>
+
+      <style jsx>{`
+        .tour-overlay-centered {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.55);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2000;
+          padding: 1.5rem;
+        }
+
+        .tour-modal {
+          max-width: 960px;
+          width: 100%;
+          background: #fff;
+          border-radius: 20px;
+          padding: 2.5rem 2rem;
+          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
+        }
+
+        .tour-modal-header {
+          text-align: center;
+        }
+
+        .tour-modal-title {
+          margin: 0 0 0.5rem;
+          font-size: 1.8rem;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .tour-modal-subtitle {
+          margin: 0;
+          font-size: 1rem;
+          color: #4b5563;
+        }
+
+        .tour-card-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 1.5rem;
+        }
+
+        .tour-card {
+          background: #f9fafb;
+          border-radius: 16px;
+          padding: 1.5rem;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+        }
+
+        .tour-card-icon {
+          font-size: 2.5rem;
+        }
+
+        .tour-card-title {
+          margin: 0;
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .tour-card-description {
+          margin: 0;
+          font-size: 0.96rem;
+          color: #4b5563;
+          line-height: 1.5;
+        }
+
+        .tour-card-action {
+          margin-top: auto;
+          align-self: center;
+          padding: 0.6rem 1.2rem;
+          border-radius: 999px;
+          border: none;
+          background: #2563eb;
+          color: #fff;
+          font-weight: 600;
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .tour-card-action:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 20px rgba(37, 99, 235, 0.25);
+        }
+
+        .tour-modal-actions {
+          display: flex;
+          justify-content: center;
+          gap: 1rem;
+        }
+
+        .tour-action-secondary,
+        .tour-action-primary {
+          padding: 0.65rem 1.6rem;
+          border-radius: 999px;
+          border: none;
+          font-weight: 600;
+          cursor: pointer;
+          font-size: 0.95rem;
+        }
+
+        .tour-action-secondary {
+          background: #eef2ff;
+          color: #4338ca;
+        }
+
+        .tour-action-secondary:hover {
+          background: #e0e7ff;
+        }
+
+        .tour-action-primary {
+          background: #111827;
+          color: #fff;
+        }
+
+        .tour-action-primary:hover {
+          background: #1f2937;
+        }
+
+        @media (max-width: 720px) {
+          .tour-modal {
+            padding: 2rem 1.25rem;
+          }
+
+          .tour-card-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </div>
   )
 }

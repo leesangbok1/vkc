@@ -230,10 +230,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_questions_search_vector ON questions;
 CREATE TRIGGER update_questions_search_vector
   BEFORE INSERT OR UPDATE ON questions
   FOR EACH ROW EXECUTE FUNCTION update_search_vector();
 
+DROP TRIGGER IF EXISTS update_answers_search_vector ON answers;
 CREATE TRIGGER update_answers_search_vector
   BEFORE INSERT OR UPDATE ON answers
   FOR EACH ROW EXECUTE FUNCTION update_search_vector();

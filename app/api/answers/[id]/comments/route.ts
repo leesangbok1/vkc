@@ -138,7 +138,7 @@ export async function POST(
     }
 
     // 댓글 생성
-    // @ts-ignore - Supabase type inference issue with schema
+    // @ts-expect-error - Supabase type inference issue with schema
     const { data: comment, error: insertError } = await supabase
       .from('comments')
       .insert([{

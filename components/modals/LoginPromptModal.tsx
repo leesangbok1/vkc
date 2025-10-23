@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { BRAND_NAME } from '@/lib/constants/branding'
 
 interface LoginPromptModalProps {
   isOpen: boolean
@@ -191,7 +192,7 @@ export default function LoginPromptModal({
             color: 'var(--muted-foreground)'
           }}
         >
-          VietKConnect에 가입하고<br />
+          {BRAND_NAME}에 가입하고<br />
           Certified User 답변을 받아보세요
         </p>
       </div>

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { generateUniqueNickname } from '@/lib/utils/nickname-generator'
 import { subscribeTopic } from '@/lib/utils/follow-manager'
+// 서버 API를 통해 온보딩 상태를 저장 (SSR 쿠키 기반)
 
 type SurveyData = {
   residence?: string
@@ -23,7 +24,7 @@ const POPULAR_TOPICS = [
   { id: 9, name: '한국어 배우기', icon: '📚' }
 ]
 
-export default function OnboardingPage() {
+function OnboardingInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/'
@@ -101,6 +102,10 @@ export default function OnboardingPage() {
       finalData.category = categoryOther
     }
 
+    const selectedTopicNames = selectedTopics
+      .map(topicId => POPULAR_TOPICS.find(t => t.id === topicId)?.name)
+      .filter((name): name is string => Boolean(name))
+
     // 자동 닉네임 생성
     const autoNickname = generateUniqueNickname()
 
@@ -108,61 +113,65 @@ export default function OnboardingPage() {
     console.log('✅ 자동 생성된 닉네임:', autoNickname)
     console.log('✅ 선택된 토픽:', selectedTopics)
 
-    // 🎭 MOCK: 페이지 플로우 테스트용 - localStorage에만 저장
-    localStorage.setItem('vietkconnect_onboarded', 'true')
-    localStorage.setItem('vietkconnect_profile', JSON.stringify({
-      ...finalData,
-      nickname: autoNickname,
-      interests: selectedTopics,
-      profile_completion: 40, // 기본 정보만 입력 = 40%
-      completedAt: new Date().toISOString()
-    }))
+    // 실제 DB 업데이트: 서버 API 사용 (SSR 쿠키 기반으로 인증 처리)
+    try {
+      const profilePayload = {
+        interests: selectedTopicNames,
+        residence: finalData.residence || null,
+        gender: finalData.gender || null,
+        age: finalData.age || null,
+        category: finalData.category || null,
+        onboarding_completed: true,
+      }
+
+      const resp = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profilePayload),
+      })
+
+      if (!resp.ok) {
+        const txt = await resp.text()
+        console.error('❌ 온보딩 DB 업데이트 실패:', resp.status, txt)
+      } else {
+        console.log('✅ 온보딩 DB 업데이트 완료')
+        // 최신 프로필 캐시 무효화
+        try {
+          await fetch('/api/auth/profile', { cache: 'no-store' })
+        } catch (refreshError) {
+          console.warn('프로필 상태 갱신 실패(무시 가능):', refreshError)
+        }
+      }
+    } catch (e) {
+      console.error('❌ 온보딩 처리 중 오류:', e)
+    }
+
+    // 호환성: 기존 로컬 스토리지 플래그도 함께 설정(점진 이전용)
+    try {
+      localStorage.setItem('vietkconnect_onboarded', 'true')
+      localStorage.setItem('vietkconnect_profile', JSON.stringify({
+        ...finalData,
+        nickname: autoNickname,
+        interests: selectedTopicNames,
+        profile_completion: 40, // 기본 정보만 입력 = 40%
+        completedAt: new Date().toISOString()
+      }))
+    } catch {}
 
     // 선택한 토픽을 구독 목록에 저장
-    selectedTopics.forEach(topicId => {
-      const topic = POPULAR_TOPICS.find(t => t.id === topicId)
-      if (topic) {
-        subscribeTopic({
-          id: topic.id,
-          name: topic.name,
-          slug: topic.name.replace(/\s+/g, '-').toLowerCase(),
-          icon: topic.icon
+    try {
+      await Promise.all(
+        selectedTopics.map(async (topicId) => {
+          const topic = POPULAR_TOPICS.find(t => t.id === topicId)
+          if (!topic) return
+          await subscribeTopic({
+            id: topic.id,
+            slug: topic.name.replace(/\s+/g, '-').toLowerCase()
+          })
         })
-      }
-    })
-
-    // 🔧 DEV MODE: 개발자 모드인 경우 온보딩 완료 후 ADMIN 권한 부여
-    const currentUser = JSON.parse(localStorage.getItem('mock_user') || '{}')
-    if (currentUser.is_dev_mode) {
-      const adminUser = {
-        ...currentUser,
-        role: 'ADMIN',
-        nickname: autoNickname,
-        onboarding_completed: true,
-        profile: {
-          ...finalData,
-          interests: selectedTopics
-        },
-        trust_score: 100,
-        badges: {
-          verified: true,
-          expert: true,
-          admin: true
-        },
-        permissions: {
-          can_moderate: true,
-          can_approve_experts: true,
-          can_manage_users: true,
-          can_view_reports: true,
-          can_access_admin_panel: true
-        },
-        updated_at: new Date().toISOString()
-      }
-
-      localStorage.setItem('mock_user', JSON.stringify(adminUser))
-      console.log('👑 관리자 권한 활성화 완료!', adminUser)
-      console.log('🎯 개발 모드: 모든 페이지 및 기능 접근 가능')
-      console.log('✅ 닉네임:', autoNickname, '(프로필에서 변경 가능)')
+      )
+    } catch (subscriptionError) {
+      console.warn('선택한 토픽 구독 중 오류:', subscriptionError)
     }
 
     console.log('→ redirectTo로 이동:', redirectTo)
@@ -429,11 +438,11 @@ export default function OnboardingPage() {
                 <div className="completion-icon">🎉</div>
                 <h2 className="completion-title">프로필 설정 완료!</h2>
                 <p className="completion-text">
-                  VietKConnect에 오신 것을 환영합니다.<br />
+                  Viet K-Connect에 오신 것을 환영합니다.<br />
                   이제 한국 생활의 모든 궁금증을 해결해보세요.
                 </p>
                 <button className="btn-primary" onClick={() => router.push('/')}>
-                  VietKConnect 시작하기
+                  Viet K-Connect 시작하기
                 </button>
               </div>
             </div>
@@ -460,5 +469,12 @@ export default function OnboardingPage() {
         </div>
       </div>
     </main>
+  )
+}
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="main-layout"><div className="main-container">로딩 중...</div></div>}>
+      <OnboardingInner />
+    </Suspense>
   )
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
+import { BRAND_NAME } from '@/lib/constants/branding'
 
 export default function MissionsPage() {
   const router = useRouter()
@@ -22,13 +23,12 @@ export default function MissionsPage() {
 
   async function checkAuth() {
     try {
-      const mockSession = localStorage.getItem('mock_session')
-      const mockUser = localStorage.getItem('mock_user')
-
-      if (mockSession === 'true' && mockUser) {
-        const user = JSON.parse(mockUser)
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+      if (res.ok) {
+        const json = await res.json()
+        const data = json.data
         setIsLoggedIn(true)
-        setUserName(user.name || user.email || '사용자')
+        setUserName(data?.name || data?.email || '사용자')
       } else {
         router.push('/auth/login?redirectTo=/missions')
       }
@@ -59,7 +59,7 @@ export default function MissionsPage() {
         }}>
           <div style={{ textAlign: 'center', color: '#666' }}>
             <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
-            <p>로딩 중...</p>
+            <p className="notranslate" translate="no" suppressHydrationWarning>로딩 중...</p>
           </div>
         </div>
       </PageLayout>
@@ -108,7 +108,7 @@ export default function MissionsPage() {
             position: 'relative',
             zIndex: 1
           }}>
-            🎯 VietKConnect 베타 오픈 챌린지
+            🎯 {BRAND_NAME} 베타 오픈 챌린지
           </h1>
           <p style={{
             fontSize: '1.25rem',
@@ -662,7 +662,6 @@ export default function MissionsPage() {
           >
             🚀 미션 달성하러 가기
           </button>
-        </div>
         </div>
     </PageLayout>
   )

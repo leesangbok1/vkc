@@ -38,8 +38,8 @@ interface PlatformStats {
   totalAnswers: number
   pendingVerifications: number
   activeUsers24h: number
-  responseRate: number
-  satisfactionScore: number
+  responseRate?: number | null
+  satisfactionScore?: number | null
   newUsersToday: number
 }
 
@@ -48,6 +48,11 @@ interface UserStats {
   user: number
   verified: number
   admin: number
+}
+
+const formatNumber = (value: number | null | undefined, withThousands = true) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '-'
+  return withThousands ? value.toLocaleString() : String(value)
 }
 
 export default function AdminIntegratedPanel({ userRole, className }: AdminIntegratedPanelProps) {
@@ -82,27 +87,41 @@ export default function AdminIntegratedPanel({ userRole, className }: AdminInteg
 
   const loadDashboardData = async () => {
     try {
-      // Mock 데이터 (실제로는 API 호출)
-      const mockStats: PlatformStats = {
-        totalUsers: 2847,
-        totalQuestions: 1356,
-        totalAnswers: 3421,
-        pendingVerifications: 12,
-        activeUsers24h: 234,
-        responseRate: 87.5,
-        satisfactionScore: 4.6,
-        newUsersToday: 18
+      const res = await fetch('/api/admin/overview', { cache: 'no-store' })
+      if (res.status === 401 || res.status === 403) {
+        console.warn('[AdminIntegratedPanel] overview requires admin authentication')
+        setStats(null)
+        setUserStats(null)
+        return
+      }
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null)
+        throw new Error(payload?.error || '관리자 지표를 불러오지 못했습니다.')
+      }
+      const json = await res.json()
+      const statsPayload = json?.stats || {}
+      const rolesPayload = json?.userRoles || json?.roles || {}
+
+      const normalizedStats: PlatformStats = {
+        totalUsers: Number(statsPayload.totalUsers ?? 0),
+        totalQuestions: Number(statsPayload.totalQuestions ?? 0),
+        totalAnswers: Number(statsPayload.totalAnswers ?? 0),
+        pendingVerifications: Number(statsPayload.pendingCertifications ?? statsPayload.pendingVerifications ?? 0),
+        activeUsers24h: Number(statsPayload.activeUsers24h ?? 0),
+        responseRate: statsPayload.responseRate ?? null,
+        satisfactionScore: statsPayload.satisfactionScore ?? null,
+        newUsersToday: Number(statsPayload.newUsersToday ?? 0),
       }
 
-      const mockUserStats: UserStats = {
-        guest: 1420,
-        user: 1287,
-        verified: 132,
-        admin: 8
+      const normalizedRoles: UserStats = {
+        guest: Number(rolesPayload.guest ?? 0),
+        user: Number(rolesPayload.user ?? 0),
+        verified: Number(rolesPayload.verified ?? 0),
+        admin: Number(rolesPayload.admin ?? 0),
       }
 
-      setStats(mockStats)
-      setUserStats(mockUserStats)
+      setStats(normalizedStats)
+      setUserStats(normalizedRoles)
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     }
@@ -220,10 +239,10 @@ export default function AdminIntegratedPanel({ userRole, className }: AdminInteg
                       <Users className="h-4 w-4 text-blue-600" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{stats?.totalUsers.toLocaleString()}</div>
+                      <div className="text-2xl font-bold">{formatNumber(stats?.totalUsers)}</div>
                       <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
                         <TrendingUp className="w-3 h-3" />
-                        오늘 +{stats?.newUsersToday}명
+                        오늘 +{formatNumber(stats?.newUsersToday, false)}명
                       </p>
                     </CardContent>
                   </Card>
@@ -234,33 +253,33 @@ export default function AdminIntegratedPanel({ userRole, className }: AdminInteg
                       <FileText className="h-4 w-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{stats?.totalQuestions.toLocaleString()}</div>
+                      <div className="text-2xl font-bold">{formatNumber(stats?.totalQuestions)}</div>
                       <p className="text-xs text-gray-600 mt-1">
-                        답변률 {stats?.responseRate}%
+                        {stats?.responseRate != null ? `답변률 ${stats.responseRate}%` : '답변률 데이터 없음'}
                       </p>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">활성 사용자 (24h)</CardTitle>
                       <Activity className="h-4 w-4 text-orange-600" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{stats?.activeUsers24h}</div>
+                      <div className="text-2xl font-bold">{formatNumber(stats?.activeUsers24h, false)}</div>
                       <p className="text-xs text-gray-600 mt-1">
-                        만족도 {stats?.satisfactionScore}/5.0
+                        {stats?.satisfactionScore != null ? `만족도 ${stats.satisfactionScore}/5.0` : '만족도 데이터 없음'}
                       </p>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">대기 중인 인증</CardTitle>
                       <Clock className="h-4 w-4 text-yellow-600" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-yellow-600">{stats?.pendingVerifications}</div>
+                      <div className="text-2xl font-bold text-yellow-600">{formatNumber(stats?.pendingVerifications, false)}</div>
                       <p className="text-xs text-gray-600 mt-1">
                         검토 필요
                       </p>
@@ -280,22 +299,22 @@ export default function AdminIntegratedPanel({ userRole, className }: AdminInteg
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="text-center p-4 bg-gray-50 rounded-lg">
                         <div className="text-2xl mb-1">🔒</div>
-                        <div className="text-xl font-bold">{userStats?.guest.toLocaleString()}</div>
+                        <div className="text-xl font-bold">{formatNumber(userStats?.guest)}</div>
                         <div className="text-sm text-gray-600">게스트</div>
                       </div>
                       <div className="text-center p-4 bg-blue-50 rounded-lg">
                         <div className="text-2xl mb-1">👤</div>
-                        <div className="text-xl font-bold">{userStats?.user.toLocaleString()}</div>
+                        <div className="text-xl font-bold">{formatNumber(userStats?.user)}</div>
                         <div className="text-sm text-gray-600">일반사용자</div>
                       </div>
                       <div className="text-center p-4 bg-green-50 rounded-lg">
                         <div className="text-2xl mb-1">✅</div>
-                        <div className="text-xl font-bold">{userStats?.verified.toLocaleString()}</div>
+                        <div className="text-xl font-bold">{formatNumber(userStats?.verified)}</div>
                         <div className="text-sm text-gray-600">인증사용자</div>
                       </div>
                       <div className="text-center p-4 bg-purple-50 rounded-lg">
                         <div className="text-2xl mb-1">👑</div>
-                        <div className="text-xl font-bold">{userStats?.admin}</div>
+                        <div className="text-xl font-bold">{formatNumber(userStats?.admin, false)}</div>
                         <div className="text-sm text-gray-600">관리자</div>
                       </div>
                     </div>

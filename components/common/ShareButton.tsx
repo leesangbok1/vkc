@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import BaseModal from '../modals/BaseModal'
 
 interface ShareButtonProps {
@@ -12,6 +12,7 @@ interface ShareButtonProps {
 export default function ShareButton({ url, title, compact = false }: ShareButtonProps) {
   const [showModal, setShowModal] = useState(false)
   const [copied, setCopied] = useState(false)
+  const closeTimerRef = useRef<number | null>(null)
 
   const fullUrl = typeof window !== 'undefined'
     ? `${window.location.origin}${url}`
@@ -21,10 +22,16 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
     try {
       await navigator.clipboard.writeText(fullUrl)
       setCopied(true)
-      setTimeout(() => {
-        setCopied(false)
-        setShowModal(false)
-      }, 2000)
+      if (typeof window !== 'undefined') {
+        if (closeTimerRef.current) {
+          window.clearTimeout(closeTimerRef.current)
+        }
+        closeTimerRef.current = window.setTimeout(() => {
+          setCopied(false)
+          setShowModal(false)
+          closeTimerRef.current = null
+        }, 2000)
+      }
     } catch (error) {
       console.error('Failed to copy:', error)
       alert('링크 복사에 실패했습니다')
@@ -57,6 +64,26 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
     } catch (error) {
       console.error('Copy failed:', error)
       alert('링크 복사에 실패했습니다')
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current)
+        closeTimerRef.current = null
+      }
+    }
+  }, [])
+
+  const openModal = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const triggerOpen = () => setShowModal(true)
+    if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+      window.requestAnimationFrame(triggerOpen)
+    } else {
+      triggerOpen()
     }
   }
 
@@ -96,8 +123,9 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
     return (
       <>
         <button
+          type="button"
           className="action-btn"
-          onClick={() => setShowModal(true)}
+          onClick={openModal}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -158,6 +186,7 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
                 }}
               />
               <button
+                type="button"
                 onClick={handleCopyLink}
                 style={{
                   padding: '0.75rem 1.5rem',
@@ -195,6 +224,7 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
             }}>
               {shareOptions.map((option) => (
                 <button
+                  type="button"
                   key={option.name}
                   onClick={option.action}
                   style={{
@@ -233,8 +263,9 @@ export default function ShareButton({ url, title, compact = false }: ShareButton
 
   return (
     <button
+      type="button"
       className="btn btn-secondary"
-      onClick={() => setShowModal(true)}
+      onClick={openModal}
     >
       📤 공유
     </button>

@@ -1,20 +1,23 @@
 import './globals.css'
-import Header from '@/components/layout/Header'
-import ChatbotButton from '@/components/chatbot/ChatbotButton'
+import type { ReactNode } from 'react'
+import HeaderClient from '@/components/layout/HeaderClient'
+import ChatbotButtonClient from '@/components/layout/ChatbotButtonClient'
+import ClientProviders from '@/components/providers/ClientProviders'
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        <meta httpEquiv="Content-Language" content="ko" />
+      </head>
       <body>
-        <Header />
-        <main className="app-main-content">
-          {children}
-        </main>
-        <ChatbotButton />
+        <ClientProviders>
+          <HeaderClient />
+          <main className="app-main-content">
+            {children}
+          </main>
+          <ChatbotButtonClient />
+        </ClientProviders>
       </body>
     </html>
   )

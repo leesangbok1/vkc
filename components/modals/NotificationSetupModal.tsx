@@ -22,13 +22,19 @@ export default function NotificationSetupModal({
 
   useEffect(() => {
     // 기존 설정 로드
-    const settings = localStorage.getItem('notification_settings')
-    if (settings) {
-      const parsed = JSON.parse(settings)
-      setEmailNotif(parsed.email_notifications ?? true)
-      setPushNotif(parsed.push_notifications ?? false)
+    if (!isOpen || typeof window === 'undefined') return
+
+    try {
+      const settings = localStorage.getItem('notification_settings')
+      if (settings) {
+        const parsed = JSON.parse(settings)
+        setEmailNotif(parsed.email_notifications ?? true)
+        setPushNotif(parsed.push_notifications ?? false)
+      }
+    } catch (error) {
+      console.warn('[NotificationSetupModal] failed to load existing notification settings', error)
     }
-  }, [])
+  }, [isOpen])
 
   const handleSave = () => {
     setSaving(true)
@@ -38,10 +44,17 @@ export default function NotificationSetupModal({
       email_notifications: emailNotif,
       push_notifications: pushNotif,
       setup_completed: true,
-      setup_date: new Date().toISOString()
+      setup_date: new Date().toISOString(),
+      dismissed: false,
     }
 
-    localStorage.setItem('notification_settings', JSON.stringify(settings))
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('notification_settings', JSON.stringify(settings))
+      } catch (error) {
+        console.error('[NotificationSetupModal] failed to persist notification settings', error)
+      }
+    }
 
     // TODO: API로 DB 저장
     // await fetch('/api/users/notification-preferences', {
@@ -61,6 +74,9 @@ export default function NotificationSetupModal({
       onClose={onClose}
       width="600px"
       adaptiveMode={true}
+      closeOnOverlayClick={false}
+      closeOnEscape={false}
+      showCloseButton={false}
     >
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>

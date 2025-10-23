@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertTriangle } from 'lucide-react'
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons'
+import { BRAND_NAME, BRAND_SHORT_DESCRIPTION } from '@/lib/constants/branding'
 
 interface LoginModalProps {
   isOpen: boolean
@@ -56,7 +57,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             id="login-modal-description"
             className="text-center text-secondary"
           >
-            VietKConnect에 오신 것을 환영합니다. 소셜 계정으로 간편하게 로그인하세요.
+            {BRAND_NAME}에 오신 것을 환영합니다. {BRAND_SHORT_DESCRIPTION}
           </DialogDescription>
         </DialogHeader>
 

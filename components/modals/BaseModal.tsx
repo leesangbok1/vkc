@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 export interface BaseModalProps {
   isOpen: boolean
@@ -22,6 +23,8 @@ export interface BaseModalProps {
   // 추가 옵션
   className?: string          // 추가 CSS 클래스
   showCloseButton?: boolean   // X 버튼 표시 (기본값 true)
+  closeOnOverlayClick?: boolean // 오버레이 클릭 시 닫기 (기본값 true)
+  closeOnEscape?: boolean       // ESC 키로 닫기 (기본값 true)
 }
 
 export default function BaseModal({
@@ -37,16 +40,22 @@ export default function BaseModal({
   borderRadius = '20px',
   showDecorations = false,
   className = '',
-  showCloseButton = true
+  showCloseButton = true,
+  closeOnOverlayClick = true,
+  closeOnEscape = true
 }: BaseModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [viewportHeight, setViewportHeight] = useState(0)
+  const portalRef = useRef<HTMLDivElement | null>(null)
+  const [isPortalReady, setIsPortalReady] = useState(false)
+  const bodyOverflowRef = useRef<string>('')
 
   // 터치 제스처 상태
   const [dragStartY, setDragStartY] = useState(0)
   const [dragDistance, setDragDistance] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [canCloseOnOverlay, setCanCloseOnOverlay] = useState(false)
 
   // 모바일 감지
   useEffect(() => {
@@ -63,23 +72,30 @@ export default function BaseModal({
 
   // Escape key 닫기
   useEffect(() => {
+    if (typeof document === 'undefined') return
+
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' && isOpen && closeOnEscape) {
         onClose()
       }
     }
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape)
+      if (closeOnEscape) {
+        document.addEventListener('keydown', handleEscape)
+      }
       // Body scroll 방지
+      bodyOverflowRef.current = document.body.style.overflow
       document.body.style.overflow = 'hidden'
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = 'unset'
+      if (closeOnEscape) {
+        document.removeEventListener('keydown', handleEscape)
+      }
+      document.body.style.overflow = bodyOverflowRef.current || ''
     }
-  }, [isOpen, onClose])
+  }, [isOpen, onClose, closeOnEscape])
 
   // 터치 제스처 핸들러 (모바일 스와이프로 닫기)
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -121,17 +137,60 @@ export default function BaseModal({
     setIsDragging(false)
   }
 
-  if (!isOpen) return null
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const portalElement = document.createElement('div')
+    portalElement.className = 'modal-portal-root'
+    document.body.appendChild(portalElement)
+    portalRef.current = portalElement
+    setIsPortalReady(true)
+
+    return () => {
+      if (portalRef.current) {
+        document.body.removeChild(portalRef.current)
+        portalRef.current = null
+      }
+      setIsPortalReady(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCanCloseOnOverlay(false)
+      return
+    }
+
+    if (typeof window === 'undefined') return
+
+    setCanCloseOnOverlay(false)
+    const timer = window.setTimeout(() => setCanCloseOnOverlay(true), 750)
+    return () => {
+      window.clearTimeout(timer)
+      setCanCloseOnOverlay(false)
+    }
+  }, [isOpen])
+
+  if (!isOpen || !isPortalReady || !portalRef.current) return null
 
   // 스타일 결정
   const isBottomSheet = adaptiveMode && isMobile && !fullScreenOnMobile
   const isFullScreen = fullScreenOnMobile && isMobile
 
-  return (
+  const modalContent = (
     <div
       className="modal-overlay"
+      onMouseDown={(event) => {
+        if (!canCloseOnOverlay || !closeOnOverlayClick) {
+          event.stopPropagation()
+        }
+      }}
+      onTouchStart={(event) => {
+        if (!canCloseOnOverlay || !closeOnOverlayClick) {
+          event.stopPropagation()
+        }
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) {
+        if (closeOnOverlayClick && canCloseOnOverlay && e.target === e.currentTarget) {
           onClose()
         }
       }}
@@ -292,4 +351,6 @@ export default function BaseModal({
       </div>
     </div>
   )
+
+  return createPortal(modalContent, portalRef.current)
 }

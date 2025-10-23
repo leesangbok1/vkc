@@ -1,7 +1,9 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import NotificationSetupModal from '@/components/modals/NotificationSetupModal'
+import RichEditor from '@/components/editor/RichEditor'
+import { EDITOR_USAGE_GUIDE } from '@/lib/constants/editor'
 
 interface AnswerFormProps {
   questionId: string
@@ -12,20 +14,38 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isPreview, setIsPreview] = useState(false)
   const [showNotificationModal, setShowNotificationModal] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [userEmail, setUserEmail] = useState<string>('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    async function loadProfileEmail() {
+      try {
+        const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+        if (!res.ok) return
+        const json = await res.json()
+        const email = json?.data?.email
+        if (typeof email === 'string') {
+          setUserEmail(email)
+        }
+      } catch (profileError) {
+        console.warn('[AnswerForm] failed to load profile email', profileError)
+      }
+    }
 
-    if (!content.trim()) {
+    loadProfileEmail()
+  }, [])
+
+  const MIN_CONTENT_LENGTH = 10
+
+  const submitAnswer = async () => {
+    const trimmed = content.trim()
+    if (!trimmed) {
       setError('답변 내용을 입력해주세요')
       return
     }
 
-    if (content.length < 10) {
-      setError('답변은 최소 10자 이상 작성해주세요')
+    if (trimmed.length < MIN_CONTENT_LENGTH) {
+      setError(`답변은 최소 ${MIN_CONTENT_LENGTH}자 이상 작성해주세요`)
       return
     }
 
@@ -33,116 +53,47 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
     setError(null)
 
     try {
-      // Mock implementation: Save to localStorage
-      const mockUser = JSON.parse(localStorage.getItem('mock_user') || '{}')
-
-      if (!mockUser.id) {
-        throw new Error('로그인이 필요합니다')
-      }
-
-      const answersKey = `question_${questionId}_answers`
-      const existingAnswers = JSON.parse(localStorage.getItem(answersKey) || '[]')
-
-      const newAnswer = {
-        id: `answer_${Date.now()}`,
-        content: content.trim(),
-        question_id: questionId,
-        author_id: mockUser.id,
-        author_name: mockUser.name || mockUser.email,
-        author_email: mockUser.email,
-        author_role: mockUser.role || 'USER',
-        is_accepted: false,
-        upvote_count: 0,
-        downvote_count: 0,
-        helpful_count: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-
-      const updatedAnswers = [...existingAnswers, newAnswer]
-      localStorage.setItem(answersKey, JSON.stringify(updatedAnswers))
-
-      // Update answer count in question
-      const questionsKey = 'mock_questions'
-      const questions = JSON.parse(localStorage.getItem(questionsKey) || '[]')
-      const updatedQuestions = questions.map((q: any) => {
-        if (q.id === questionId) {
-          return { ...q, answer_count: (q.answer_count || 0) + 1 }
-        }
-        return q
+      const res = await fetch(`/api/questions/${questionId}/answers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: trimmed })
       })
-      localStorage.setItem(questionsKey, JSON.stringify(updatedQuestions))
 
-      // Success
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null)
+        const message = payload?.error || '답변 등록 중 오류가 발생했습니다.'
+        const details = payload?.details || payload?.hint
+        throw new Error(details ? `${message}\n${details}` : message)
+      }
+
+      // refresh answers
       setContent('')
-      setIsPreview(false)
       onAnswerSubmitted()
 
-      // Show notification setup modal
       setShowNotificationModal(true)
 
     } catch (err) {
       console.error('Error submitting answer:', err)
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : '답변 등록 중 오류가 발생했습니다.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Tab') {
-      e.preventDefault()
-      const textarea = textareaRef.current
-      if (textarea) {
-        const start = textarea.selectionStart
-        const end = textarea.selectionEnd
-        const value = textarea.value
-        const newValue = value.substring(0, start) + '    ' + value.substring(end)
-        setContent(newValue)
-
-        // Set cursor position after the inserted tab
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = start + 4
-        }, 0)
-      }
-    }
-
-    // Ctrl/Cmd + Enter to submit
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault()
-      handleSubmit(e as any)
-    }
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    await submitAnswer()
   }
 
-  const insertText = (before: string, after: string = '') => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selectedText = content.substring(start, end)
-    const newText = before + selectedText + after
-    const newContent = content.substring(0, start) + newText + content.substring(end)
-
-    setContent(newContent)
-
-    // Set cursor position
-    setTimeout(() => {
-      const newCursorPos = start + before.length + selectedText.length + after.length
-      textarea.focus()
-      textarea.setSelectionRange(newCursorPos, newCursorPos)
-    }, 0)
+  const handleNotificationComplete = () => {
+    setShowNotificationModal(false)
+    alert('답변이 등록되었습니다! 알림 설정이 완료되었습니다.')
   }
 
-  const formatButtons = [
-    { icon: 'fas fa-bold', action: () => insertText('**', '**'), title: '굵게 (Ctrl+B)' },
-    { icon: 'fas fa-italic', action: () => insertText('*', '*'), title: '기울임 (Ctrl+I)' },
-    { icon: 'fas fa-code', action: () => insertText('`', '`'), title: '인라인 코드' },
-    { icon: 'fas fa-link', action: () => insertText('[', '](url)'), title: '링크' },
-    { icon: 'fas fa-list-ul', action: () => insertText('\n- ', ''), title: '목록' },
-    { icon: 'fas fa-list-ol', action: () => insertText('\n1. ', ''), title: '번호 목록' },
-    { icon: 'fas fa-quote-right', action: () => insertText('\n> ', ''), title: '인용' }
-  ]
+  const handleNotificationClose = () => {
+    setShowNotificationModal(false)
+    alert('답변이 등록되었습니다!')
+  }
 
   return (
     <div className="form-answer-container">
@@ -153,67 +104,20 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
         <h3 className="text-lg font-semibold text-gray-900 mb-4 sr-only">답변 작성</h3>
 
         <form onSubmit={handleSubmit}>
-          {/* Formatting Toolbar */}
-          <div className="form-answer-toolbar">
-            {formatButtons.map((button, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={button.action}
-                title={button.title}
-                className="p-2 text-primary-blue hover:text-white hover:bg-primary-blue rounded transition-colors"
-              >
-                <i className={button.icon}></i>
-              </button>
-            ))}
+          <RichEditor
+            value={content}
+            onChange={setContent}
+            placeholder="이 질문에 대한 답변을 작성해주세요.&#10;&#10;• 구체적이고 명확한 설명을 제공하세요&#10;• 개인 경험이나 사례를 포함하면 더욱 도움이 됩니다&#10;• 관련 링크나 참고 자료를 추가해보세요&#10;• 정중하고 친근한 톤으로 작성해주세요"
+            minRows={8}
+            maxLength={5000}
+            disabled={isSubmitting}
+            onSubmitShortcut={submitAnswer}
+            helperText={EDITOR_USAGE_GUIDE}
+          />
 
-            <div className="separator"></div>
-
-            <button
-              type="button"
-              onClick={() => setIsPreview(!isPreview)}
-              className={`form-answer-preview-btn ${
-                isPreview ? 'active' : ''
-              }`}
-            >
-              {isPreview ? '편집' : '미리보기'}
-            </button>
-          </div>
-
-          {/* Content Area */}
-          {isPreview ? (
-            // Preview Mode
-            <div className="form-answer-preview">
-              <div className="prose max-w-none">
-                <div className="text-gray-900 whitespace-pre-wrap leading-relaxed">
-                  {content || '미리보기할 내용이 없습니다.'}
-                </div>
-              </div>
-            </div>
-          ) : (
-            // Edit Mode
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="이 질문에 대한 답변을 작성해주세요.&#10;&#10;도움이 되는 답변을 위한 팁:&#10;• 구체적이고 명확한 설명을 제공하세요&#10;• 개인 경험이나 사례를 포함하면 더욱 도움이 됩니다&#10;• 관련 링크나 참고 자료를 추가해보세요&#10;• 정중하고 친근한 톤으로 작성해주세요"
-              className="form-answer-textarea"
-              disabled={isSubmitting}
-            />
-          )}
-
-          {/* Character Count */}
-          <div className="flex justify-between items-center mt-2 text-sm text-gray-600">
-            <div>
-              <span className={content.length < 10 ? 'text-red-500' : 'text-gray-600'}>
-                {content.length}자
-              </span>
-              <span className="ml-1">/ 최소 10자</span>
-            </div>
-            <div className="text-xs text-gray-500">
-              Ctrl + Enter로 빠른 등록
-            </div>
+          <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+            <span>최소 {MIN_CONTENT_LENGTH}자 이상 작성해주세요.</span>
+            <span>Ctrl + Enter로 빠른 등록</span>
           </div>
 
           {/* Error Message */}
@@ -236,7 +140,6 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
                 type="button"
                 onClick={() => {
                   setContent('')
-                  setIsPreview(false)
                   setError(null)
                 }}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
@@ -247,7 +150,7 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
 
               <button
                 type="submit"
-                disabled={isSubmitting || !content.trim() || content.length < 10}
+                disabled={isSubmitting || content.trim().length < MIN_CONTENT_LENGTH}
                 className="form-answer-submit px-6 py-2"
               >
                 {isSubmitting ? (
@@ -285,8 +188,9 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
       {/* Notification Setup Modal */}
       <NotificationSetupModal
         isOpen={showNotificationModal}
-        onClose={() => setShowNotificationModal(false)}
-        context="answer"
+        onClose={handleNotificationClose}
+        onComplete={handleNotificationComplete}
+        userEmail={userEmail}
       />
     </div>
   )

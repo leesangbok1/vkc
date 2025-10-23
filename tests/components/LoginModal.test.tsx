@@ -78,7 +78,7 @@ describe('LoginModal Component', () => {
     )
 
     expect(screen.getByText('로그인')).toBeInTheDocument()
-    expect(screen.getByText('VietKConnect에 오신 것을 환영합니다. 소셜 계정으로 간편하게 로그인하세요.')).toBeInTheDocument()
+    expect(screen.getByText('Viet K-Connect에 오신 것을 환영합니다. Certified User의 실제 경험을 바탕으로 신뢰할 수 있는 정보를 제공합니다.')).toBeInTheDocument()
   })
 
   it('should not render when closed', () => {

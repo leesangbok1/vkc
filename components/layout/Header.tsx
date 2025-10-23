@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserRole, getRoleDisplayInfo } from '@/lib/utils/permissions'
+import { BRAND_NAME } from '@/lib/constants/branding'
+import BrandLogo from '@/components/common/BrandLogo'
 import LoginPromptModal from '@/components/modals/LoginPromptModal'
-import { MOCK_QUESTIONS } from '@/lib/data/mockData'
-import { createClient } from '@/lib/supabase-client'
 
 type Notification = {
   id: string
@@ -28,6 +28,29 @@ type Category = {
   sort_order: number
 }
 
+const TYPE_ICON_MAP: Record<Notification['type'], string> = {
+  answer: '💬',
+  comment: '💭',
+  vote: '👍',
+  system: '🛎️'
+}
+
+function determineCategory(type: string): Notification['type'] {
+  const normalized = type.toLowerCase()
+  if (normalized.includes('answer')) return 'answer'
+  if (normalized.includes('comment')) return 'comment'
+  if (normalized.includes('vote') || normalized.includes('like')) return 'vote'
+  return 'system'
+}
+
+function buildRelatedUrl(actionUrl?: string | null, relatedType?: string | null, relatedId?: string | null) {
+  if (actionUrl && actionUrl.startsWith('/')) return actionUrl
+  if (relatedType === 'question' && relatedId) return `/questions/${relatedId}`
+  if (relatedType === 'answer' && relatedId) return `/answers/${relatedId}`
+  if (relatedType === 'post' && relatedId) return `/posts/${relatedId}`
+  return undefined
+}
+
 export default function Header() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -47,41 +70,67 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [recentNotifications, setRecentNotifications] = useState<Notification[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [adminPending, setAdminPending] = useState<number>(0)
   const [searchPlaceholder, setSearchPlaceholder] = useState('')
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const notificationsRef = useRef<HTMLDivElement>(null)
   const languageMenuRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    console.log('🔍 Header userRole state:', userRole)
+  }, [userRole])
+
   // 랜덤 검색 placeholder 설정
   useEffect(() => {
-    const randomQuestion = MOCK_QUESTIONS[Math.floor(Math.random() * MOCK_QUESTIONS.length)]
-    setSearchPlaceholder(randomQuestion.title)
+    setSearchPlaceholder('어떤 도움이 필요하신가요?')
   }, [])
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      const firstCategory = categories[0]
+      setSearchPlaceholder(`${firstCategory.name} 관련 질문을 검색해보세요`)
+    }
+  }, [categories])
 
   useEffect(() => {
     checkAuth()
-    loadNotifications() // 알림 로드
-    loadCategories() // 카테고리 로드
-    // 현재 페이지 경로 저장
+    loadCategories()
     setCurrentPath(window.location.pathname)
+  }, [])
 
-    // storage 이벤트 리스너 추가 (다른 탭/창에서 localStorage 변경 감지)
-    window.addEventListener('storage', checkAuth)
-    window.addEventListener('storage', loadNotifications) // 알림 변경 감지
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setUnreadCount(0)
+      setRecentNotifications([])
+      return
+    }
 
-    // 같은 탭에서의 localStorage 변경을 감지하기 위한 interval (5초마다 체크)
+    loadNotifications()
     const interval = setInterval(() => {
-      checkAuth()
       loadNotifications()
-    }, 5000) // 500ms → 5000ms (5초) - 리소스 최적화
+    }, 60000)
 
     return () => {
-      window.removeEventListener('storage', checkAuth)
-      window.removeEventListener('storage', loadNotifications)
       clearInterval(interval)
     }
-  }, [])
+  }, [isLoggedIn])
+
+  // Admin overview (pending certifications)
+  useEffect(() => {
+    async function loadAdminOverview() {
+      try {
+        if (userRole === UserRole.ADMIN) {
+          const res = await fetch('/api/admin/overview', { cache: 'no-store' })
+          if (res.ok) {
+            const json = await res.json()
+            setAdminPending(json?.admin?.pendingCerts || 0)
+          }
+        }
+      } catch {}
+    }
+    loadAdminOverview()
+  }, [userRole])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -109,118 +158,128 @@ export default function Header() {
   }, [showProfileMenu, showNotifications, showLanguageMenu, showSearchDropdown])
 
   async function checkAuth() {
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      console.warn('⚠️ Offline detected – skipping auth check')
+      setIsLoggedIn(false)
+      setUserRole(UserRole.GUEST)
+      setIsDevAdmin(false)
+      setIsCheckingAuth(false)
+      return
+    }
+
     try {
-      const supabase = createClient()
+      console.log('🔍 Checking auth via /api/auth/profile ...')
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
 
-      console.log('🔍 Checking auth session...')
-
-      // Supabase Auth 세션 확인
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.error('❌ Session error:', sessionError)
+      if (!res.ok) {
+        console.log('⚪ Not authenticated:', res.status)
         setIsLoggedIn(false)
         setUserRole(UserRole.GUEST)
         setIsDevAdmin(false)
         return
       }
 
-      if (!session || !session.user) {
-        console.log('⚪ No active session')
-        setIsLoggedIn(false)
-        setUserRole(UserRole.GUEST)
-        setIsDevAdmin(false)
-        return
-      }
+      const json = await res.json()
+      const userProfile = json.data
 
-      console.log('✅ Active session found:', session.user.email)
-
-      // users 테이블에서 사용자 프로필 조회
-      const { data: userProfile, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-
-      if (profileError || !userProfile) {
-        console.error('❌ Failed to load user profile:', profileError)
-        // 세션은 있지만 프로필이 없으면 로그아웃 (데이터 불일치)
-        setIsLoggedIn(false)
-        setUserRole(UserRole.GUEST)
-        setIsDevAdmin(false)
-        return
-      }
-
-      console.log('👤 User profile loaded:', userProfile.name)
-
-      // 온보딩 완료 여부 확인
-      if (!userProfile.onboarding_completed) {
-        console.log('⚠️ Onboarding not completed')
-        setIsLoggedIn(false)
-        setUserRole(UserRole.GUEST)
-        setIsDevAdmin(false)
-        return
-      }
-
-      // 로그인 상태 설정
+      // 온보딩 미완료여도 세션이 있으면 로그인 상태로 표시 (아이콘/메뉴 노출)
       setIsLoggedIn(true)
-      setUserName(userProfile.name || session.user.email || '사용자')
+      setUserName(userProfile.name || '사용자')
 
-      // 역할 설정 (role 필드는 'user', 'verified', 'admin' 중 하나)
       const roleMapping: { [key: string]: UserRole } = {
-        'user': UserRole.USER,
-        'verified': UserRole.VERIFIED,
-        'admin': UserRole.ADMIN
+        user: UserRole.USER,
+        verified: UserRole.VERIFIED,
+        admin: UserRole.ADMIN
       }
-      setUserRole(roleMapping[userProfile.role] || UserRole.USER)
+      const isAdmin = userProfile.admin_yn === 'Y' || userProfile.role === 'admin'
+      const derivedRole = isAdmin ? UserRole.ADMIN : (roleMapping[userProfile.role] || UserRole.USER)
+      setUserRole(derivedRole)
+      setIsDevAdmin(isAdmin && !!userProfile.is_dev_mode)
 
-      // 개발자 ADMIN 모드 확인 (is_dev_mode 필드 확인)
-      if (userProfile.role === 'admin' && userProfile.is_dev_mode) {
-        setIsDevAdmin(true)
-      } else {
-        setIsDevAdmin(false)
-      }
-
-      console.log('✅ Auth check complete:', userProfile.name, userProfile.role)
+      console.log('✅ Auth check complete:', userProfile.name, 'role:', userProfile.role, 'admin_yn:', userProfile.admin_yn)
+      console.log('➡️ Header derived role:', derivedRole, 'isAdmin:', isAdmin)
     } catch (error) {
-      console.error('❌ Auth check failed:', error)
+      console.warn('❌ Auth check failed:', error)
       setIsLoggedIn(false)
       setUserRole(UserRole.GUEST)
       setIsDevAdmin(false)
     } finally {
-      setIsCheckingAuth(false) // 인증 체크 완료
+      setIsCheckingAuth(false)
     }
   }
 
-  function loadNotifications() {
+  async function loadNotifications() {
+    if (!isLoggedIn) return
+
     try {
-      const stored = localStorage.getItem('vietkconnect_notifications')
-      if (stored) {
-        const notifications: Notification[] = JSON.parse(stored)
-        const unread = notifications.filter(n => !n.isRead)
-        setUnreadCount(unread.length)
-        // 최근 3개 알림만 헤더 드롭다운에 표시
-        setRecentNotifications(notifications.slice(0, 3))
-      } else {
+      const [listRes, countRes] = await Promise.all([
+        fetch('/api/notifications?limit=3', { cache: 'no-store' }),
+        fetch('/api/notifications/unread-count', { cache: 'no-store' })
+      ])
+
+      if (listRes.status === 401 || countRes.status === 401) {
         setUnreadCount(0)
         setRecentNotifications([])
+        return
       }
+
+      if (!listRes.ok) {
+        const payload = await listRes.json().catch(() => null)
+        console.warn('[Header] notifications list fetch failed', listRes.status, payload)
+        setRecentNotifications([])
+        setUnreadCount(0)
+        return
+      }
+
+      if (!countRes.ok) {
+        const payload = await countRes.json().catch(() => null)
+        console.warn('[Header] notifications count fetch failed', countRes.status, payload)
+        setUnreadCount(0)
+        return
+      }
+
+      const listPayload = await listRes.json()
+      const countPayload = await countRes.json()
+
+      const items = Array.isArray(listPayload?.notifications)
+        ? listPayload.notifications
+        : (listPayload?.data ?? [])
+
+      const mapped: Notification[] = items.map((notification: any) => {
+        const category = determineCategory(String(notification?.type || 'system'))
+        return {
+          id: String(notification.id),
+          type: category,
+          title: String(notification.title || '알림'),
+          message: String(notification.message || ''),
+          relatedUrl: buildRelatedUrl(notification.action_url, notification.related_type, notification.related_id),
+          createdAt: typeof notification.created_at === 'string' ? notification.created_at : new Date().toISOString(),
+          isRead: Boolean(notification.is_read),
+          icon: TYPE_ICON_MAP[category] || '🔔'
+        }
+      })
+
+      setRecentNotifications(mapped)
+      setUnreadCount(Number(countPayload?.unreadCount ?? countPayload?.unread_count ?? 0))
     } catch (error) {
-      console.error('Failed to load notifications:', error)
-      setUnreadCount(0)
+      console.warn('[Header] loadNotifications failed:', error)
       setRecentNotifications([])
+      setUnreadCount(0)
     }
   }
 
   async function loadCategories() {
     try {
-      const response = await fetch('/api/categories')
+      const response = await fetch('/api/categories', { cache: 'no-store' })
       if (!response.ok) {
-        throw new Error('Failed to fetch categories')
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error || `Failed to fetch categories (${response.status})`)
       }
       const result = await response.json()
-      if (result.success && result.data) {
+      if (result.success && Array.isArray(result.data)) {
         setCategories(result.data)
+      } else {
+        setCategories([])
       }
     } catch (error) {
       console.error('Failed to load categories:', error)
@@ -247,21 +306,46 @@ export default function Header() {
   async function handleLogout() {
     if (confirm('로그아웃 하시겠습니까?')) {
       try {
-        const supabase = createClient()
         console.log('🚪 Logging out...')
 
-        const { error } = await supabase.auth.signOut()
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
 
-        if (error) {
-          console.error('❌ Logout error:', error)
-          alert('로그아웃 중 오류가 발생했습니다.')
+        if (!response.ok) {
+          const json = await response.json().catch(() => null)
+          console.error('❌ Logout error:', json)
+          alert(json?.error || '로그아웃 중 오류가 발생했습니다.')
           return
         }
 
         console.log('✅ Logout successful')
 
-        // localStorage 정리 (알림 등 로컬 데이터)
+        // localStorage 정리 (알림 등 로컬 데이터) - 유지할 상태는 보존
+        const preservedPrefixes = [
+          'vietkconnect_event_modal_state',
+          'vietkconnect_tour_state'
+        ]
+        const preservedEntries: Array<[string, string]> = []
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i)
+          if (!key) continue
+          if (preservedPrefixes.some((prefix) => key.startsWith(prefix))) {
+            const value = localStorage.getItem(key)
+            if (value !== null) preservedEntries.push([key, value])
+          }
+        }
+
         localStorage.clear()
+
+        preservedEntries.forEach(([key, value]) => {
+          if (value !== null) {
+            localStorage.setItem(key, value)
+          }
+        })
 
         // 홈으로 리디렉션
         window.location.href = '/'
@@ -293,15 +377,22 @@ export default function Header() {
   const roleInfo = getRoleDisplayInfo(userRole)
 
   return (
-    <header className="header">
+    <header className="header" suppressHydrationWarning>
       <div className="header-container">
         {/* Left: Logo & Navigation */}
         <div className="header-left">
-          <a href="/" className="logo">
-            <span>VietKConnect</span>
+          <a
+            href="/"
+            className="logo"
+            aria-label={`${BRAND_NAME} Home`}
+            translate="no"
+            data-no-translate="true"
+            suppressHydrationWarning
+          >
+            <BrandLogo />
           </a>
 
-          <nav className="nav-menu">
+          <nav className="nav-menu" translate="no" data-no-translate="true" suppressHydrationWarning>
             <a
               href="/"
               className="nav-icon home-icon"
@@ -314,29 +405,16 @@ export default function Header() {
               🏠
             </a>
             <a
-              href="/following"
+              href="/posts"
               className="nav-icon"
-              title="팔로잉"
+              title="전체 게시글"
               style={{
-                background: currentPath === '/following' ? '#e8f4fd' : 'transparent',
-                borderBottom: currentPath === '/following' ? '2px solid #3b82f6' : '2px solid transparent'
+                background: currentPath.startsWith('/posts') ? '#e8f4fd' : 'transparent',
+                borderBottom: currentPath.startsWith('/posts') ? '2px solid #3b82f6' : '2px solid transparent'
               }}
             >
-              👥
+              📰
             </a>
-            {isLoggedIn && (
-              <a
-                href="/bookmarks"
-                className="nav-icon"
-                title="북마크"
-                style={{
-                  background: currentPath === '/bookmarks' ? '#e8f4fd' : 'transparent',
-                  borderBottom: currentPath === '/bookmarks' ? '2px solid #3b82f6' : '2px solid transparent'
-                }}
-              >
-                🔖
-              </a>
-            )}
           </nav>
         </div>
 
@@ -408,12 +486,43 @@ export default function Header() {
 
         {/* Right: Actions */}
         <div className="header-right">
+          <a
+            href="/following"
+            className="nav-icon"
+            title="팔로잉"
+            style={{
+              background: currentPath === '/following' ? '#e8f4fd' : 'transparent',
+              borderBottom: currentPath === '/following' ? '2px solid #3b82f6' : '2px solid transparent'
+            }}
+            translate="no"
+            data-no-translate="true"
+          >
+            👥
+          </a>
+          {isLoggedIn && (
+            <a
+              href="/bookmarks"
+              className="nav-icon"
+              title="북마크"
+              style={{
+                background: currentPath === '/bookmarks' ? '#e8f4fd' : 'transparent',
+                borderBottom: currentPath === '/bookmarks' ? '2px solid #3b82f6' : '2px solid transparent'
+              }}
+              translate="no"
+              data-no-translate="true"
+            >
+              🔖
+            </a>
+          )}
+
           {/* Language Selector */}
           <div ref={languageMenuRef} className="dropdown-container">
             <button
               className="nav-icon"
               title="번역"
               onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+              translate="no"
+              data-no-translate="true"
             >
               🌐
             </button>
@@ -554,81 +663,49 @@ export default function Header() {
 
                   <div className="profile-divider"></div>
 
-                  {/* USER 이상 메뉴 */}
+                  {/* 공통 메뉴: 프로필 / 내 게시글 / User Rank · 미션 / 설정 */}
                   {userRole !== UserRole.GUEST && (
-                    <>
-                      <div className="profile-menu-section">
-                        <a href="/profile" className="profile-menu-item">
-                          <span className="profile-menu-icon">👤</span>
-                          <span className="profile-menu-text">프로필</span>
-                        </a>
-                        <a href="/my-questions" className="profile-menu-item">
-                          <span className="profile-menu-icon">📝</span>
-                          <span className="profile-menu-text">내 질문</span>
-                        </a>
-                        <a href="/missions" className="profile-menu-item">
-                          <span className="profile-menu-icon">🎯</span>
-                          <span className="profile-menu-text">미션</span>
-                        </a>
-                        <a href="/settings" className="profile-menu-item">
-                          <span className="profile-menu-icon">⚙️</span>
-                          <span className="profile-menu-text">설정</span>
-                        </a>
-                      </div>
-
-                      <div className="profile-divider"></div>
-                    </>
+                    <div className="profile-menu-section">
+                      <a href="/profile" className="profile-menu-item">
+                        <span className="profile-menu-icon">👤</span>
+                        <span className="profile-menu-text">프로필</span>
+                      </a>
+                      <a href="/my-questions" className="profile-menu-item">
+                        <span className="profile-menu-icon">📝</span>
+                        <span className="profile-menu-text">내 게시글</span>
+                      </a>
+                      <a href="/user-rank" className="profile-menu-item">
+                        <span className="profile-menu-icon">🏅</span>
+                        <span className="profile-menu-text">User Rank · 미션</span>
+                      </a>
+                      <a href="/settings" className="profile-menu-item">
+                        <span className="profile-menu-icon">⚙️</span>
+                        <span className="profile-menu-text">설정</span>
+                      </a>
+                    </div>
                   )}
 
-                  {/* USER: Certified User 신청 */}
-                  {userRole === UserRole.USER && (
-                    <>
-                      <div className="profile-menu-section">
-                        <a href="/experts/apply" className="profile-menu-item">
-                          <span className="profile-menu-icon">✅</span>
-                          <span className="profile-menu-text">Certified User 신청</span>
-                        </a>
-                      </div>
-                      <div className="profile-divider"></div>
-                    </>
-                  )}
-
-                  {/* VERIFIED: Certified Network */}
-                  {userRole === UserRole.VERIFIED && (
-                    <>
-                      <div className="profile-menu-section">
-                        <a href="/experts/network" className="profile-menu-item">
-                          <span className="profile-menu-icon">🤝</span>
-                          <span className="profile-menu-text">Certified Network</span>
-                        </a>
-                      </div>
-                      <div className="profile-divider"></div>
-                    </>
-                  )}
-
-                  {/* USER & VERIFIED: 보유 자산 */}
-                  {(userRole === UserRole.USER || userRole === UserRole.VERIFIED) && (
-                    <>
-                      <div className="profile-menu-section">
-                        <a href="/wallet" className="profile-menu-item">
-                          <span className="profile-menu-icon">💰</span>
-                          <span className="profile-menu-text">보유 자산</span>
-                        </a>
-                      </div>
-                      <div className="profile-divider"></div>
-                    </>
-                  )}
-
-                  {/* ADMIN: 관리자 대시보드 */}
+                  {/* 관리자 대시보드 */}
                   {userRole === UserRole.ADMIN && (
                     <>
+                      <div className="profile-divider"></div>
                       <div className="profile-menu-section">
                         <a href="/admin" className="profile-menu-item">
                           <span className="profile-menu-icon">👑</span>
                           <span className="profile-menu-text">관리자 대시보드</span>
+                          {adminPending > 0 && (
+                            <span style={{
+                              marginLeft: '8px',
+                              background: '#f59e0b',
+                              color: 'white',
+                              borderRadius: '9999px',
+                              padding: '2px 8px',
+                              fontSize: '12px',
+                              fontWeight: 700
+                            }}>{adminPending}</span>
+                          )}
                         </a>
                       </div>
-                      <div className="profile-divider"></div>
                     </>
                   )}
 

@@ -1,210 +1,234 @@
 /**
- * Follow Management Utility
- * Handles localStorage-based follow functionality for users and topics
+ * Follow & Topic Subscription utilities backed by Supabase APIs.
+ * These helpers abstract fetch calls for client components.
  */
 
 export interface FollowedUser {
   id: string
-  name: string
-  email: string
-  role: string
+  name?: string
+  email?: string
+  role?: string
   avatar_url?: string
   followed_at: string
 }
 
 export interface SubscribedTopic {
+  /** Category identifier */
   id: number
   name: string
-  slug: string
-  icon: string
+  slug?: string
+  icon?: string
   subscribed_at: string
+  /** Supabase topic_subscriptions row id */
+  subscriptionId: string
 }
 
-// Legacy type for backward compatibility
-export type FollowedTopic = SubscribedTopic
+const TOPIC_ENDPOINT = '/api/topics/subscriptions'
+const USER_FOLLOW_ENDPOINT = '/api/users'
 
-const FOLLOWED_USERS_KEY = 'vietkconnect_followed_users'
-const SUBSCRIBED_TOPICS_KEY = 'vietkconnect_subscribed_topics'
-const LEGACY_FOLLOWED_TOPICS_KEY = 'vietkconnect_followed_topics' // For migration
+let topicCache: SubscribedTopic[] | null = null
+let followingCache: Set<string> | null = null
 
-// User Following Functions
-export function getFollowedUsers(): FollowedUser[] {
+function mapTopic(row: any): SubscribedTopic {
+  const category = row?.category ?? {}
+  const categoryId = Number(row?.category_id ?? category?.id ?? 0)
+
+  return {
+    id: Number.isFinite(categoryId) ? categoryId : 0,
+    name: typeof category?.name === 'string' && category.name.length > 0
+      ? category.name
+      : '이름 없는 토픽',
+    slug: typeof category?.slug === 'string' ? category.slug : undefined,
+    icon: typeof category?.icon === 'string' ? category.icon : undefined,
+    subscribed_at: typeof row?.created_at === 'string'
+      ? row.created_at
+      : new Date().toISOString(),
+    subscriptionId: String(row?.id ?? crypto.randomUUID())
+  }
+}
+
+async function fetchWithAuth(input: RequestInfo | URL, init?: RequestInit) {
+  const res = await fetch(input, init)
+  if (res.status === 401) {
+    throw new Error('Unauthorized')
+  }
+  return res
+}
+
+export async function getSubscribedTopics(forceRefresh = false): Promise<SubscribedTopic[]> {
+  if (!forceRefresh && topicCache) {
+    return topicCache
+  }
+
   try {
-    const followedStr = localStorage.getItem(FOLLOWED_USERS_KEY)
-    return followedStr ? JSON.parse(followedStr) : []
+    const res = await fetchWithAuth(TOPIC_ENDPOINT, { cache: 'no-store' })
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      throw new Error(payload?.error || 'Failed to load topic subscriptions')
+    }
+
+    const payload = await res.json()
+    const data = Array.isArray(payload?.data) ? payload.data : []
+    topicCache = data.map(mapTopic)
+    return topicCache
   } catch (error) {
-    console.error('Failed to load followed users:', error)
+    console.error('[follow-manager] getSubscribedTopics failed:', error)
+    topicCache = []
     return []
   }
 }
 
-export function followUser(user: Omit<FollowedUser, 'followed_at'>): boolean {
+export async function subscribeTopic(topic: { id: number; slug?: string }): Promise<SubscribedTopic | null> {
   try {
-    const followed = getFollowedUsers()
+    const res = await fetchWithAuth(TOPIC_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category_id: topic.id, category_slug: topic.slug })
+    })
 
-    // Check if already following
-    const exists = followed.some(u => u.id === user.id)
-    if (exists) {
-      return false
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      throw new Error(payload?.error || 'Failed to subscribe to topic')
     }
 
-    const newFollow: FollowedUser = {
-      ...user,
-      followed_at: new Date().toISOString()
+    const payload = await res.json()
+    const subscription = payload?.data ? mapTopic(payload.data) : null
+
+    if (subscription) {
+      topicCache = topicCache ? [subscription, ...topicCache.filter(t => t.id !== subscription.id)] : [subscription]
     }
 
-    followed.unshift(newFollow)
-    localStorage.setItem(FOLLOWED_USERS_KEY, JSON.stringify(followed))
+    return subscription
+  } catch (error) {
+    console.error('[follow-manager] subscribeTopic failed:', error)
+    return null
+  }
+}
+
+export async function unsubscribeTopic(topicIdentifier: number | string): Promise<boolean> {
+  try {
+    const res = await fetchWithAuth(`${TOPIC_ENDPOINT}/${topicIdentifier}`, {
+      method: 'DELETE'
+    })
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      throw new Error(payload?.error || 'Failed to unsubscribe from topic')
+    }
+
+    if (topicCache) {
+      topicCache = topicCache.filter(topic => topic.subscriptionId !== topicIdentifier && topic.id !== Number(topicIdentifier))
+    }
     return true
   } catch (error) {
-    console.error('Failed to follow user:', error)
+    console.error('[follow-manager] unsubscribeTopic failed:', error)
     return false
   }
 }
 
-export function unfollowUser(userId: string): boolean {
-  try {
-    const followed = getFollowedUsers()
-    const filtered = followed.filter(u => u.id !== userId)
+export async function toggleSubscribeTopic(topic: { id: number; slug?: string }): Promise<{ success: boolean; isSubscribed: boolean; topic: SubscribedTopic | null }> {
+  const current = await getSubscribedTopics()
+  const existing = current.find(item => item.id === topic.id)
 
-    if (filtered.length === followed.length) {
-      return false // Nothing was removed
+  if (existing) {
+    const removed = await unsubscribeTopic(existing.subscriptionId)
+    return { success: removed, isSubscribed: !removed, topic: removed ? null : existing }
+  }
+
+  const created = await subscribeTopic(topic)
+  const success = Boolean(created)
+  return { success, isSubscribed: success, topic: created }
+}
+
+function mapFollowIds(ids: string[]): FollowedUser[] {
+  return ids.map(id => ({
+    id,
+    followed_at: new Date().toISOString()
+  }))
+}
+
+export async function getFollowedUsers(forceRefresh = false): Promise<FollowedUser[]> {
+  if (!forceRefresh && followingCache) {
+    return mapFollowIds(Array.from(followingCache))
+  }
+
+  try {
+    const res = await fetchWithAuth(`${USER_FOLLOW_ENDPOINT}/following`, { cache: 'no-store' })
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      throw new Error(payload?.error || 'Failed to load following users')
     }
 
-    localStorage.setItem(FOLLOWED_USERS_KEY, JSON.stringify(filtered))
+    const payload = await res.json()
+    const ids = Array.isArray(payload?.data) ? payload.data : []
+    followingCache = new Set(ids.map(String))
+    return mapFollowIds(ids.map(String))
+  } catch (error) {
+    console.error('[follow-manager] getFollowedUsers failed:', error)
+    followingCache = new Set()
+    return []
+  }
+}
+
+export async function followUser(userId: string): Promise<boolean> {
+  try {
+    const res = await fetchWithAuth(`${USER_FOLLOW_ENDPOINT}/${userId}/follow`, { method: 'POST' })
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      throw new Error(payload?.error || 'Failed to follow user')
+    }
+
+    if (followingCache) {
+      followingCache.add(userId)
+    }
     return true
   } catch (error) {
-    console.error('Failed to unfollow user:', error)
+    console.error('[follow-manager] followUser failed:', error)
     return false
   }
 }
 
-export function isFollowingUser(userId: string): boolean {
-  const followed = getFollowedUsers()
-  return followed.some(u => u.id === userId)
+export async function unfollowUser(userId: string): Promise<boolean> {
+  try {
+    const res = await fetchWithAuth(`${USER_FOLLOW_ENDPOINT}/${userId}/follow`, { method: 'DELETE' })
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      throw new Error(payload?.error || 'Failed to unfollow user')
+    }
+
+    if (followingCache) {
+      followingCache.delete(userId)
+    }
+    return true
+  } catch (error) {
+    console.error('[follow-manager] unfollowUser failed:', error)
+    return false
+  }
 }
 
-export function toggleFollowUser(user: Omit<FollowedUser, 'followed_at'>): { success: boolean; isFollowing: boolean } {
-  const currentlyFollowing = isFollowingUser(user.id)
+export async function isFollowingUser(userId: string): Promise<boolean> {
+  const cache = followingCache
+  if (cache && cache.size > 0) {
+    return cache.has(userId)
+  }
+
+  const users = await getFollowedUsers()
+  return users.some(user => user.id === userId)
+}
+
+export async function toggleFollowUser(userId: string): Promise<{ success: boolean; isFollowing: boolean }> {
+  const currentlyFollowing = await isFollowingUser(userId)
 
   if (currentlyFollowing) {
-    const success = unfollowUser(user.id)
-    return { success, isFollowing: false }
-  } else {
-    const success = followUser(user)
-    return { success, isFollowing: true }
+    const success = await unfollowUser(userId)
+    return { success, isFollowing: !success }
   }
+
+  const success = await followUser(userId)
+  return { success, isFollowing: success }
 }
 
-// Topic Subscription Functions
-export function getSubscribedTopics(): SubscribedTopic[] {
-  try {
-    // Try new key first
-    let subscribedStr = localStorage.getItem(SUBSCRIBED_TOPICS_KEY)
-
-    // Migration: Check legacy key if new key doesn't exist
-    if (!subscribedStr) {
-      const legacyStr = localStorage.getItem(LEGACY_FOLLOWED_TOPICS_KEY)
-      if (legacyStr) {
-        const legacyTopics = JSON.parse(legacyStr)
-        // Migrate followed_at to subscribed_at
-        const migratedTopics = legacyTopics.map((topic: any) => ({
-          ...topic,
-          subscribed_at: topic.followed_at || new Date().toISOString()
-        }))
-        // Save to new key
-        localStorage.setItem(SUBSCRIBED_TOPICS_KEY, JSON.stringify(migratedTopics))
-        // Remove legacy key
-        localStorage.removeItem(LEGACY_FOLLOWED_TOPICS_KEY)
-        return migratedTopics
-      }
-      return []
-    }
-
-    return JSON.parse(subscribedStr)
-  } catch (error) {
-    console.error('Failed to load subscribed topics:', error)
-    return []
-  }
-}
-
-// Legacy function for backward compatibility
-export function getFollowedTopics(): SubscribedTopic[] {
-  return getSubscribedTopics()
-}
-
-export function subscribeTopic(topic: Omit<SubscribedTopic, 'subscribed_at'>): boolean {
-  try {
-    const subscribed = getSubscribedTopics()
-
-    // Check if already subscribed
-    const exists = subscribed.some(t => t.id === topic.id)
-    if (exists) {
-      return false
-    }
-
-    const newSubscription: SubscribedTopic = {
-      ...topic,
-      subscribed_at: new Date().toISOString()
-    }
-
-    subscribed.unshift(newSubscription)
-    localStorage.setItem(SUBSCRIBED_TOPICS_KEY, JSON.stringify(subscribed))
-    return true
-  } catch (error) {
-    console.error('Failed to subscribe topic:', error)
-    return false
-  }
-}
-
-export function unsubscribeTopic(topicId: number): boolean {
-  try {
-    const subscribed = getSubscribedTopics()
-    const filtered = subscribed.filter(t => t.id !== topicId)
-
-    if (filtered.length === subscribed.length) {
-      return false // Nothing was removed
-    }
-
-    localStorage.setItem(SUBSCRIBED_TOPICS_KEY, JSON.stringify(filtered))
-    return true
-  } catch (error) {
-    console.error('Failed to unsubscribe topic:', error)
-    return false
-  }
-}
-
-export function isSubscribedToTopic(topicId: number): boolean {
-  const subscribed = getSubscribedTopics()
-  return subscribed.some(t => t.id === topicId)
-}
-
-export function toggleSubscribeTopic(topic: Omit<SubscribedTopic, 'subscribed_at'>): { success: boolean; isSubscribed: boolean } {
-  const currentlySubscribed = isSubscribedToTopic(topic.id)
-
-  if (currentlySubscribed) {
-    const success = unsubscribeTopic(topic.id)
-    return { success, isSubscribed: false }
-  } else {
-    const success = subscribeTopic(topic)
-    return { success, isSubscribed: true }
-  }
-}
-
-// Legacy functions for backward compatibility
-export function followTopic(topic: Omit<SubscribedTopic, 'subscribed_at'>): boolean {
-  return subscribeTopic(topic)
-}
-
-export function unfollowTopic(topicId: number): boolean {
-  return unsubscribeTopic(topicId)
-}
-
-export function isFollowingTopic(topicId: number): boolean {
-  return isSubscribedToTopic(topicId)
-}
-
-export function toggleFollowTopic(topic: Omit<SubscribedTopic, 'subscribed_at'>): { success: boolean; isFollowing: boolean } {
-  const result = toggleSubscribeTopic(topic)
-  return { success: result.success, isFollowing: result.isSubscribed }
+export function clearFollowCaches() {
+  topicCache = null
+  followingCache = null
 }

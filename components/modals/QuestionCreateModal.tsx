@@ -1,9 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import BaseModal from './BaseModal'
-import { CATEGORIES } from '@/lib/data/categories-mock'
+
+interface CategoryOption {
+  id: number
+  name: string
+}
 
 interface QuestionCreateModalProps {
   isOpen: boolean
@@ -19,8 +23,44 @@ export default function QuestionCreateModal({
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [categoryId, setCategoryId] = useState('1') // 기본값: 첫 번째 카테고리
+  const [categoryId, setCategoryId] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [categoryError, setCategoryError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadCategories() {
+      setLoadingCategories(true)
+      setCategoryError(null)
+      try {
+        const res = await fetch('/api/categories', { cache: 'no-store' })
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null)
+          throw new Error(payload?.error || '카테고리를 불러오지 못했습니다.')
+        }
+        const payload = await res.json()
+        const data = Array.isArray(payload?.data) ? payload.data : []
+        setCategories(data)
+        if (data.length > 0) {
+          setCategoryId(String(data[0].id))
+        } else {
+          setCategoryId('')
+        }
+      } catch (err: any) {
+        console.error('[QuestionCreateModal] loadCategories failed:', err)
+        setCategories([])
+        setCategoryError(err?.message || '카테고리를 불러오지 못했습니다.')
+        setCategoryId('')
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+
+    if (isOpen) {
+      loadCategories()
+    }
+  }, [isOpen])
 
   // 문자 카운터
   const updateCharCounter = (current: number, max: number) => {

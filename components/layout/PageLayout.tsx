@@ -27,7 +27,9 @@ export default function PageLayout({
     return (
       <main className="main-layout">
         <div className="main-container centered">
-          {children}
+          <div className="main-content">
+            {children}
+          </div>
         </div>
       </main>
     )
@@ -37,16 +39,22 @@ export default function PageLayout({
     return (
       <main className="main-layout">
         <div className="main-container full-width">
-          {children}
+          <div className="main-content">
+            {children}
+          </div>
         </div>
       </main>
     )
   }
 
   // Default: withSidebar
+  const containerClassName = showSidebar
+    ? 'main-container with-sidebar'
+    : 'main-container centered'
+
   return (
     <main className="main-layout">
-      <div className="container">
+      <div className={containerClassName}>
         <div className="main-content">
           {children}
         </div>
@@ -55,4 +63,3 @@ export default function PageLayout({
     </main>
   )
 }
-

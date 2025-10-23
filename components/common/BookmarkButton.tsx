@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
-import { toggleBookmark, isBookmarked } from '@/lib/utils/bookmark-manager'
+import {
+  toggleBookmark,
+  isBookmarked,
+  type Bookmark
+} from '@/lib/utils/bookmark-manager'
 
 interface BookmarkButtonProps {
   targetId: string
@@ -18,10 +22,24 @@ export default function BookmarkButton({ targetId, type, title, content, compact
   const { isLoggedIn } = useAuth()
   const [bookmarked, setBookmarked] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [bookmarkRecord, setBookmarkRecord] = useState<Bookmark | null>(null)
 
   useEffect(() => {
+    let ignore = false
+
     if (isLoggedIn) {
-      setBookmarked(isBookmarked(targetId, type))
+      isBookmarked(targetId, type).then(({ isBookmarked, bookmark }) => {
+        if (ignore) return
+        setBookmarked(isBookmarked)
+        setBookmarkRecord(bookmark)
+      })
+    } else {
+      setBookmarked(false)
+      setBookmarkRecord(null)
+    }
+
+    return () => {
+      ignore = true
     }
   }, [isLoggedIn, targetId, type])
 
@@ -34,7 +52,7 @@ export default function BookmarkButton({ targetId, type, title, content, compact
     setIsProcessing(true)
 
     try {
-      const result = toggleBookmark({
+      const result = await toggleBookmark({
         type,
         targetId,
         title,
@@ -43,6 +61,7 @@ export default function BookmarkButton({ targetId, type, title, content, compact
 
       if (result.success) {
         setBookmarked(result.isBookmarked)
+        setBookmarkRecord(result.bookmark ?? null)
 
         // 시각적 피드백: 토스트 알림
         if (result.isBookmarked) {
@@ -50,6 +69,11 @@ export default function BookmarkButton({ targetId, type, title, content, compact
         } else {
           alert('🗑️ 북마크에서 제거되었습니다')
         }
+      } else if (result.isBookmarked) {
+        setBookmarked(true)
+        setBookmarkRecord(result.bookmark ?? null)
+      } else {
+        alert('북마크 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
       }
     } catch (error) {
       console.error('Bookmark toggle failed:', error)

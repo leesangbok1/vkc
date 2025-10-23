@@ -17,24 +17,27 @@ interface Banner {
 
 interface BannerCarouselProps {
   banners: Banner[]
+  variant?: 'default' | 'sidebar'
 }
 
-export default function BannerCarousel({ banners }: BannerCarouselProps) {
+export default function BannerCarousel({ banners, variant = 'default' }: BannerCarouselProps) {
   if (!banners || banners.length === 0) {
     return null
   }
 
+  const isSidebar = variant === 'sidebar'
+
   return (
-    <div className="banner-carousel-container" style={{
-      width: '100%',
-      margin: '1.5rem 0',
-      borderRadius: '12px',
-      overflow: 'hidden',
-      // Default max-height for slides; can be overridden via CSS var
-      // Ensures internal scroll appears if translated text grows
-      // and prevents layout jump
-      ['--banner-slide-max-height' as any]: '180px'
-    }}>
+    <div
+      className={`banner-carousel-container${isSidebar ? ' banner-carousel-sidebar' : ''}`}
+      style={{
+        width: '100%',
+        margin: isSidebar ? '0 0 1.25rem 0' : '1.5rem 0',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        ['--banner-slide-max-height' as any]: isSidebar ? '210px' : '180px'
+      }}
+    >
       <Swiper
         modules={[Navigation, Pagination, Autoplay]}
         spaceBetween={20}
@@ -99,6 +102,7 @@ export default function BannerCarousel({ banners }: BannerCarouselProps) {
 
       <style jsx global>{`
         .banner-carousel-container { --banner-slide-max-height: 180px; }
+        .banner-carousel-container.banner-carousel-sidebar { --banner-slide-max-height: 210px; }
         @media (max-width: 768px) {
           .banner-carousel-container { --banner-slide-max-height: 160px; }
         }
@@ -148,6 +152,12 @@ export default function BannerCarousel({ banners }: BannerCarouselProps) {
           .swiper-button-prev:after {
             font-size: 1.2rem !important;
           }
+        }
+
+        .banner-carousel-sidebar .swiper-button-next,
+        .banner-carousel-sidebar .swiper-button-prev {
+          background: rgba(255, 255, 255, 0.6);
+          color: #2563eb !important;
         }
       `}</style>
     </div>

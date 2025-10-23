@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import Header from '@/components/layout/Header'
+import { BRAND_NAME } from '@/lib/constants/branding'
 
 // Mock useSafeAuth from ClientProviders
 const mockAuthContext = {
@@ -146,7 +147,7 @@ describe('Header Component', () => {
   it('should render header with logo and navigation', () => {
     render(<Header />)
 
-    expect(screen.getByText('VietKConnect')).toBeInTheDocument()
+    expect(screen.getByText(BRAND_NAME)).toBeInTheDocument()
     expect(screen.getByText('💬 질문')).toBeInTheDocument()
     expect(screen.getByText('✍️ 질문하기')).toBeInTheDocument()
   })
@@ -269,13 +270,13 @@ describe('Header Component', () => {
     render(<Header />)
 
     // Header should render properly on mobile (checking basic structure)
-    expect(screen.getByText('VietKConnect')).toBeInTheDocument()
+    expect(screen.getByText(BRAND_NAME)).toBeInTheDocument()
   })
 
   it('should highlight active navigation item', () => {
     render(<Header />)
 
-    const homeLink = screen.getByRole('link', { name: 'VK VietKConnect' })
+    const homeLink = screen.getByRole('link', { name: BRAND_NAME })
     expect(homeLink).toHaveAttribute('href', '/')
   })
 
@@ -293,7 +294,7 @@ describe('Header Component', () => {
 
     // The Header component doesn't have search functionality built-in currently
     // Just test that the header renders properly
-    expect(screen.getByText('VietKConnect')).toBeInTheDocument()
+    expect(screen.getByText(BRAND_NAME)).toBeInTheDocument()
   })
 
   it('should display trust score for authenticated users', () => {

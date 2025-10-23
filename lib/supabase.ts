@@ -1,6 +1,14 @@
 import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 // Complete Database types matching 4-tier permission system
 export type Database = {
   public: {
@@ -14,6 +22,7 @@ export type Database = {
           bio: string | null
           provider: string | null
           provider_id: string | null
+          admin_yn: 'Y' | 'N'
 
           // 4-Tier Permission System
           role: 'guest' | 'user' | 'verified' | 'admin'
@@ -52,6 +61,7 @@ export type Database = {
           bio?: string | null
           provider?: string | null
           provider_id?: string | null
+          admin_yn?: 'Y' | 'N'
 
           // 4-Tier Permission System
           role?: 'guest' | 'user' | 'verified' | 'admin'
@@ -90,6 +100,7 @@ export type Database = {
           bio?: string | null
           provider?: string | null
           provider_id?: string | null
+          admin_yn?: 'Y' | 'N'
           role?: 'guest' | 'user' | 'verified' | 'admin'
           verification_status?: 'none' | 'pending' | 'approved' | 'rejected' | 'expired'
           verification_type?: 'student' | 'work' | 'family' | 'resident' | 'other' | null
@@ -111,6 +122,170 @@ export type Database = {
           last_active?: string
           notification_preferences?: Record<string, unknown> | null
           updated_at?: string
+        }
+      }
+      certification_requests: {
+        Row: {
+          id: string
+          user_id: string
+          status: 'pending' | 'approved' | 'rejected'
+          verification_type:
+            | 'student'
+            | 'work'
+            | 'family'
+            | 'resident'
+            | 'business'
+            | 'mentor'
+            | 'experienced'
+            | 'community_leader'
+            | 'specialist'
+            | 'other'
+          verification_method: 'document' | 'experience' | 'hybrid'
+          documents: Json
+          visa_type: string | null
+          years_in_korea: number | null
+          company: string | null
+          university: string | null
+          specialties: string[] | null
+          experience_portfolio: Json
+          estimated_review_hours: number | null
+          admin_notes: string | null
+          rejection_reason: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          status?: 'pending' | 'approved' | 'rejected'
+          verification_type:
+            | 'student'
+            | 'work'
+            | 'family'
+            | 'resident'
+            | 'business'
+            | 'mentor'
+            | 'experienced'
+            | 'community_leader'
+            | 'specialist'
+            | 'other'
+          verification_method?: 'document' | 'experience' | 'hybrid'
+          documents: Json
+          visa_type?: string | null
+          years_in_korea?: number | null
+          company?: string | null
+          university?: string | null
+          specialties?: string[] | null
+          experience_portfolio?: Json
+          estimated_review_hours?: number | null
+          admin_notes?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          status?: 'pending' | 'approved' | 'rejected'
+          verification_type?:
+            | 'student'
+            | 'work'
+            | 'family'
+            | 'resident'
+            | 'business'
+            | 'mentor'
+            | 'experienced'
+            | 'community_leader'
+            | 'specialist'
+            | 'other'
+          verification_method?: 'document' | 'experience' | 'hybrid'
+          documents?: Json
+          visa_type?: string | null
+          years_in_korea?: number | null
+          company?: string | null
+          university?: string | null
+          specialties?: string[] | null
+          experience_portfolio?: Json
+          estimated_review_hours?: number | null
+          admin_notes?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      user_follows: {
+        Row: {
+          id: string
+          follower_id: string
+          following_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          follower_id: string
+          following_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          follower_id?: string
+          following_id?: string
+          created_at?: string
+        }
+      }
+      topic_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          category_id: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category_id: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category_id?: number
+          created_at?: string
+        }
+      }
+      bookmarks: {
+        Row: {
+          id: string
+          user_id: string
+          target_id: string
+          target_type: 'question' | 'post' | 'answer'
+          title: string | null
+          content: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          target_id: string
+          target_type: 'question' | 'post' | 'answer'
+          title?: string | null
+          content?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          target_id?: string
+          target_type?: 'question' | 'post' | 'answer'
+          title?: string | null
+          content?: string | null
+          created_at?: string
         }
       }
       categories: {
@@ -505,6 +680,7 @@ export const createSupabaseServerClient = async () => {
             return cookieStore.get(name)?.value
           },
         },
+        cookieEncoding: 'raw',
       }
     )
   } catch (error) {
@@ -530,6 +706,7 @@ export const createSupabaseServerReadClient = () => {
           // No-op for read-only client
         },
       },
+      cookieEncoding: 'raw',
     }
   )
 }

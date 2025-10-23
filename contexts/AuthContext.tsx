@@ -41,8 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true)
 
   // Check if we're in mock mode
-  const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ||
-                     !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')
+  const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true'
 
   const supabase = React.useMemo(() => {
     if (isMockMode) {
@@ -89,6 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         years_in_korea: null,
         region: null,
         preferred_language: 'ko',
+        admin_yn: 'N',
         is_verified: false,
         verification_date: null,
         trust_score: 10,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { BRAND_NAME } from '@/lib/constants/branding'
 
 interface Message {
   id: string
@@ -66,9 +67,9 @@ export default function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
     return [
       {
         id: 'service-intro',
-        label: 'VietKConnect는 어떤 서비스인가요?',
+        label: `${BRAND_NAME}는 어떤 서비스인가요?`,
         icon: '😊',
-        action: () => handleQuickButtonClick('service-intro', 'VietKConnect는 어떤 서비스인가요?')
+        action: () => handleQuickButtonClick('service-intro', `${BRAND_NAME}는 어떤 서비스인가요?`)
       },
       {
         id: 'login-account',
@@ -195,7 +196,7 @@ export default function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
             <div className="chatbot-logo-circle">VK</div>
           </div>
           <div className="chatbot-header-text">
-            <h2 className="chatbot-header-title">Q&A 커뮤니티 VietKConnect</h2>
+            <h2 className="chatbot-header-title" translate="no" data-no-translate="true">Q&A 커뮤니티 {BRAND_NAME}</h2>
             <p className="chatbot-header-subtitle">내일 오전 10:00부터 운영해요</p>
           </div>
         </div>

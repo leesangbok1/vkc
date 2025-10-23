@@ -123,7 +123,7 @@ export async function PUT(
     }
 
     // 답변 업데이트
-    // @ts-ignore - Supabase type inference issue with schema
+    // @ts-expect-error - Supabase type inference issue with schema
     const { data: updatedAnswer, error: updateError } = await supabase
       .from('answers')
       .update({
@@ -229,22 +229,22 @@ export async function DELETE(
     }
 
     // 질문의 답변 카운트 감소
-    // @ts-ignore - Supabase type inference issue with schema
+    // @ts-expect-error - Supabase type inference issue with schema
     await supabase
       .from('questions')
       .update({
-        // @ts-ignore - Supabase RPC type inference issue
+        // @ts-expect-error - Supabase RPC type inference issue
         answer_count: supabase.rpc('decrement_answer_count'),
         updated_at: new Date().toISOString()
       })
       .eq('id', existingAnswer.question_id)
 
     // 사용자 답변 카운트 감소
-    // @ts-ignore - Supabase type inference issue with schema
+    // @ts-expect-error - Supabase type inference issue with schema
     await supabase
       .from('users')
       .update({
-        // @ts-ignore - Supabase RPC type inference issue
+        // @ts-expect-error - Supabase RPC type inference issue
         answer_count: supabase.rpc('decrement_answer_count'),
         updated_at: new Date().toISOString()
       })
