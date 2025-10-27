@@ -1,11 +1,25 @@
-// 베트남 커뮤니티 전문가 매칭 알고리즘
-export function findExpertMatches(question: any, availableExperts: any[]) {
-  const matches = availableExperts.map(expert => {
+import { Question, User } from '@/lib/types/api'
+
+interface CertifiedUser extends User {
+  specialties?: string[]
+  residence_years?: number
+  badges?: Record<string, boolean>
+}
+
+interface CertifiedMatch {
+  certifiedUser: CertifiedUser
+  score: number
+  match_reasons: string[]
+}
+
+// 베트남 커뮤니티 인증 사용자 매칭 알고리즘
+export function findCertifiedMatches(question: Question, availableCertifiedUsers: CertifiedUser[]): CertifiedMatch[] {
+  const matches = availableCertifiedUsers.map(certifiedUser => {
     let score = 0
 
-    // 1. 전문 분야 매칭 (40점)
-    if (expert.specialties && question.category) {
-      const categoryMatch = expert.specialties.some((specialty: string) =>
+    // 1. 인증 분야 매칭 (40점)
+    if (certifiedUser.specialties && question.category) {
+      const categoryMatch = certifiedUser.specialties.some((specialty: string) =>
         question.category.toLowerCase().includes(specialty.toLowerCase()) ||
         question.title.toLowerCase().includes(specialty.toLowerCase()) ||
         question.tags?.some((tag: string) => tag.toLowerCase().includes(specialty.toLowerCase()))
@@ -14,33 +28,33 @@ export function findExpertMatches(question: any, availableExperts: any[]) {
     }
 
     // 2. 신뢰도 점수 (20점)
-    const trustRatio = (expert.trust_score || 0) / 1000
+    const trustRatio = (certifiedUser.trust_score || 0) / 1000
     score += Math.min(trustRatio * 20, 20)
 
     // 3. 거주 기간 (경험) (15점)
-    const yearsScore = Math.min((expert.residence_years || 0) * 3, 15)
+    const yearsScore = Math.min((certifiedUser.residence_years || 0) * 3, 15)
     score += yearsScore
 
     // 4. 답변 활동성 (10점)
-    const answerRatio = (expert.helpful_answer_count || 0) / Math.max(expert.answer_count || 1, 1)
+    const answerRatio = (certifiedUser.helpful_answer_count || 0) / Math.max(certifiedUser.answer_count || 1, 1)
     score += answerRatio * 10
 
     // 5. 배지 보너스 (10점)
-    if (expert.badges?.expert) score += 5
-    if (expert.badges?.verified) score += 3
-    if (expert.badges?.helpful) score += 2
+    if (certifiedUser.badges?.certified) score += 5
+    if (certifiedUser.badges?.verified) score += 3
+    if (certifiedUser.badges?.helper) score += 2
 
     // 6. 최근 활동성 (5점)
-    const lastActive = new Date(expert.last_active || 0)
+    const lastActive = new Date(certifiedUser.last_active || 0)
     const daysSinceActive = (Date.now() - lastActive.getTime()) / (1000 * 60 * 60 * 24)
     if (daysSinceActive <= 7) score += 5
     else if (daysSinceActive <= 30) score += 3
     else if (daysSinceActive <= 90) score += 1
 
     return {
-      expert,
+      certifiedUser,
       score: Math.round(score),
-      match_reasons: generateMatchReasons(expert, question, score)
+      match_reasons: generateMatchReasons(certifiedUser, question, score)
     }
   })
 
@@ -52,36 +66,45 @@ export function findExpertMatches(question: any, availableExperts: any[]) {
 }
 
 // 매칭 이유 생성
-function generateMatchReasons(expert: any, question: any, score: number) {
+function generateMatchReasons(certifiedUser: CertifiedUser, question: Question, score: number): string[] {
   const reasons: string[] = []
 
-  if (expert.specialties?.some((s: string) =>
+  if (certifiedUser.specialties?.some((s: string) =>
     question.category?.toLowerCase().includes(s.toLowerCase())
   )) {
-    reasons.push(`${question.category} 전문가`)
+    reasons.push(`${question.category} 인증 사용자`)
   }
 
-  if (expert.residence_years >= 5) {
-    reasons.push(`한국 거주 ${expert.residence_years}년 경험`)
+  if (certifiedUser.residence_years >= 5) {
+    reasons.push(`한국 거주 ${certifiedUser.residence_years}년 경험`)
   }
 
-  if (expert.badges?.expert) {
-    reasons.push('인증된 전문가')
+  if (certifiedUser.badges?.certified) {
+    reasons.push('인증된 사용자')
   }
 
-  if (expert.trust_score >= 800) {
+  if (certifiedUser.trust_score >= 800) {
     reasons.push('높은 신뢰도')
   }
 
-  if (expert.helpful_answer_count >= 50) {
+  if (certifiedUser.helpful_answer_count >= 50) {
     reasons.push('활발한 답변 활동')
   }
 
   return reasons
 }
 
+interface Answer {
+  content?: string
+  response_time_hours?: number
+  author?: {
+    trust_score?: number
+    badges?: Record<string, boolean>
+  }
+}
+
 // 답변 품질 평가 알고리즘
-export function evaluateAnswerQuality(answer: any, question: any) {
+export function evaluateAnswerQuality(answer: Answer, question: Question): number {
   let qualityScore = 0
 
   // 1. 답변 길이 (최대 20점)
@@ -115,8 +138,8 @@ export function evaluateAnswerQuality(answer: any, question: any) {
   const authorTrust = (answer.author?.trust_score || 0) / 1000
   qualityScore += Math.min(authorTrust * 20, 20)
 
-  // 6. 전문가 여부 (최대 10점)
-  if (answer.author?.badges?.expert) qualityScore += 10
+  // 6. 인증 사용자 여부 (최대 10점)
+  if (answer.author?.badges?.certified) qualityScore += 10
   else if (answer.author?.badges?.verified) qualityScore += 5
 
   // 7. 응답 속도 보너스 (최대 10점)
@@ -127,3 +150,6 @@ export function evaluateAnswerQuality(answer: any, question: any) {
 
   return Math.min(Math.round(qualityScore), 100)
 }
+
+// Alias for backward compatibility
+export const findExpertMatches = findCertifiedMatches

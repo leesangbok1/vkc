@@ -1,11 +1,13 @@
 'use client'
 
+import { BRAND_NAME, BRAND_SHORT_DESCRIPTION, BRAND_TAGLINE } from '@/lib/constants/branding'
+
 export default function StructuredData() {
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "VietKConnect",
-    "description": "한국에서 생활하는 베트남인들을 위한 질문과 답변 커뮤니티",
+    "name": BRAND_NAME,
+    "description": BRAND_SHORT_DESCRIPTION,
     "url": "https://vietkconnect.com",
     "logo": "https://vietkconnect.com/logo.png",
     "contactPoint": {
@@ -24,8 +26,8 @@ export default function StructuredData() {
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "VietKConnect",
-    "description": "한국 거주 베트남인을 위한 Q&A 플랫폼",
+    "name": BRAND_NAME,
+    "description": BRAND_TAGLINE,
     "url": "https://vietkconnect.com",
     "potentialAction": {
       "@type": "SearchAction",
@@ -46,7 +48,7 @@ export default function StructuredData() {
   const qaSchema = {
     "@context": "https://schema.org",
     "@type": "QAPage",
-    "name": "VietKConnect - 베트남인 커뮤니티 Q&A",
+    "name": `${BRAND_NAME} - 베트남인 커뮤니티 Q&A`,
     "description": "비자, 취업, 생활정보 등 한국 생활에 필요한 모든 질문과 답변",
     "inLanguage": "ko-KR",
     "audience": {
@@ -55,7 +57,7 @@ export default function StructuredData() {
     },
     "publisher": {
       "@type": "Organization",
-      "name": "VietKConnect"
+      "name": BRAND_NAME
     }
   }
 
@@ -81,11 +83,11 @@ export default function StructuredData() {
   const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
-    "name": "VietKConnect Q&A Platform",
-    "description": "한국 거주 베트남인을 위한 전문 질문답변 서비스",
+    "name": `${BRAND_NAME} Q&A Platform`,
+    "description": BRAND_SHORT_DESCRIPTION,
     "provider": {
       "@type": "Organization",
-      "name": "VietKConnect"
+      "name": BRAND_NAME
     },
     "areaServed": {
       "@type": "Country",

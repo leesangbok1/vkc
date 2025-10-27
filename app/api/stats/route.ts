@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // Mock mode check
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
       console.log('Stats API running in mock mode')
-      return NextResponse.json({
+      const response = NextResponse.json({
         data: {
           totalUsers: 150,
           totalQuestions: 45,
@@ -25,6 +25,11 @@ export async function GET(request: NextRequest) {
           activeUsers: 23
         }
       })
+
+      // Cache stats for 5 minutes (frequently updated)
+      response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=600')
+      response.headers.set('ETag', `stats-${Math.floor(Date.now() / 300000)}`)
+      return response
     }
 
     // 병렬로 모든 통계 쿼리 실행
@@ -100,7 +105,10 @@ export async function GET(request: NextRequest) {
     const avgAnswersPerQuestion = totalQuestions > 0 ? Math.round(totalAnswers / totalQuestions * 10) / 10 : 0
 
     // 카테고리별 통계
-    const categoryStats = (categoriesResult.data || []).reduce((acc: any, item: any) => {
+    interface CategoryStats {
+      [key: string]: { name: string; icon: string; count: number }
+    }
+    const categoryStats = (categoriesResult.data || []).reduce((acc: CategoryStats, item: { category: { slug: string; name: string; icon: string } | null }) => {
       if (item.category) {
         const key = item.category.slug
         if (!acc[key]) {
@@ -113,7 +121,7 @@ export async function GET(request: NextRequest) {
         acc[key].count++
       }
       return acc
-    }, {})
+    }, {} as CategoryStats)
 
     // 투표 통계
     const votes = votesResult.data || []
@@ -180,7 +188,7 @@ export async function GET(request: NextRequest) {
 
       // 카테고리별 통계
       categories: Object.entries(categoryStats)
-        .map(([slug, data]: [string, any]) => ({
+        .map(([slug, data]: [string, { name: string; icon: string; count: number }]) => ({
           slug,
           ...data
         }))
@@ -211,10 +219,15 @@ export async function GET(request: NextRequest) {
       generatedBy: 'viet-kconnect-api'
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       data: stats,
       message: 'Statistics retrieved successfully'
     })
+
+    // Cache stats for 5 minutes (frequently updated)
+    response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=600')
+    response.headers.set('ETag', `stats-${Math.floor(Date.now() / 300000)}`)
+    return response
 
   } catch (error) {
     console.error('Stats API error:', error)

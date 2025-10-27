@@ -1,0 +1,129 @@
+name: Quality Gate
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run TypeScript type check
+      run: npm run type-check
+
+    - name: Run ESLint
+      run: npm run lint
+
+    - name: Run unit tests
+      run: npm test
+
+    - name: Run tests with coverage
+      run: npm run test:coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage/lcov.info
+        fail_ci_if_error: false
+
+    - name: Build application
+      run: npm run build
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps
+
+    - name: Start development server
+      run: |
+        npm run dev &
+        npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run E2E tests
+      run: npm run test:e2e
+
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: playwright-report-${{ matrix.node-version }}
+        path: playwright-report/
+        retention-days: 30
+
+  security-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run security audit
+      run: npm audit --audit-level=moderate
+
+    - name: Check for vulnerabilities
+      run: |
+        if npm audit --audit-level=high --json | jq '.metadata.vulnerabilities.high + .metadata.vulnerabilities.critical' | grep -v '^0$'; then
+          echo "High or critical vulnerabilities found!"
+          exit 1
+        fi
+
+  performance-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build
+
+    - name: Analyze bundle size
+      run: |
+        echo "Bundle analysis:"
+        du -sh .next/static/* || echo "No static files found"
+
+        # Check if bundle size is reasonable (under 5MB)
+        total_size=$(du -sb .next/static 2>/dev/null | cut -f1 || echo "0")
+        max_size=$((5 * 1024 * 1024))  # 5MB in bytes
+
+        if [ "$total_size" -gt "$max_size" ]; then
+          echo "Bundle size too large: $total_size bytes (max: $max_size bytes)"
+          exit 1
+        else
+          echo "Bundle size OK: $total_size bytes"
+        fi

@@ -1,0 +1,284 @@
+/*
+🎨 Viet K-Connect Design System
+시니어 UI/UX 디자이너 관점에서 설계된 디자인 토큰 시스템
+Keynote 44px 고정값 대신 반응형 토큰 시스템 활용
+*/
+
+:root {
+  /* ===== COLOR SYSTEM ===== */
+
+  /* Primary Colors - 베트남 플래그 + 한국 테크 컬러 */
+  --color-primary-50: #E3F2FD;
+  --color-primary-100: #BBDEFB;
+  --color-primary-200: #90CAF9;
+  --color-primary-300: #64B5F6;
+  --color-primary-400: #42A5F5;
+  --color-primary-500: #4285F4;  /* Main Blue */
+  --color-primary-600: #1E88E5;
+  --color-primary-700: #1976D2;
+  --color-primary-800: #1565C0;
+  --color-primary-900: #0D47A1;
+
+  /* Secondary Colors - Trust Green */
+  --color-secondary-50: #E8F5E8;
+  --color-secondary-100: #C8E6C9;
+  --color-secondary-200: #A5D6A7;
+  --color-secondary-300: #81C784;
+  --color-secondary-400: #66BB6A;
+  --color-secondary-500: #34A853;  /* Main Green */
+  --color-secondary-600: #43A047;
+  --color-secondary-700: #388E3C;
+  --color-secondary-800: #2E7D32;
+  --color-secondary-900: #1B5E20;
+
+  /* Semantic Colors */
+  --color-success-50: #E8F5E9;
+  --color-success-500: #137333;
+  --color-success-900: #0D5016;
+
+  --color-error-50: #FFEBEE;
+  --color-error-500: #EA4335;
+  --color-error-900: #B71C1C;
+
+  --color-warning-50: #FEF7E0;
+  --color-warning-500: #FBBC04;
+  --color-warning-900: #E65100;
+
+  --color-info-50: #E3F2FD;
+  --color-info-500: #4285F4;
+  --color-info-900: #0D47A1;
+
+  /* Neutral Colors - 고대비 접근성 고려 */
+  --color-neutral-0: #FFFFFF;
+  --color-neutral-50: #F8F9FA;
+  --color-neutral-100: #F1F3F4;
+  --color-neutral-200: #E8EAED;
+  --color-neutral-300: #DADCE0;
+  --color-neutral-400: #BDC1C6;
+  --color-neutral-500: #9AA0A6;
+  --color-neutral-600: #80868B;
+  --color-neutral-700: #5F6368;
+  --color-neutral-800: #3C4043;
+  --color-neutral-900: #202124;
+
+  /* Text Colors */
+  --color-text-primary: var(--color-neutral-900);
+  --color-text-secondary: var(--color-neutral-700);
+  --color-text-tertiary: var(--color-neutral-500);
+  --color-text-disabled: var(--color-neutral-400);
+  --color-text-inverse: var(--color-neutral-0);
+
+  /* Background Colors */
+  --color-bg-primary: var(--color-neutral-0);
+  --color-bg-secondary: var(--color-neutral-50);
+  --color-bg-tertiary: var(--color-neutral-100);
+  --color-bg-overlay: rgba(32, 33, 36, 0.6);
+
+  /* Border Colors */
+  --color-border-light: var(--color-neutral-200);
+  --color-border-medium: var(--color-neutral-300);
+  --color-border-strong: var(--color-neutral-400);
+
+  /* ===== TYPOGRAPHY SYSTEM ===== */
+
+  /* Font Families */
+  --font-family-primary: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+
+  /* Font Sizes - 반응형 스케일 */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+
+  /* Font Weights */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* ===== SPACING SYSTEM ===== */
+
+  /* Base unit: 4px (0.25rem) */
+  --space-0: 0;
+  --space-0-5: 0.125rem;  /* 2px */
+  --space-1: 0.25rem;     /* 4px */
+  --space-1-5: 0.375rem;  /* 6px */
+  --space-2: 0.5rem;      /* 8px */
+  --space-2-5: 0.625rem;  /* 10px */
+  --space-3: 0.75rem;     /* 12px */
+  --space-3-5: 0.875rem;  /* 14px */
+  --space-4: 1rem;        /* 16px */
+  --space-5: 1.25rem;     /* 20px */
+  --space-6: 1.5rem;      /* 24px */
+  --space-7: 1.75rem;     /* 28px */
+  --space-8: 2rem;        /* 32px */
+  --space-9: 2.25rem;     /* 36px */
+  --space-10: 2.5rem;     /* 40px */
+  --space-11: 2.75rem;    /* 44px - Keynote 아바타 크기를 토큰으로 */
+  --space-12: 3rem;       /* 48px */
+  --space-14: 3.5rem;     /* 56px */
+  --space-16: 4rem;       /* 64px */
+  --space-20: 5rem;       /* 80px */
+  --space-24: 6rem;       /* 96px */
+
+  /* ===== BORDER RADIUS ===== */
+
+  --radius-none: 0;
+  --radius-sm: 0.25rem;   /* 4px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1rem;      /* 16px */
+  --radius-2xl: 1.5rem;   /* 24px */
+  --radius-full: 9999px;  /* Circle */
+
+  /* ===== SHADOWS ===== */
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* ===== COMPONENT SIZES ===== */
+
+  /* Avatar Sizes - Keynote 44px를 md로 설정 */
+  --avatar-xs: 1.5rem;    /* 24px */
+  --avatar-sm: 2rem;      /* 32px */
+  --avatar-md: 2.75rem;   /* 44px - Keynote 기준 */
+  --avatar-lg: 3.5rem;    /* 56px */
+  --avatar-xl: 4rem;      /* 64px */
+  --avatar-2xl: 5rem;     /* 80px */
+
+  /* Button Sizes */
+  --button-height-sm: 2rem;    /* 32px */
+  --button-height-md: 2.5rem;  /* 40px */
+  --button-height-lg: 3rem;    /* 48px */
+
+  /* Input Sizes */
+  --input-height-sm: 2rem;     /* 32px */
+  --input-height-md: 2.5rem;   /* 40px */
+  --input-height-lg: 3rem;     /* 48px */
+
+  /* ===== TRANSITIONS ===== */
+
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===== Z-INDEX SCALE ===== */
+
+  --z-index-auto: auto;
+  --z-index-base: 0;
+  --z-index-docked: 10;
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1100;
+  --z-index-banner: 1200;
+  --z-index-overlay: 1300;
+  --z-index-modal: 1400;
+  --z-index-popover: 1500;
+  --z-index-tooltip: 1600;
+  --z-index-toast: 1700;
+
+  /* ===== RESPONSIVE BREAKPOINTS ===== */
+
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+/* ===== DARK MODE SUPPORT ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode color overrides */
+    --color-text-primary: var(--color-neutral-0);
+    --color-text-secondary: var(--color-neutral-300);
+    --color-text-tertiary: var(--color-neutral-400);
+
+    --color-bg-primary: var(--color-neutral-900);
+    --color-bg-secondary: var(--color-neutral-800);
+    --color-bg-tertiary: var(--color-neutral-700);
+
+    --color-border-light: var(--color-neutral-700);
+    --color-border-medium: var(--color-neutral-600);
+    --color-border-strong: var(--color-neutral-500);
+  }
+}
+
+/* ===== UTILITY CLASSES ===== */
+
+/* 디자인 토큰 기반 유틸리티 클래스 */
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-tertiary { color: var(--color-text-tertiary); }
+
+.bg-primary { background-color: var(--color-bg-primary); }
+.bg-secondary { background-color: var(--color-bg-secondary); }
+
+.border-light { border-color: var(--color-border-light); }
+.border-medium { border-color: var(--color-border-medium); }
+
+/* 간격 유틸리티 */
+.p-1 { padding: var(--space-1); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+.p-6 { padding: var(--space-6); }
+.p-8 { padding: var(--space-8); }
+
+.m-1 { margin: var(--space-1); }
+.m-2 { margin: var(--space-2); }
+.m-3 { margin: var(--space-3); }
+.m-4 { margin: var(--space-4); }
+.m-6 { margin: var(--space-6); }
+.m-8 { margin: var(--space-8); }
+
+/* 반응형 간격 */
+@media (min-width: 768px) {
+  .md\:p-6 { padding: var(--space-6); }
+  .md\:p-8 { padding: var(--space-8); }
+}
+
+/* 컴포넌트 기본 스타일 */
+.avatar-xs { width: var(--avatar-xs); height: var(--avatar-xs); }
+.avatar-sm { width: var(--avatar-sm); height: var(--avatar-sm); }
+.avatar-md { width: var(--avatar-md); height: var(--avatar-md); }
+.avatar-lg { width: var(--avatar-lg); height: var(--avatar-lg); }
+.avatar-xl { width: var(--avatar-xl); height: var(--avatar-xl); }
+
+.button-sm { height: var(--button-height-sm); }
+.button-md { height: var(--button-height-md); }
+.button-lg { height: var(--button-height-lg); }
+
+/* 전환 효과 */
+.transition-fast { transition: all var(--transition-fast); }
+.transition-normal { transition: all var(--transition-normal); }
+.transition-slow { transition: all var(--transition-slow); }
+
+/* 호버 효과 */
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+  transition: transform var(--transition-normal);
+}

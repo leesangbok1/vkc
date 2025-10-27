@@ -1,13 +1,19 @@
 import { NextRequest } from 'next/server'
 import { createSupabaseServerClient } from './supabase-server'
 import { User } from '@supabase/supabase-js'
+import { Database } from './supabase'
+import { SupabaseResponse } from './types/api'
 
 export interface AuthUser {
   id: string
   email: string
   name?: string
   avatar_url?: string
-  [key: string]: any
+  role?: 'guest' | 'user' | 'verified' | 'admin'
+  verification_status?: string
+  trust_score?: number
+  badges?: Record<string, boolean>
+  [key: string]: unknown
 }
 
 /**
@@ -44,7 +50,7 @@ export async function getUser(request: NextRequest): Promise<{ user: AuthUser | 
 
     // Get additional user data from users table
     const { data: userData, error: userError } = await supabase
-      .from('users').select('*').eq('id', user.id).single() as any
+      .from('users').select('*').eq('id', user.id).single() as SupabaseResponse<Database['public']['Tables']['users']['Row']>
 
     if (userError) {
       console.error('User data fetch error:', userError)
@@ -101,7 +107,7 @@ export async function hasPermission(user: AuthUser, permission: string): Promise
 
     // Check user permissions in database
     const { data, error } = await supabase
-      .from('users').select('badges').eq('id', user.id).single() as any
+      .from('users').select('badges').eq('id', user.id).single() as SupabaseResponse<{ badges: Record<string, boolean> }>
 
     if (error || !data) {
       return false

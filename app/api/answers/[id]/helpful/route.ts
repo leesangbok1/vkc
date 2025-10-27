@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
+import { Answer, User } from '@/lib/types/api'
 
 // POST /api/answers/[id]/helpful - 답변을 도움이 되는 답변으로 표시
 export async function POST(
@@ -26,9 +27,12 @@ export async function POST(
     // 답변 정보 조회
     const { data: answer, error: answerError } = await supabase
       .from('answers')
-      .select('id, author_id, is_helpful')
+      .select('id, author_id, helpful_count')
       .eq('id', answerId)
-      .single()
+      .single() as {
+        data: Answer | null
+        error: unknown
+      }
 
     if (answerError || !answer) {
       return NextResponse.json(
@@ -45,19 +49,14 @@ export async function POST(
       )
     }
 
-    // 이미 도움이 되는 답변으로 표시된 경우
-    if (answer.is_helpful) {
-      return NextResponse.json(
-        { error: 'Answer is already marked as helpful' },
-        { status: 400 }
-      )
-    }
+    // Note: 중복 체크는 프론트엔드에서 처리
 
-    // 도움이 되는 답변으로 표시
+    const currentHelpful = (answer as Answer & { helpful_count?: number }).helpful_count ?? 0
+
     const { data: updatedAnswer, error: updateError } = await supabase
       .from('answers')
       .update({
-        is_helpful: true,
+        helpful_count: currentHelpful + 1,
         updated_at: new Date().toISOString()
       })
       .eq('id', answerId)
@@ -71,15 +70,6 @@ export async function POST(
         { status: 500 }
       )
     }
-
-    // 답변 작성자의 신뢰도 점수 증가 (+5)
-    await supabase
-      .from('users')
-      .update({
-        trust_score: supabase.rpc('adjust_trust_score', { adjustment: 5 }),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', answer.author_id)
 
     return NextResponse.json({
       data: updatedAnswer,

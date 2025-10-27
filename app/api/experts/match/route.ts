@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
 import { findExpertMatches } from '@/lib/utils/expert-matching'
 
-// POST /api/experts/match - AI 전문가 매칭 시스템
+// POST /api/experts/match - AI Certified User 매칭 시스템
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
       console.log('Expert matching API running in mock mode')
 
-      // 베트남 커뮤니티 전문가 Mock 데이터
+      // 베트남 커뮤니티 Certified User Mock 데이터
       const mockExperts = [
         {
           id: 'expert1',
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
           answer_count: 145,
           helpful_answer_count: 132,
           last_active: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2시간 전
-          bio: '한국 거주 4년차, 베트남인 취업 및 비자 전문가입니다.',
+          bio: '한국 거주 4년차, 베트남인 취업 및 비자 Certified User입니다.',
           languages: ['Vietnamese', 'Korean', 'English'],
           response_rate: 94.2,
           avg_response_time: 2.5 // hours
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
           answer_count: 98,
           helpful_answer_count: 89,
           last_active: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1시간 전
-          bio: '한국 IT 회사 6년 경력, 면접 및 취업 컨설팅 전문가입니다.',
+          bio: '한국 IT 회사 6년 경력, 면접 및 취업 컨설팅 Certified User입니다.',
           languages: ['Vietnamese', 'Korean'],
           response_rate: 88.7,
           avg_response_time: 4.2
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
           answer_count: 67,
           helpful_answer_count: 61,
           last_active: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5시간 전
-          bio: '서울 부동산 및 생활정보 전문가, 원룸/오피스텔 전문',
+          bio: '서울 부동산 및 생활정보 Certified User, 원룸/오피스텔 전문',
           languages: ['Vietnamese', 'Korean'],
           response_rate: 91.0,
           avg_response_time: 6.8
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
           answer_count: 34,
           helpful_answer_count: 29,
           last_active: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12시간 전
-          bio: '의료 통역사, 건강보험 및 병원 이용 가이드 전문가',
+          bio: '의료 통역사, 건강보험 및 병원 이용 가이드 Certified User',
           languages: ['Vietnamese', 'Korean'],
           response_rate: 85.3,
           avg_response_time: 8.5
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
           answer_count: 78,
           helpful_answer_count: 71,
           last_active: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3시간 전
-          bio: '한국 대학원 졸업, 한국어 교육 및 유학 상담 전문가',
+          bio: '한국 대학원 졸업, 한국어 교육 및 유학 상담 Certified User',
           languages: ['Vietnamese', 'Korean', 'English'],
           response_rate: 92.3,
           avg_response_time: 5.2
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         urgency
       }
 
-      // 전문가 매칭 알고리즘 실행
+      // Certified User 매칭 알고리즘 실행
       const matches = findExpertMatches(questionData, mockExperts)
 
       // AI 매칭 분석 결과 추가
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
             ai_confidence: matches.length > 0 ? 'high' : 'medium'
           }
         },
-        message: `${matches.length}명의 전문가를 찾았습니다`
+        message: `${matches.length}명의 Certified User를 찾았습니다`
       })
     }
 
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TODO: 실제 Supabase에서 전문가 데이터 조회 및 매칭
+    // TODO: 실제 Supabase에서 Certified User 데이터 조회 및 매칭
     return NextResponse.json({
       success: false,
       message: 'Real-time expert matching not yet implemented'

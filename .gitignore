@@ -59,3 +59,17 @@ docs/auto-generated/
 
 # Claude 관련 임시 파일
 .claude-auto-resume/
+
+# TypeScript 빌드 캐시
+tsconfig.tsbuildinfo
+
+# macOS 파일
+.DS_Store
+
+# 백업 파일
+*.backup
+*.bak
+*.tmp
+
+# 레거시 configs (삭제됨)
+configs/
