@@ -49,15 +49,15 @@ export default function ValuePropositionBanner({
       case 'guests':
         return {
           title: '🔐 신뢰할 수 있는 답변을 받아보세요',
-          subtitle: '베트남인 한국생활 Certified User들의 검증된 조언',
+          subtitle: '베트남인 한국생활 전문가들의 검증된 조언',
           features: [
-            '✅ 실명 인증된 Certified User',
+            '✅ 실명 인증된 전문가',
             '📄 비자타입별 맞춤 정보',
             '🏠 거주년차별 경험 공유',
             '🎯 체계적인 카테고리 분류'
           ],
           cta: '지금 가입하고 질문하기',
-          description: '익명 커뮤니티와 달리 실제 신원이 확인된 Certified User들의 답변을 받아보세요.'
+          description: '익명 커뮤니티와 달리 실제 신원이 확인된 전문가들의 답변을 받아보세요.'
         }
 
       case 'unverified':
@@ -66,7 +66,7 @@ export default function ValuePropositionBanner({
           subtitle: '문서 인증으로 더 많은 기회를 얻으세요',
           features: [
             '📋 비자/졸업장 인증',
-            '⭐ Certified User 배지 획득',
+            '⭐ 전문가 배지 획득',
             '🎯 맞춤형 질문 매칭',
             '💼 네트워킹 기회 확대'
           ],
@@ -76,25 +76,25 @@ export default function ValuePropositionBanner({
 
       case 'verified':
         return {
-          title: '👑 Certified User로 활동해보세요',
+          title: '👑 전문가로 활동해보세요',
           subtitle: '경험을 나누고 커뮤니티에 기여하세요',
           features: [
-            '🌟 Certified User 인증 신청',
+            '🌟 전문가 인증 신청',
             '💡 답변으로 점수 적립',
             '🏆 베스트 답변자 혜택',
             '🤝 직접 멘토링 기회'
           ],
-          cta: 'Certified User 신청하기',
+          cta: '전문가 신청하기',
           description: '여러분의 한국생활 경험이 누군가에게는 소중한 도움이 됩니다.'
         }
 
       default:
         return {
           title: '🇰🇷 베트남인 한국생활 Q&A',
-          subtitle: '신뢰할 수 있는 Certified User들의 검증된 답변',
+          subtitle: '신뢰할 수 있는 전문가들의 검증된 답변',
           features: [
             '🔐 실명 인증 시스템',
-            '🎯 Certified User분야별 매칭',
+            '🎯 전문분야별 매칭',
             '📊 체계적인 정보 분류',
             '🤝 실제 경험 기반 조언'
           ],

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getUser } from '@/lib/auth'
-import { createServerLogger } from '@/lib/utils/server-logger'
-
-const logger = createServerLogger('NotificationMarkAllReadAPI', 'api')
 
 // POST /api/notifications/mark-all-read - 모든 알림 읽음 처리
 export async function POST(request: NextRequest) {
@@ -13,9 +10,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
     }
 
-    const { user } = await getUser(request)
-
-    if (!user) {
+    // 사용자 인증 확인
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -28,32 +25,19 @@ export async function POST(request: NextRequest) {
       .select('id')
 
     if (error) {
-      logger.error('Mark all notifications as read error', error as Error, {
-        action: 'markAllNotificationsAsRead',
-        userId: user.id,
-        severity: 'medium'
-      })
+      console.error('모든 알림 읽음 처리 오류:', error)
       return NextResponse.json({ error: 'Failed to mark notifications as read' }, { status: 500 })
     }
 
     const updatedCount = notifications?.length || 0
 
-    logger.info('All notifications marked as read', {
-      action: 'markAllNotificationsAsRead',
-      userId: user.id,
-      notificationCount: updatedCount
-    })
-
     return NextResponse.json({
       message: `${updatedCount} notifications marked as read`,
-      updated_count: updatedCount
+      updatedCount
     })
 
   } catch (error) {
-    logger.error('Mark all notifications as read API error', error as Error, {
-      action: 'markAllNotificationsAsReadAPI',
-      severity: 'high'
-    })
+    console.error('모든 알림 읽음 처리 API 오류:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

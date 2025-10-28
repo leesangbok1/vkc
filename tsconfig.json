@@ -35,8 +35,6 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules",
-    "scripts/seed-data.ts",
-    "scripts/test-db-connection.ts"
+    "node_modules"
   ]
 }

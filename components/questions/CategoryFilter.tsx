@@ -66,7 +66,7 @@ export function CategoryFilter({
   if (loading) {
     return (
       <div className={cn("animate-pulse", className)}>
-        <div className="h-10 bg-secondary rounded-lg"></div>
+        <div className="h-10 bg-gray-200 rounded-md"></div>
       </div>
     )
   }
@@ -79,7 +79,7 @@ export function CategoryFilter({
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              className="justify-between min-w-[200px] border-light hover:bg-secondary transition-normal"
+              className="justify-between min-w-[200px]"
             >
               <span className="flex items-center gap-2">
                 {selectedCategoryData ? (
@@ -102,7 +102,7 @@ export function CategoryFilter({
           <DropdownMenuContent className="w-56">
             <DropdownMenuItem
               onClick={() => onCategoryChange('')}
-              className={cn(!selectedCategory && 'bg-secondary text-primary')}
+              className={cn(!selectedCategory && 'bg-primary-100 text-primary-700')}
             >
               전체 카테고리
             </DropdownMenuItem>
@@ -112,7 +112,7 @@ export function CategoryFilter({
                   onClick={() => onCategoryChange(category.slug)}
                   className={cn(
                     'flex items-center gap-2',
-                    selectedCategory === category.slug && 'bg-secondary text-primary'
+                    selectedCategory === category.slug && 'bg-primary-100 text-primary-700'
                   )}
                 >
                   <div
@@ -127,7 +127,7 @@ export function CategoryFilter({
                     onClick={() => onCategoryChange(child.slug)}
                     className={cn(
                       'flex items-center gap-2 pl-8',
-                      selectedCategory === child.slug && 'bg-secondary text-primary'
+                      selectedCategory === child.slug && 'bg-primary-100 text-primary-700'
                     )}
                   >
                     <div
@@ -147,14 +147,14 @@ export function CategoryFilter({
 
   // Full version - horizontal scrollable badges
   return (
-    <div className={cn("flex flex-col gap-4", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Selected category display */}
       {selectedCategoryData && (
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-secondary">선택된 카테고리:</span>
+          <span className="text-sm font-medium text-gray-700">선택된 카테고리:</span>
           <Badge
             variant="secondary"
-            className="flex items-center gap-2 bg-secondary text-primary"
+            className="flex items-center gap-2 bg-primary-100 text-primary-700"
           >
             <div
               className="w-2 h-2 rounded-full"
@@ -163,7 +163,7 @@ export function CategoryFilter({
             {selectedCategoryData.name}
             <button
               onClick={() => onCategoryChange('')}
-              className="ml-1 hover:bg-tertiary rounded-full p-0.5 transition-normal"
+              className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -173,31 +173,30 @@ export function CategoryFilter({
         </div>
       )}
 
-      {/* Category filter buttons - Mobile Optimized Horizontal Scroll */}
-      <div className="overflow-x-auto border-b border-light">
-        <div className="flex gap-2 px-4 pb-2 min-w-max md:flex-wrap md:px-0">
+      {/* Category filter buttons */}
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => onCategoryChange('')}
           className={cn(
-            "px-4 py-2 rounded-full border text-sm font-medium transition-normal whitespace-nowrap",
+            "px-3 py-2 rounded-full border text-sm font-medium transition-colors",
             !selectedCategory
-              ? "bg-primary-blue text-white border-primary-blue"
-              : "bg-primary text-secondary border-light hover:bg-secondary"
+              ? "bg-primary-500 text-white border-primary-500"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
           )}
         >
           전체
         </button>
 
         {getCategoryHierarchy().map(category => (
-          <div key={category.id} className="flex gap-2">
+          <div key={category.id} className="flex flex-wrap gap-2">
             {/* Parent category */}
             <button
               onClick={() => onCategoryChange(category.slug)}
               className={cn(
-                "px-4 py-2 rounded-full border text-sm font-medium transition-normal flex items-center gap-2 whitespace-nowrap",
+                "px-3 py-2 rounded-full border text-sm font-medium transition-colors flex items-center gap-2",
                 selectedCategory === category.slug
                   ? "text-white border-transparent"
-                  : "bg-primary text-secondary border-light hover:bg-secondary"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
               )}
               style={{
                 backgroundColor: selectedCategory === category.slug ? category.color : undefined
@@ -221,10 +220,10 @@ export function CategoryFilter({
                 key={child.id}
                 onClick={() => onCategoryChange(child.slug)}
                 className={cn(
-                  "px-4 py-2 rounded-full border text-sm font-medium transition-normal flex items-center gap-2 whitespace-nowrap",
+                  "px-3 py-2 rounded-full border text-sm font-medium transition-colors flex items-center gap-2",
                   selectedCategory === child.slug
                     ? "text-white border-transparent"
-                    : "bg-primary text-secondary border-light hover:bg-secondary"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                 )}
                 style={{
                   backgroundColor: selectedCategory === child.slug ? child.color : undefined
@@ -244,12 +243,11 @@ export function CategoryFilter({
             ))}
           </div>
         ))}
-        </div>
       </div>
 
       {/* Category stats (optional) */}
       {categories.length > 0 && (
-        <div className="text-xs text-tertiary">
+        <div className="text-xs text-gray-500">
           {categories.filter(c => c.is_active).length}개 카테고리 •
           {' '}총 {subCategories.length}개 하위 카테고리
         </div>

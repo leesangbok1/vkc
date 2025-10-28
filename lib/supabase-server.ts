@@ -1,100 +1,119 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import type { Database } from './supabase'
 
-const sanitizeCookieValue = (value?: string | null) => {
-  if (!value) return undefined
-  const trimmed = value.trim()
-  if (!trimmed) return undefined
-  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    return trimmed.slice(1, -1)
+// Conditional import system to avoid cookie issues in mock mode
+const isMockMode =
+  process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ||
+  process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co') ||
+  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+// Only import Supabase and cookies if not in mock mode
+let createServerClient: typeof import('@supabase/ssr').createServerClient
+let cookies: typeof import('next/headers').cookies
+let Database: any
+
+if (!isMockMode) {
+  try {
+    const supabaseSSR = require('@supabase/ssr')
+    const nextHeaders = require('next/headers')
+    const supabaseTypes = require('./supabase')
+
+    createServerClient = supabaseSSR.createServerClient
+    cookies = nextHeaders.cookies
+    Database = supabaseTypes.Database
+  } catch (error) {
+    console.warn('Failed to import Supabase dependencies, using mock mode:', error)
   }
-  return trimmed.replace(/"/g, '')
 }
 
-// 서버 사이드 Supabase 클라이언트 (API Routes, Server Components용)
+// Server-side client for Next.js Server Components and API Routes
 export const createSupabaseServerClient = async () => {
-  // 환경변수 검증
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error('Missing required Supabase environment variables')
+  if (isMockMode || !createServerClient || !cookies) {
+    console.log('Supabase server client running in mock mode (no cookie access)')
+    return null
   }
 
   try {
+    // Only access cookies if not in mock mode and we have valid Supabase config
     const cookieStore = await cookies()
 
-    return createServerClient<Database>(
+    return createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           get(name: string) {
-            return sanitizeCookieValue(cookieStore.get(name)?.value)
+            return cookieStore.get(name)?.value
           },
-          set(name: string, value: string, options: CookieOptions) {
-            // API Routes에서는 쿠키 설정 가능
+          set(name: string, value: string, options: any) {
+            // Server components can't set cookies, this is handled by middleware
             try {
               cookieStore.set({ name, value, ...options })
             } catch {
-              // Server Components에서는 쿠키 설정 불가 (예상된 동작)
+              // This is expected in server components
             }
           },
-          remove(name: string, options: CookieOptions) {
+          remove(name: string, options: any) {
             try {
               cookieStore.set({ name, value: '', ...options })
             } catch {
-              // Server Components에서는 쿠키 설정 불가 (예상된 동작)
+              // This is expected in server components
             }
           },
         },
-        cookieEncoding: 'base64url',
       }
     )
   } catch (error) {
-    console.error('Supabase server client creation failed:', error)
-    throw error
+    console.warn('Supabase server client creation failed, falling back to mock mode:', error)
+    return null
   }
 }
 
-// 읽기 전용 서버 클라이언트 (쿠키 설정 시도 안함)
+// Read-only server client (doesn't attempt to set cookies)
 export const createSupabaseServerReadClient = async () => {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error('Missing required Supabase environment variables')
+  if (isMockMode || !createServerClient || !cookies) {
+    console.log('Supabase server read client running in mock mode (no cookie access)')
+    return null
   }
 
   try {
     const cookieStore = await cookies()
 
-    return createServerClient<Database>(
+    return createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           get(name: string) {
-            return sanitizeCookieValue(cookieStore.get(name)?.value)
+            return cookieStore.get(name)?.value
           },
           set() {
-            // 읽기 전용 클라이언트는 쿠키 설정 안함
+            // No-op for read-only client
           },
           remove() {
-            // 읽기 전용 클라이언트는 쿠키 삭제 안함
+            // No-op for read-only client
           },
         },
-        cookieEncoding: 'base64url',
       }
     )
   } catch (error) {
-    console.error('Supabase server read client creation failed:', error)
-    throw error
+    console.warn('Supabase server read client creation failed, falling back to mock mode:', error)
+    return null
   }
 }
 
-// 서비스 롤 클라이언트 (관리자 권한 작업용)
+// Service role client for admin operations (use sparingly)
 export const createSupabaseServiceClient = () => {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Missing required Supabase environment variables for service client')
+  if (isMockMode || !createServerClient) {
+    console.log('Supabase service client running in mock mode (no cookie access)')
+    return null
   }
 
-  return createServerClient<Database>(
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for service client')
+  }
+
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
@@ -103,10 +122,6 @@ export const createSupabaseServiceClient = () => {
         set() {},
         remove() {},
       },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
     }
   )
 }

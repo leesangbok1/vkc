@@ -1,35 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    // Allow production builds to complete even if there are ESLint errors.
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    // Ignore type errors during production builds to unblock deploys.
-    ignoreBuildErrors: true,
-  },
   // 이미지 최적화 설정
   images: {
-    domains: ['lh3.googleusercontent.com', 'k.kakaocdn.net', 'localhost', 'via.placeholder.com'],
+    domains: ['lh3.googleusercontent.com', 'k.kakaocdn.net'],
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 31536000, // 1년
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
   },
 
-  // 성능 최적화 - disabled for debugging
+  // 성능 최적화
   experimental: {
-    webpackBuildWorker: false,
-    ppr: false,
-    reactCompiler: false,
+    webpackBuildWorker: true,
   },
 
   // 컴파일러 최적화
@@ -37,47 +19,30 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
 
-  // 번들 최적화 - simplified for debugging
-  webpack: (config, { dev, isServer }) => {
-    // Exclude HTML files from webpack processing
-    config.module.rules.push({
-      test: /\.html$/,
-      type: 'asset/resource',
-    })
+  // 번들 최적화
+  webpack: (config, { isServer }) => {
+    // CSS 최적화
+    if (!isServer) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          default: {
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
+          },
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            priority: -10,
+            chunks: 'all',
+          },
+        },
+      }
+    }
+
     return config
   },
-
-  // PWA 및 보안 헤더 (프로덕션)
-  ...(process.env.NODE_ENV === 'production' && {
-    headers: async () => [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
-          },
-        ],
-      },
-    ],
-  }),
-
-  // 성능 최적화
-  compress: true,
-  poweredByHeader: false,
-  generateEtags: true,
 
   // 출력 추적 최적화 (lockfile 경고 해결)
   outputFileTracingRoot: '/Users/bk/Desktop/viet-kconnect',

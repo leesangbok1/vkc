@@ -63,7 +63,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
   const [foundExperts, setFoundExperts] = useState(0)
   const [matchedExperts, setMatchedExperts] = useState<any[]>([])
   const [selectedExperts, setSelectedExperts] = useState<any[]>([])
-  // 타이머 제거됨
+  const [timeRemaining, setTimeRemaining] = useState(24 * 60 * 60) // 24시간 (초)
 
   useEffect(() => {
     // Step 1: 질문 분석
@@ -86,7 +86,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
 
   useEffect(() => {
     if (currentStep === 2) {
-      // Step 2: Certified User 매칭
+      // Step 2: 전문가 매칭
       const matchingTimer = setInterval(() => {
         setMatchingProgress(prev => {
           if (prev >= 100) {
@@ -106,7 +106,20 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
     }
   }, [currentStep])
 
-  // 타이머 관련 코드 제거됨
+  useEffect(() => {
+    // 24시간 타이머
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => Math.max(prev - 1, 0))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
+
+  const formatTimeRemaining = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    return `${hours}시간 ${minutes}분`
+  }
 
   const handleExpertSelect = (expert: any) => {
     setSelectedExperts(prev => {
@@ -127,7 +140,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
       <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
-        🤖 AI Certified User 매칭
+        🤖 AI 전문가 매칭
       </h2>
 
       {/* Step 1: 질문 분석 */}
@@ -171,7 +184,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
         )}
       </div>
 
-      {/* Step 2: Certified User 매칭 */}
+      {/* Step 2: 전문가 매칭 */}
       <div className={cn(
         'mb-6 p-4 rounded-lg border transition-all duration-300',
         currentStep >= 2 ? 'border-primary-green bg-primary-green/5' : 'border-gray-200'
@@ -183,7 +196,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
           )}>
             2
           </div>
-          <h3 className="font-semibold text-gray-900">Certified User 매칭 중...</h3>
+          <h3 className="font-semibold text-gray-900">전문가 매칭 중...</h3>
           {currentStep > 2 && (
             <div className="text-green-600 font-bold">✓</div>
           )}
@@ -198,14 +211,14 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
               />
             </div>
             <div className="text-sm text-gray-600">
-              <span className="font-medium">{foundExperts}/100</span> Certified User 검토됨
+              <span className="font-medium">{foundExperts}/100</span> 전문가 검토됨
             </div>
           </div>
         )}
 
         {currentStep > 2 && (
           <div className="ml-11 text-sm text-gray-600">
-            ✨ <span className="font-medium">5명의 최적 Certified User</span>를 찾았습니다!
+            ✨ <span className="font-medium">5명의 최적 전문가</span>를 찾았습니다!
           </div>
         )}
       </div>
@@ -223,17 +236,17 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
 
           <div className="ml-11">
             <p className="text-sm text-gray-600 mb-4">
-              선택하신 Certified User들이 답변해 드립니다.
+              선택하신 전문가들이 24시간 내에 답변해 드립니다.
               최대 <span className="font-medium">5명</span>까지 선택 가능합니다.
             </p>
 
-            {/* Certified User 카드들 */}
+            {/* 전문가 카드들 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
               {matchedExperts.map((expert) => {
                 const isSelected = selectedExperts.find(e => e.id === expert.id)
                 const matchScore = 85 + Math.random() * 15 // 85-100%
                 const matchReasons = [
-                  `${expert.specialties?.[0]} 분야 Certified User`,
+                  `${expert.specialties?.[0]} 분야 전문가`,
                   `${expert.residence_years}년 한국 거주 경험`,
                   `높은 신뢰도 (${expert.trust_score}점)`
                 ]
@@ -277,13 +290,31 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
         </div>
       )}
 
-      {/* AI 매칭 완료 안내 */}
+      {/* 24시간 타이머 */}
       <div className="bg-gradient-to-r from-primary-blue/10 to-primary-green/10 rounded-lg p-4">
-        <div className="flex items-center gap-3">
-          <div className="text-lg">🤖</div>
-          <div>
-            <div className="font-semibold text-gray-900">AI 매칭 완료</div>
-            <div className="text-sm text-gray-600">Certified User들이 질문을 확인하고 답변해 드립니다</div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="text-lg">⏰</div>
+            <div>
+              <div className="font-semibold text-gray-900">답변 보장</div>
+              <div className="text-sm text-gray-600">24시간 내 답변 또는 포인트 환불</div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-bold text-primary-blue">
+              {formatTimeRemaining(timeRemaining)}
+            </div>
+            <div className="text-xs text-gray-500">남은 시간</div>
+          </div>
+        </div>
+
+        {/* 진행률 링 */}
+        <div className="mt-3">
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-gradient-to-r from-primary-blue to-primary-green h-2 rounded-full transition-all duration-1000"
+              style={{ width: `${((24 * 60 * 60 - timeRemaining) / (24 * 60 * 60)) * 100}%` }}
+            />
           </div>
         </div>
       </div>

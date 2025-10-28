@@ -63,11 +63,8 @@ export function addSecurityHeaders(
 
   // Additional Security Headers
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  // Dev 환경에서는 COEP/COOP 비활성화 (Next.js dev 리소스/HMR와 충돌 방지)
-  if (process.env.NODE_ENV === 'production') {
-    response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp')
-    response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
-  }
+  response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp')
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
 
   return response
 }

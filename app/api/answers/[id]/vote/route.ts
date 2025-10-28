@@ -1,51 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
-import { getUser } from '@/lib/auth'
 
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
-// POST /api/answers/[id]/vote - 답변에 투표하기
-export async function POST(request: NextRequest, { params }: RouteParams) {
+// POST /api/answers/[id]/vote - 답변 추천/비추천 토글
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id: answerId } = await params
-
-    // Mock mode 체크 (테스트 환경)
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      return postMockVote(request, answerId)
+    const { id } = await params
+    const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
     }
+    const answerId = id
 
-    const { user, error: authError } = await getUser(request)
-    if (!user) {
+    // 인증 확인
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
       return NextResponse.json(
-        { error: authError || 'Authentication required' },
+        { error: 'Authentication required' },
         { status: 401 }
       )
     }
 
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      )
-    }
-
+    // 요청 본문 파싱
     const body = await request.json()
-    const { vote_type } = body // 'upvote', 'downvote', or 'helpful'
+    const { vote_type } = body // 'up' | 'down' | 'cancel'
 
-    if (!['upvote', 'downvote', 'helpful'].includes(vote_type)) {
+    if (!vote_type || !['up', 'down', 'cancel'].includes(vote_type)) {
       return NextResponse.json(
-        { error: 'Invalid vote type. Must be "upvote", "downvote", or "helpful"' },
+        { error: 'Invalid vote type. Must be "up", "down", or "cancel"' },
         { status: 400 }
       )
     }
 
-    // 답변이 존재하는지 확인
+    // 답변 존재 확인
     const { data: answer, error: answerError } = await supabase
       .from('answers')
-      .select('id, author_id, upvote_count, downvote_count, helpful_count')
+      .select('id, author_id, vote_score')
       .eq('id', answerId)
       .single()
 
@@ -59,247 +51,175 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // 자신의 답변에는 투표할 수 없음
     if (answer.author_id === user.id) {
       return NextResponse.json(
-        { error: 'Cannot vote on your own answer' },
+        { error: 'You cannot vote on your own answer' },
         { status: 400 }
       )
     }
 
     // 기존 투표 확인
-    const { data: existingVote, error: voteCheckError } = await supabase
+    const { data: existingVote } = await supabase
       .from('votes')
-      .select('*')
-      .eq('user_id', user.id)
+      .select('id, vote_type')
       .eq('target_id', answerId)
       .eq('target_type', 'answer')
+      .eq('user_id', user.id)
       .single()
 
-    if (voteCheckError && voteCheckError.code !== 'PGRST116') {
-      console.error('Vote check error:', voteCheckError)
-      return NextResponse.json(
-        { error: 'Failed to check existing vote' },
-        { status: 500 }
-      )
-    }
+    let voteScoreChange = 0
+    let newVoteType = vote_type
 
-    let newUpvoteCount = answer.upvote_count
-    let newDownvoteCount = answer.downvote_count
-    let newHelpfulCount = answer.helpful_count
-
-    if (existingVote) {
-      // 기존 투표가 있는 경우
-      if (existingVote.vote_type === vote_type) {
-        // 같은 투표 타입이면 투표 취소
-        await supabase
+    // 투표 로직 처리
+    if (vote_type === 'cancel') {
+      // 투표 취소
+      if (existingVote) {
+        // 기존 투표 삭제
+        const { error: deleteError } = await supabase
           .from('votes')
           .delete()
-          .eq('user_id', user.id)
-          .eq('target_id', answerId)
-          .eq('target_type', 'answer')
+          .eq('id', existingVote.id)
 
-        // 카운트 감소
-        if (vote_type === 'upvote') {
-          newUpvoteCount = Math.max(0, newUpvoteCount - 1)
-        } else if (vote_type === 'downvote') {
-          newDownvoteCount = Math.max(0, newDownvoteCount - 1)
-        } else if (vote_type === 'helpful') {
-          newHelpfulCount = Math.max(0, newHelpfulCount - 1)
+        if (deleteError) {
+          console.error('Vote deletion error:', deleteError)
+          return NextResponse.json(
+            { error: 'Failed to cancel vote' },
+            { status: 500 }
+          )
         }
+
+        // 점수 변화 계산
+        voteScoreChange = existingVote.vote_type === 'up' ? -1 : 1
+        newVoteType = null
       } else {
-        // 다른 투표 타입이면 투표 변경
-        await supabase
-          .from('votes')
-          .update({ vote_type, updated_at: new Date().toISOString() })
-          .eq('user_id', user.id)
-          .eq('target_id', answerId)
-          .eq('target_type', 'answer')
-
-        // 기존 투표 카운트 감소
-        if (existingVote.vote_type === 'upvote') {
-          newUpvoteCount = Math.max(0, newUpvoteCount - 1)
-        } else if (existingVote.vote_type === 'downvote') {
-          newDownvoteCount = Math.max(0, newDownvoteCount - 1)
-        } else if (existingVote.vote_type === 'helpful') {
-          newHelpfulCount = Math.max(0, newHelpfulCount - 1)
-        }
-
-        // 새 투표 카운트 증가
-        if (vote_type === 'upvote') {
-          newUpvoteCount += 1
-        } else if (vote_type === 'downvote') {
-          newDownvoteCount += 1
-        } else if (vote_type === 'helpful') {
-          newHelpfulCount += 1
-        }
+        return NextResponse.json(
+          { error: 'No vote to cancel' },
+          { status: 400 }
+        )
       }
     } else {
-      // 새로운 투표
-      await supabase
-        .from('votes')
-        .insert({
-          user_id: user.id,
-          target_id: answerId,
-          target_type: 'answer',
-          vote_type
-        })
+      // 추천/비추천
+      if (existingVote) {
+        if (existingVote.vote_type === vote_type) {
+          // 같은 투표 타입이면 취소
+          const { error: deleteError } = await supabase
+            .from('votes')
+            .delete()
+            .eq('id', existingVote.id)
 
-      // 카운트 증가
-      if (vote_type === 'upvote') {
-        newUpvoteCount += 1
-      } else if (vote_type === 'downvote') {
-        newDownvoteCount += 1
-      } else if (vote_type === 'helpful') {
-        newHelpfulCount += 1
+          if (deleteError) {
+            console.error('Vote deletion error:', deleteError)
+            return NextResponse.json(
+              { error: 'Failed to update vote' },
+              { status: 500 }
+            )
+          }
+
+          voteScoreChange = vote_type === 'up' ? -1 : 1
+          newVoteType = null
+        } else {
+          // 다른 투표 타입이면 변경
+          const { error: updateError } = await supabase
+            .from('votes')
+            .update({
+              vote_type,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingVote.id)
+
+          if (updateError) {
+            console.error('Vote update error:', updateError)
+            return NextResponse.json(
+              { error: 'Failed to update vote' },
+              { status: 500 }
+            )
+          }
+
+          // up -> down: -2점, down -> up: +2점
+          voteScoreChange = vote_type === 'up' ? 2 : -2
+        }
+      } else {
+        // 새 투표 생성
+        const { error: insertError } = await supabase
+          .from('votes')
+          .insert([{
+            target_id: answerId,
+            target_type: 'answer',
+            user_id: user.id,
+            vote_type,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+
+        if (insertError) {
+          console.error('Vote creation error:', insertError)
+          return NextResponse.json(
+            { error: 'Failed to create vote' },
+            { status: 500 }
+          )
+        }
+
+        voteScoreChange = vote_type === 'up' ? 1 : -1
       }
     }
 
-    // 답변의 투표 수 업데이트
-    const { error: updateError } = await supabase
+    // 답변의 투표 점수 업데이트
+    const newVoteScore = (answer.vote_score || 0) + voteScoreChange
+    const { error: updateAnswerError } = await supabase
       .from('answers')
       .update({
-        upvote_count: newUpvoteCount,
-        downvote_count: newDownvoteCount,
-        helpful_count: newHelpfulCount,
+        vote_score: newVoteScore,
         updated_at: new Date().toISOString()
       })
       .eq('id', answerId)
 
-    if (updateError) {
-      console.error('Answer vote count update error:', updateError)
+    if (updateAnswerError) {
+      console.error('Answer vote score update error:', updateAnswerError)
       return NextResponse.json(
-        { error: 'Failed to update vote count' },
+        { error: 'Failed to update answer score' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        answer_id: answerId,
-        vote_type: existingVote?.vote_type === vote_type ? null : vote_type,
-        upvote_count: newUpvoteCount,
-        downvote_count: newDownvoteCount,
-        helpful_count: newHelpfulCount,
-        vote_score: newUpvoteCount - newDownvoteCount
-      },
-      message: existingVote?.vote_type === vote_type ? 'Vote removed' : 'Vote recorded'
-    })
+    // 답변 작성자의 신뢰도 점수 업데이트 (추천시 +2, 비추천시 -1)
+    if (voteScoreChange !== 0) {
+      const trustScoreChange = vote_type === 'up' ? 2 : (vote_type === 'down' ? -1 : 0)
 
-  } catch (error) {
-    console.error('Answer vote API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
-
-// GET /api/answers/[id]/vote/status - 사용자의 답변 투표 상태 조회
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  try {
-    const { id: answerId } = await params
-
-    // Mock mode 체크 (테스트 환경)
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      return getMockVoteStatus(answerId)
+      if (trustScoreChange !== 0) {
+        await supabase
+          .from('users')
+          .update({
+            trust_score: supabase.rpc('adjust_trust_score', { adjustment: trustScoreChange }),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', answer.author_id)
+      }
     }
 
-    const { user, error: authError } = await getUser(request)
-    if (!user) {
-      return NextResponse.json(
-        { error: authError || 'Authentication required' },
-        { status: 401 }
-      )
-    }
-
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      )
-    }
-
-    // 사용자의 투표 상태 조회
-    const { data: vote, error } = await supabase
+    // 현재 투표 상태 조회
+    const { data: voteStats } = await supabase
       .from('votes')
-      .select('vote_type, created_at')
-      .eq('user_id', user.id)
+      .select('vote_type')
       .eq('target_id', answerId)
       .eq('target_type', 'answer')
-      .single()
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Answer vote status check error:', error)
-      return NextResponse.json(
-        { error: 'Failed to check vote status' },
-        { status: 500 }
-      )
-    }
+    const upVotes = voteStats?.filter(v => v.vote_type === 'up').length || 0
+    const downVotes = voteStats?.filter(v => v.vote_type === 'down').length || 0
 
     return NextResponse.json({
-      success: true,
       data: {
-        answer_id: answerId,
-        user_vote: vote?.vote_type || null,
-        voted_at: vote?.created_at || null
-      }
+        vote_type: newVoteType,
+        vote_score: newVoteScore,
+        up_votes: upVotes,
+        down_votes: downVotes,
+        user_vote: newVoteType
+      },
+      message: 'Vote updated successfully'
     })
 
   } catch (error) {
-    console.error('Answer vote status API error:', error)
+    console.error('Vote API error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
-}
-
-// Mock 함수들 (테스트 환경용)
-async function postMockVote(request: NextRequest, answerId: string) {
-  try {
-    const body = await request.json()
-    const { vote_type } = body
-
-    if (!['upvote', 'downvote', 'helpful'].includes(vote_type)) {
-      return NextResponse.json(
-        { error: 'Invalid vote type. Must be "upvote", "downvote", or "helpful"' },
-        { status: 400 }
-      )
-    }
-
-    // Mock 투표 결과
-    const mockVoteResult = {
-      answer_id: answerId,
-      vote_type,
-      upvote_count: vote_type === 'upvote' ? 9 : 8,
-      downvote_count: vote_type === 'downvote' ? 1 : 0,
-      helpful_count: vote_type === 'helpful' ? 7 : 6,
-      vote_score: vote_type === 'upvote' ? 9 : (vote_type === 'downvote' ? 7 : 8)
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: mockVoteResult,
-      message: 'Vote recorded'
-    })
-
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Invalid request body' },
-      { status: 400 }
-    )
-  }
-}
-
-function getMockVoteStatus(answerId: string) {
-  const mockVoteStatus = {
-    answer_id: answerId,
-    user_vote: 'helpful', // 사용자가 이미 helpful 표시했다고 가정
-    voted_at: '2024-01-15T14:30:00Z'
-  }
-
-  return NextResponse.json({
-    success: true,
-    data: mockVoteStatus
-  })
 }
