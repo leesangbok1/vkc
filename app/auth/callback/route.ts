@@ -1,93 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServiceClient, createSupabaseServerClient } from '@/lib/supabase-server'
-import { upsertUserWithFallback } from '@/lib/utils/supabase-user'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const redirectTo = searchParams.get('redirectTo') ?? '/'
+  const next = searchParams.get('next') ?? '/'
 
-  if (!code) {
-    const errorUrl = new URL('/auth/login', origin)
-    errorUrl.searchParams.set('error', 'auth_callback_error')
-    return NextResponse.redirect(errorUrl)
+  // Check if we're in mock mode - return success immediately
+  if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
+    console.log('Auth callback running in mock mode')
+    const response = NextResponse.redirect(`${origin}${next}`)
+    response.cookies.set('auth-callback-success', 'true', {
+      maxAge: 5, // 5 seconds
+      httpOnly: false
+    })
+    return response
   }
 
-  const supabase = await createSupabaseServerClient()
+  if (code) {
+    try {
+      // Dynamic import to avoid cookie issues in mock mode
+      const { createServerClient } = await import('@supabase/ssr')
+      const { cookies } = await import('next/headers')
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
-  if (error) {
-    console.error('OAuth exchange failed:', error)
-    const errorUrl = new URL('/auth/login', origin)
-    errorUrl.searchParams.set('error', 'auth_callback_error')
-    return NextResponse.redirect(errorUrl)
-  }
+      const cookieStore = await cookies()
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) {
-    console.error('Unable to load user after exchange:', userError)
-    const errorUrl = new URL('/auth/login', origin)
-    errorUrl.searchParams.set('error', 'auth_callback_error')
-    return NextResponse.redirect(errorUrl)
-  }
-  const desiredRole = 'user'
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return cookieStore.get(name)?.value
+            },
+            set(name: string, value: string, options: any) {
+              try {
+                cookieStore.set({ name, value, ...options })
+              } catch {
+                // Expected in server components
+              }
+            },
+            remove(name: string, options: any) {
+              try {
+                cookieStore.set({ name, value: '', ...options })
+              } catch {
+                // Expected in server components
+              }
+            },
+          },
+        }
+      )
 
-  try {
-    const service = createSupabaseServiceClient()
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
 
-    const { data: existingUser, error: fetchError } = await service
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle()
+      if (!error) {
+        const response = NextResponse.redirect(`${origin}${next}`)
 
-    if (fetchError) {
-      console.error('Failed to fetch existing user:', fetchError)
-    }
+        // Set a success flag for the client to handle
+        response.cookies.set('auth-callback-success', 'true', {
+          maxAge: 5, // 5 seconds
+          httpOnly: false
+        })
 
-    if (!existingUser) {
-      const upsertResult = await upsertUserWithFallback(service, {
-        id: user.id,
-        email: user.email!,
-        name: (user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'New User') as string,
-        avatar_url: (user.user_metadata?.avatar_url || user.user_metadata?.picture) as string | null,
-        role: desiredRole,
-        verification_status: 'none',
-        onboarding_completed: false,
-        is_active: true,
-        trust_score: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' })
-
-      if (upsertResult.error) {
-        console.error('Failed to upsert new user profile:', upsertResult.error)
-      } else if (upsertResult.removedColumns.length > 0) {
-        console.warn('User upsert skipped columns:', upsertResult.removedColumns)
+        return response
       }
 
-      const redirectUrl = new URL('/onboarding', origin)
-      redirectUrl.searchParams.set('redirectTo', redirectTo)
-      const response = NextResponse.redirect(redirectUrl)
-      response.cookies.set('auth-callback-success', 'true', { maxAge: 5, httpOnly: false })
-      return response
+      console.error('OAuth callback error:', error)
+    } catch (error) {
+      console.error('Auth callback failed:', error)
     }
-
-    // 기존 프로필이 있으면 admin_yn은 유지 (수동 관리용)
-
-    if ('onboarding_completed' in existingUser && !existingUser.onboarding_completed) {
-      const redirectUrl = new URL('/onboarding', origin)
-      redirectUrl.searchParams.set('redirectTo', redirectTo)
-      const response = NextResponse.redirect(redirectUrl)
-      response.cookies.set('auth-callback-success', 'true', { maxAge: 5, httpOnly: false })
-      return response
-    }
-  } catch (serviceError) {
-    console.error('Service client error during callback:', serviceError)
   }
 
-  const target = new URL(redirectTo, origin)
-  const response = NextResponse.redirect(target)
-  response.cookies.set('auth-callback-success', 'true', { maxAge: 5, httpOnly: false })
-  return response
+  // Return the user to an error page or login with error
+  const errorUrl = new URL('/login', origin)
+  errorUrl.searchParams.set('error', 'auth_callback_error')
+  return NextResponse.redirect(errorUrl)
 }

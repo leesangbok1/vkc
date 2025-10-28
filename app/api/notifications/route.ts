@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getUser } from '@/lib/auth'
 import { ValidationUtils } from '@/lib/validation'
-import { createServerLogger } from '@/lib/utils/server-logger'
-
-const logger = createServerLogger('NotificationsAPI', 'api')
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,11 +28,12 @@ export async function GET(request: NextRequest) {
         type,
         title,
         message,
-        is_read,
-        created_at,
         related_id,
         related_type,
+        is_read,
         channels,
+        read_at,
+        created_at,
         user_id
       `)
       .eq('user_id', user.id)
@@ -49,11 +47,7 @@ export async function GET(request: NextRequest) {
     const { data: notifications, error, count } = await query
 
     if (error) {
-      logger.error('Notifications fetch error', error as Error, {
-        action: 'fetchNotifications',
-        userId: user.id,
-        severity: 'medium'
-      })
+      console.error('Notifications fetch error:', error)
       return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 })
     }
 
@@ -73,10 +67,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    logger.error('Notifications API error', error as Error, {
-      action: 'notificationsAPI',
-      severity: 'high'
-    })
+    console.error('Notifications API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -90,15 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const {
-      target_user_id,
-      type,
-      title,
-      message,
-      related_id = null,
-      related_type = null,
-      channels = ['in_app']
-    } = body
+    const { target_user_id, type, title, message, related_id = null, related_type = null, channels = {} } = body
 
     // Validate required fields
     if (!target_user_id || !type || !title || !message) {
@@ -133,11 +116,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      logger.error('Notification creation error', error as Error, {
-        action: 'createNotification',
-        targetUserId: target_user_id,
-        severity: 'high'
-      })
+      console.error('Notification creation error:', error)
       return NextResponse.json({ error: 'Failed to create notification' }, { status: 500 })
     }
 
@@ -147,10 +126,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ notification }, { status: 201 })
   } catch (error) {
-    logger.error('Notification creation API error', error as Error, {
-      action: 'createNotificationAPI',
-      severity: 'critical'
-    })
+    console.error('Notification creation API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

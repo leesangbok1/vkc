@@ -1,15 +1,7 @@
 import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
-
-// Complete Database types matching 4-tier permission system
+// Complete Database types matching Agent 4 schema implementation
 export type Database = {
   public: {
     Tables: {
@@ -22,26 +14,11 @@ export type Database = {
           bio: string | null
           provider: string | null
           provider_id: string | null
-          admin_yn: 'Y' | 'N'
-
-          // 4-Tier Permission System
-          role: 'guest' | 'user' | 'verified' | 'admin'
-          verification_status: 'none' | 'pending' | 'approved' | 'rejected' | 'expired'
-          verification_type: 'student' | 'work' | 'family' | 'resident' | 'other' | null
-
-          // Profile Info (verification에 사용)
           visa_type: string | null
           company: string | null
           years_in_korea: number | null
           region: string | null
-          specialty_areas: string[] | null
           preferred_language: string
-
-          // Verification Timestamps
-          verified_at: string | null
-          verification_expires_at: string | null
-
-          // Legacy Compatibility
           is_verified: boolean
           verification_date: string | null
           trust_score: number
@@ -61,26 +38,11 @@ export type Database = {
           bio?: string | null
           provider?: string | null
           provider_id?: string | null
-          admin_yn?: 'Y' | 'N'
-
-          // 4-Tier Permission System
-          role?: 'guest' | 'user' | 'verified' | 'admin'
-          verification_status?: 'none' | 'pending' | 'approved' | 'rejected' | 'expired'
-          verification_type?: 'student' | 'work' | 'family' | 'resident' | 'other' | null
-
-          // Profile Info
           visa_type?: string | null
           company?: string | null
           years_in_korea?: number | null
           region?: string | null
-          specialty_areas?: string[] | null
           preferred_language?: string
-
-          // Verification Timestamps
-          verified_at?: string | null
-          verification_expires_at?: string | null
-
-          // Legacy Compatibility
           is_verified?: boolean
           verification_date?: string | null
           trust_score?: number
@@ -100,18 +62,11 @@ export type Database = {
           bio?: string | null
           provider?: string | null
           provider_id?: string | null
-          admin_yn?: 'Y' | 'N'
-          role?: 'guest' | 'user' | 'verified' | 'admin'
-          verification_status?: 'none' | 'pending' | 'approved' | 'rejected' | 'expired'
-          verification_type?: 'student' | 'work' | 'family' | 'resident' | 'other' | null
           visa_type?: string | null
           company?: string | null
           years_in_korea?: number | null
           region?: string | null
-          specialty_areas?: string[] | null
           preferred_language?: string
-          verified_at?: string | null
-          verification_expires_at?: string | null
           is_verified?: boolean
           verification_date?: string | null
           trust_score?: number
@@ -120,172 +75,7 @@ export type Database = {
           answer_count?: number
           helpful_answer_count?: number
           last_active?: string
-          notification_preferences?: Record<string, unknown> | null
           updated_at?: string
-        }
-      }
-      certification_requests: {
-        Row: {
-          id: string
-          user_id: string
-          status: 'pending' | 'approved' | 'rejected'
-          verification_type:
-            | 'student'
-            | 'work'
-            | 'family'
-            | 'resident'
-            | 'business'
-            | 'mentor'
-            | 'experienced'
-            | 'community_leader'
-            | 'specialist'
-            | 'other'
-          verification_method: 'document' | 'experience' | 'hybrid'
-          documents: Json
-          visa_type: string | null
-          years_in_korea: number | null
-          company: string | null
-          university: string | null
-          specialties: string[] | null
-          experience_portfolio: Json
-          estimated_review_hours: number | null
-          admin_notes: string | null
-          rejection_reason: string | null
-          reviewed_by: string | null
-          reviewed_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          status?: 'pending' | 'approved' | 'rejected'
-          verification_type:
-            | 'student'
-            | 'work'
-            | 'family'
-            | 'resident'
-            | 'business'
-            | 'mentor'
-            | 'experienced'
-            | 'community_leader'
-            | 'specialist'
-            | 'other'
-          verification_method?: 'document' | 'experience' | 'hybrid'
-          documents: Json
-          visa_type?: string | null
-          years_in_korea?: number | null
-          company?: string | null
-          university?: string | null
-          specialties?: string[] | null
-          experience_portfolio?: Json
-          estimated_review_hours?: number | null
-          admin_notes?: string | null
-          rejection_reason?: string | null
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          status?: 'pending' | 'approved' | 'rejected'
-          verification_type?:
-            | 'student'
-            | 'work'
-            | 'family'
-            | 'resident'
-            | 'business'
-            | 'mentor'
-            | 'experienced'
-            | 'community_leader'
-            | 'specialist'
-            | 'other'
-          verification_method?: 'document' | 'experience' | 'hybrid'
-          documents?: Json
-          visa_type?: string | null
-          years_in_korea?: number | null
-          company?: string | null
-          university?: string | null
-          specialties?: string[] | null
-          experience_portfolio?: Json
-          estimated_review_hours?: number | null
-          admin_notes?: string | null
-          rejection_reason?: string | null
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      user_follows: {
-        Row: {
-          id: string
-          follower_id: string
-          following_id: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          follower_id: string
-          following_id: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          follower_id?: string
-          following_id?: string
-          created_at?: string
-        }
-      }
-      topic_subscriptions: {
-        Row: {
-          id: string
-          user_id: string
-          category_id: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          category_id: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          category_id?: number
-          created_at?: string
-        }
-      }
-      bookmarks: {
-        Row: {
-          id: string
-          user_id: string
-          target_id: string
-          target_type: 'question' | 'post' | 'answer'
-          title: string | null
-          content: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          target_id: string
-          target_type: 'question' | 'post' | 'answer'
-          title?: string | null
-          content?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          target_id?: string
-          target_type?: 'question' | 'post' | 'answer'
-          title?: string | null
-          content?: string | null
-          created_at?: string
         }
       }
       categories: {
@@ -339,8 +129,8 @@ export type Database = {
           ai_category_confidence: number | null
           ai_tags: string[]
           urgency: string
-          matched_certified_users: string[]
-          certified_notifications_sent: boolean
+          matched_experts: string[]
+          expert_notifications_sent: boolean
           view_count: number
           answer_count: number
           helpful_count: number
@@ -369,8 +159,8 @@ export type Database = {
           ai_category_confidence?: number | null
           ai_tags?: string[]
           urgency?: string
-          matched_certified_users?: string[]
-          certified_notifications_sent?: boolean
+          matched_experts?: string[]
+          expert_notifications_sent?: boolean
           view_count?: number
           answer_count?: number
           helpful_count?: number
@@ -398,8 +188,8 @@ export type Database = {
           ai_category_confidence?: number | null
           ai_tags?: string[]
           urgency?: string
-          matched_certified_users?: string[]
-          certified_notifications_sent?: boolean
+          matched_experts?: string[]
+          expert_notifications_sent?: boolean
           view_count?: number
           answer_count?: number
           helpful_count?: number
@@ -566,15 +356,13 @@ export type Database = {
           type: string
           title: string
           message: string
-          data: Record<string, unknown> | null
-          created_by: string | null
           related_id: string | null
           related_type: string | null
           is_read: boolean
           is_email_sent: boolean
           is_push_sent: boolean
           is_kakao_sent: boolean
-          channels: Record<string, unknown>
+          channels: Record<string, any>
           created_at: string
           read_at: string | null
           sent_at: string | null
@@ -585,15 +373,13 @@ export type Database = {
           type: string
           title: string
           message: string
-          data?: Record<string, unknown> | null
-          created_by?: string | null
           related_id?: string | null
           related_type?: string | null
           is_read?: boolean
           is_email_sent?: boolean
           is_push_sent?: boolean
           is_kakao_sent?: boolean
-          channels?: Record<string, unknown>
+          channels?: Record<string, any>
           created_at?: string
           read_at?: string | null
           sent_at?: string | null
@@ -604,15 +390,13 @@ export type Database = {
           type?: string
           title?: string
           message?: string
-          data?: Record<string, unknown> | null
-          created_by?: string | null
           related_id?: string | null
           related_type?: string | null
           is_read?: boolean
           is_email_sent?: boolean
           is_push_sent?: boolean
           is_kakao_sent?: boolean
-          channels?: Record<string, unknown>
+          channels?: Record<string, any>
           read_at?: string | null
           sent_at?: string | null
         }
@@ -634,18 +418,6 @@ export type Database = {
         Args: { content_type: string; content_id: string; user_id: string }
         Returns: boolean
       }
-      adjust_trust_score: {
-        Args: { adjustment: number }
-        Returns: void
-      }
-      increment_answer_count: {
-        Args: Record<string, never>
-        Returns: void
-      }
-      decrement_answer_count: {
-        Args: Record<string, never>
-        Returns: void
-      }
     }
     Enums: {
       [_ in never]: never
@@ -663,9 +435,16 @@ export const createSupabaseClient = () => {
 
 // Server client for server-side operations
 export const createSupabaseServerClient = async () => {
-  // Validate required environment variables
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error('Missing required Supabase environment variables')
+  // Immediate mock mode check using multiple environment indicators
+  const isMockMode =
+    process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ||
+    process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co') ||
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (isMockMode) {
+    console.log('Supabase server client running in mock mode')
+    return null
   }
 
   try {
@@ -680,12 +459,11 @@ export const createSupabaseServerClient = async () => {
             return cookieStore.get(name)?.value
           },
         },
-        cookieEncoding: 'raw',
       }
     )
   } catch (error) {
-    console.error('Supabase server client creation failed:', error)
-    throw error
+    console.warn('Supabase server client creation failed, falling back to mock mode:', error)
+    return null
   }
 }
 
@@ -706,7 +484,6 @@ export const createSupabaseServerReadClient = () => {
           // No-op for read-only client
         },
       },
-      cookieEncoding: 'raw',
     }
   )
 }

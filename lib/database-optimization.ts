@@ -23,7 +23,7 @@ export const QUERY_CONFIGS = {
   ANSWERS_LIST: {
     select: `
       id, content, is_accepted, helpful_count, vote_score, quality_score,
-      certified_match, response_time_hours, created_at, updated_at,
+      expertise_match, response_time_hours, created_at, updated_at,
       author:users!author_id(id, name, avatar_url, trust_score, residence_years, specialties, badges),
       question:questions!question_id(id, title, category_id)
     `,
@@ -31,8 +31,8 @@ export const QUERY_CONFIGS = {
     cache_ttl: 3 * 60, // 3분 캐시
   },
 
-  // 인증 사용자 매칭 최적화
-  CERTIFIED_MATCHING: {
+  // 전문가 매칭 최적화
+  EXPERT_MATCHING: {
     select: `
       id, name, avatar_url, trust_score, residence_years, specialties, badges,
       answer_count, helpful_answer_count, last_active, bio, languages
@@ -178,7 +178,7 @@ export function analyzeUserActivity(user: any) {
   const analysis = {
     activity_level: 'low',
     community_engagement: 0,
-    certified_areas: [] as string[],
+    expertise_areas: [] as string[],
     trust_growth_potential: 0,
     recommended_actions: [] as string[]
   }
@@ -194,9 +194,9 @@ export function analyzeUserActivity(user: any) {
     : 0
   analysis.community_engagement = Math.round(helpfulRatio * 100)
 
-  // 인증 분야 식별
+  // 전문 분야 식별
   if (user.specialties && user.specialties.length > 0) {
-    analysis.certified_areas = user.specialties
+    analysis.expertise_areas = user.specialties
   }
 
   // 신뢰도 성장 잠재력
@@ -215,8 +215,8 @@ export function analyzeUserActivity(user: any) {
   if (!user.is_verified) {
     analysis.recommended_actions.push('이메일 인증 완료')
   }
-  if (analysis.certified_areas.length === 0) {
-    analysis.recommended_actions.push('인증 분야 설정')
+  if (analysis.expertise_areas.length === 0) {
+    analysis.recommended_actions.push('전문 분야 설정')
   }
 
   return analysis
@@ -242,12 +242,12 @@ export async function performHealthCheck() {
         questions: '5 minutes',
         answers: '3 minutes',
         users: '10 minutes',
-        certified_users: '10 minutes'
+        experts: '10 minutes'
       },
       query_patterns: {
         peak_hours: '20:00-23:00 KST',
         common_categories: ['비자/법률', '취업/직장', '주거/부동산'],
-        optimization_priority: ['category filtering', 'trust score sorting', 'certified user matching']
+        optimization_priority: ['category filtering', 'trust score sorting', 'expert matching']
       }
     }
   }

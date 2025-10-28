@@ -1,692 +1,373 @@
-'use client'
+import { HomeLayout } from '@/components/layout/ResponsiveLayout'
+import { QuestionCard } from '@/components/questions/QuestionCard'
+import DynamicAIMatchingFlow from '@/components/dynamic/DynamicAIMatchingFlow'
+import { Database } from '@/lib/supabase'
 
-import { useState, useEffect, useMemo, type ReactNode } from 'react'
-import Sidebar from '@/components/layout/Sidebar'
-import PageLayout from '@/components/layout/PageLayout'
-import FeedBoard, { type FeedBoardItem } from '@/components/feed/FeedBoard'
-import BannerCarousel from '@/components/banners/BannerCarousel'
-import CertificationModal from '@/components/modals/CertificationModal'
-import QuestionCreateModal from '@/components/modals/QuestionCreateModal'
-import PostCreateModal from '@/components/modals/PostCreateModal'
-import QuickTour from '@/components/tour/QuickTour'
-import { useQuickTour, defaultTourSteps } from '@/lib/hooks/useQuickTour'
-import { BRAND_NAME, BRAND_SHORT_DESCRIPTION, BRAND_TAGLINE, LOGIN_CTA_TEXT } from '@/lib/constants/branding'
-
-const EVENT_MODAL_STORAGE_KEY = 'vietkconnect_event_modal_state'
-const EVENT_MODAL_SNOOZE_DAYS = 7
-const LEGACY_EVENT_MODAL_STORAGE_KEY = 'vietkconnect_event_modal_state'
-
-type EventModalState = {
-  lastSeen?: string
-  snoozedUntil?: string
-  showCount?: number
+type Question = Database['public']['Tables']['questions']['Row'] & {
+  author: Database['public']['Tables']['users']['Row']
+  category: Database['public']['Tables']['categories']['Row']
 }
 
-type Banner = {
-  id: string
-  title: string
-  description: string
-  imageUrl?: string
-  linkUrl: string
-  backgroundColor?: string
-}
+// Mock data for demonstration - properly typed
+const mockQuestions: Question[] = [
+  {
+    id: '1',
+    title: 'E-7 비자 신청 시 필요한 서류가 궁금합니다',
+    content: '회사에서 E-7 비자 신청을 도와준다고 하는데, 제가 준비해야 할 서류들이 무엇인지 알고 싶습니다. 특히 베트남에서 가져와야 하는 서류가 있을까요?',
+    author_id: 'user1',
+    category_id: 1,
+    tags: ['E-7비자', '서류', '취업'],
+    ai_category_confidence: 0.95,
+    ai_tags: ['visa', 'employment', 'documents'],
+    urgency: 'high',
+    matched_experts: ['expert1', 'expert2'],
+    expert_notifications_sent: true,
+    view_count: 45,
+    answer_count: 3,
+    helpful_count: 8,
+    upvote_count: 12,
+    downvote_count: 0,
+    status: 'open',
+    is_pinned: false,
+    is_featured: true,
+    is_reported: false,
+    is_approved: true,
+    moderated_by: null,
+    moderated_at: null,
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    last_activity_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    resolved_at: null,
+    search_vector: null,
+    author: {
+      id: 'user1',
+      email: 'letuan@example.com',
+      name: '레투안',
+      avatar_url: '',
+      bio: null,
+      provider: 'google',
+      provider_id: 'google123',
+      visa_type: 'E-7',
+      company: 'Tech Company',
+      years_in_korea: 3,
+      region: 'Seoul',
+      preferred_language: 'ko',
+      is_verified: true,
+      verification_date: new Date().toISOString(),
+      trust_score: 324,
+      badges: { verified: true },
+      question_count: 5,
+      answer_count: 12,
+      helpful_answer_count: 8,
+      last_active: new Date().toISOString(),
+      created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    category: {
+      id: 1,
+      name: '비자/법률',
+      slug: 'visa',
+      description: '비자 및 법률 관련 질문',
+      icon: '⚖️',
+      color: '#4285F4',
+      parent_id: null,
+      sort_order: 1,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  {
+    id: '2',
+    title: '서울에서 저렴한 원룸 구하는 방법',
+    content: '대학원생이라 예산이 많지 않은데, 서울에서 월 40만원 정도로 살 수 있는 원룸이 있을까요? 어떤 지역을 추천하시나요?',
+    author_id: 'user2',
+    category_id: 2,
+    tags: ['원룸', '부동산', '서울', '대학원생'],
+    ai_category_confidence: 0.88,
+    ai_tags: ['housing', 'real-estate', 'budget'],
+    urgency: 'normal',
+    matched_experts: ['expert3', 'expert4'],
+    expert_notifications_sent: true,
+    view_count: 89,
+    answer_count: 7,
+    helpful_count: 15,
+    upvote_count: 23,
+    downvote_count: 1,
+    status: 'resolved',
+    is_pinned: false,
+    is_featured: false,
+    is_reported: false,
+    is_approved: true,
+    moderated_by: null,
+    moderated_at: null,
+    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    last_activity_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    resolved_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    search_vector: null,
+    author: {
+      id: 'user2',
+      email: 'phamthilan@example.com',
+      name: '팜티란',
+      avatar_url: '',
+      bio: null,
+      provider: 'google',
+      provider_id: 'google456',
+      visa_type: 'F-1',
+      company: null,
+      years_in_korea: 4,
+      region: 'Seoul',
+      preferred_language: 'ko',
+      is_verified: true,
+      verification_date: new Date().toISOString(),
+      trust_score: 567,
+      badges: { verified: true },
+      question_count: 8,
+      answer_count: 15,
+      helpful_answer_count: 12,
+      last_active: new Date().toISOString(),
+      created_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    category: {
+      id: 2,
+      name: '주거/부동산',
+      slug: 'housing',
+      description: '주거 및 부동산 관련 질문',
+      icon: '🏠',
+      color: '#9C27B0',
+      parent_id: null,
+      sort_order: 2,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  {
+    id: '3',
+    title: '한국 회사 면접 준비 팁',
+    content: '다음 주에 한국 회사 면접이 있는데, 베트남과 다른 문화적 차이점이나 준비해야 할 것들이 있을까요?',
+    author_id: 'user3',
+    category_id: 3,
+    tags: ['면접', '취업', '회사문화'],
+    ai_category_confidence: 0.92,
+    ai_tags: ['interview', 'employment', 'culture'],
+    urgency: 'urgent',
+    matched_experts: ['expert5', 'expert6'],
+    expert_notifications_sent: true,
+    view_count: 156,
+    answer_count: 12,
+    helpful_count: 25,
+    upvote_count: 34,
+    downvote_count: 2,
+    status: 'open',
+    is_pinned: true,
+    is_featured: false,
+    is_reported: false,
+    is_approved: true,
+    moderated_by: null,
+    moderated_at: null,
+    created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    last_activity_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    resolved_at: null,
+    search_vector: null,
+    author: {
+      id: 'user3',
+      email: 'nguyenmin@example.com',
+      name: '응우옌민',
+      avatar_url: '',
+      bio: null,
+      provider: 'kakao',
+      provider_id: 'kakao789',
+      visa_type: 'H-1B',
+      company: 'IT Company',
+      years_in_korea: 6,
+      region: 'Busan',
+      preferred_language: 'ko',
+      is_verified: true,
+      verification_date: new Date().toISOString(),
+      trust_score: 892,
+      badges: { verified: true, expert: true },
+      question_count: 15,
+      answer_count: 28,
+      helpful_answer_count: 22,
+      last_active: new Date().toISOString(),
+      created_at: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    category: {
+      id: 3,
+      name: '취업/직장',
+      slug: 'employment',
+      description: '취업 및 직장 관련 질문',
+      icon: '💼',
+      color: '#EA4335',
+      parent_id: null,
+      sort_order: 3,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  }
+]
 
 export default function HomePage() {
-  // 초기 SSR 단계에서는 번역 확장으로 인한 hydration mismatch를 막기 위해 빈 상태로 시작
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(true)
-  const [userName, setUserName] = useState('')
-  const [userId, setUserId] = useState<string | null>(null)
-  const [isDevAdmin, setIsDevAdmin] = useState(false)
-  const [userRole, setUserRole] = useState<'guest' | 'user' | 'verified' | 'admin'>('guest')
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true) // 초기 로딩 상태
-  const [showEventModal, setShowEventModal] = useState(false) // 이벤트 모달 상태
-  const [showCertificationModal, setShowCertificationModal] = useState(false) // 인증 신청 모달 상태
-  const [showQuestionModal, setShowQuestionModal] = useState(false)
-  const [showPostModal, setShowPostModal] = useState(false)
-  const [followedUsers, setFollowedUsers] = useState<string[]>([]) // 팔로우한 사용자 목록
-  const [banners, setBanners] = useState<Banner[]>([]) // 배너 목록
-
-  const sidebarBanners = useMemo(() => banners.slice(0, 4), [banners])
-
-  const getEventModalStorageKey = () => {
-    if (userId) return `${EVENT_MODAL_STORAGE_KEY}_${userId}`
-    return EVENT_MODAL_STORAGE_KEY
-  }
-
-  const readEventModalState = (): EventModalState => {
-    if (typeof window === 'undefined') return {}
-    try {
-      const storageKey = getEventModalStorageKey()
-      if (userId && window.localStorage.getItem(LEGACY_EVENT_MODAL_STORAGE_KEY) && !window.localStorage.getItem(storageKey)) {
-        try {
-          window.localStorage.setItem(storageKey, window.localStorage.getItem(LEGACY_EVENT_MODAL_STORAGE_KEY) || '')
-        } finally {
-          window.localStorage.removeItem(LEGACY_EVENT_MODAL_STORAGE_KEY)
-        }
-      }
-      const raw = window.localStorage.getItem(storageKey)
-      if (!raw) return { showCount: 0 }
-      const parsed = JSON.parse(raw)
-      return {
-        lastSeen: parsed.lastSeen ?? undefined,
-        snoozedUntil: parsed.snoozedUntil ?? undefined,
-        showCount: typeof parsed.showCount === 'number' ? parsed.showCount : 0,
-      }
-    } catch (error) {
-      console.error('Failed to parse event modal state:', error)
-      return { showCount: 0 }
-    }
-  }
-
-  const updateEventModalState = (patch: EventModalState) => {
-    if (typeof window === 'undefined') return
-    try {
-      const current = readEventModalState()
-      const nextState = { ...current, ...patch }
-      window.localStorage.setItem(getEventModalStorageKey(), JSON.stringify(nextState))
-    } catch (error) {
-      console.error('Failed to persist event modal state:', error)
-    }
-  }
-
-  const markEventModalShown = () => {
-    const current = readEventModalState()
-    updateEventModalState({
-      lastSeen: new Date().toISOString(),
-      showCount: Math.min((current.showCount ?? 0) + 1, 1),
-    })
-  }
-
-  const dismissEventModal = () => {
-    updateEventModalState({ lastSeen: new Date().toISOString() })
-    setShowEventModal(false)
-  }
-
-  const snoozeEventModal = () => {
-    const now = new Date()
-    const snoozeUntil = new Date(now)
-    snoozeUntil.setDate(snoozeUntil.getDate() + EVENT_MODAL_SNOOZE_DAYS)
-    updateEventModalState({
-      lastSeen: now.toISOString(),
-      snoozedUntil: snoozeUntil.toISOString(),
-      showCount: Math.max(readEventModalState().showCount ?? 0, 1),
-    })
-    setShowEventModal(false)
-  }
-
-  const allowQuickTour = isLoggedIn && onboardingCompleted
-
-  async function loadBanners() {
-    try {
-      const res = await fetch('/api/posts?post_type=news&limit=4', { cache: 'no-store' })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null)
-        throw new Error(payload?.error || `배너 데이터를 불러오지 못했습니다. (status: ${res.status})`)
-      }
-      const payload = await res.json()
-      const items = Array.isArray(payload?.items) ? payload.items : []
-      const mapped: Banner[] = items.map((item: any) => ({
-        id: String(item.id),
-        title: String(item.title || '소식'),
-        description: typeof item.content === 'string'
-          ? item.content.slice(0, 120)
-          : '',
-        imageUrl: undefined,
-        linkUrl: `/posts/${item.id}`,
-        backgroundColor: '#1f2937'
-      }))
-      setBanners(mapped)
-    } catch (error) {
-      console.error('[HomePage] loadBanners failed:', error)
-      setBanners([])
-    }
-  }
-
-  // Quick Tour state (only for 온보딩 완료 사용자, 이벤트 모달 종료 후 진행)
-  const { isOpen: isTourOpen, handleComplete: completeTour, handleSkip: skipTour } = useQuickTour(
-    allowQuickTour,
-    showEventModal,
-    userId
-  )
-
-  useEffect(() => {
-    checkAuth()
-    loadBanners()
-  }, [])
-
-  // 로그인하면 서버에서 팔로잉 목록 로드
-  useEffect(() => {
-    if (!isLoggedIn) {
-      setFollowedUsers([])
-      return
-    }
-
-    let ignore = false
-    const loadFollowing = async () => {
-      try {
-        const res = await fetch('/api/users/following', { cache: 'no-store' })
-        if (!res.ok) {
-          throw new Error(`follow list failed ${res.status}`)
-        }
-        const json = await res.json()
-        const ids: string[] = Array.isArray(json?.data) ? json.data : []
-        if (!ignore) {
-          setFollowedUsers(ids)
-        }
-      } catch (error) {
-        console.error('[Home] failed to load follow list', error)
-      }
-    }
-
-    loadFollowing()
-    return () => {
-      ignore = true
-    }
-  }, [isLoggedIn])
-
-  // 로그인 후 이벤트 모달 자동 오픈 (한 번만)
-  useEffect(() => {
-    if (!isLoggedIn || isCheckingAuth || !userId) {
-      return
-    }
-
-    const timer = setTimeout(() => {
-      const state = readEventModalState()
-      const hasShownOnce = (state.showCount ?? 0) >= 1
-      const snoozedUntil = state?.snoozedUntil ? new Date(state.snoozedUntil) : null
-      const snoozeExpired = snoozedUntil ? snoozedUntil.getTime() <= Date.now() : false
-
-      if (!hasShownOnce || snoozeExpired) {
-        markEventModalShown()
-        setShowEventModal(true)
-      }
-    }, 1000) // 1초 후 모달 오픈 (부드러운 UX)
-
-    return () => clearTimeout(timer)
-  }, [isLoggedIn, isCheckingAuth, userId])
-
-  // URL 파라미터로 인증 모달 오픈 제어
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('modal') === 'certification') {
-      setShowCertificationModal(true)
-    }
-
-    // Listen for custom event from Sidebar or other components
-    const handleOpenCertificationModal = () => {
-      setShowCertificationModal(true)
-      // Update URL
-      const url = new URL(window.location.href)
-      url.searchParams.set('modal', 'certification')
-      window.history.pushState({}, '', url)
-    }
-
-    window.addEventListener('openCertificationModal', handleOpenCertificationModal)
-    return () => {
-      window.removeEventListener('openCertificationModal', handleOpenCertificationModal)
-    }
-  }, [])
-
-  async function checkAuth() {
-    try {
-      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
-      if (!res.ok) {
-        setIsLoggedIn(false)
-        setUserRole('guest')
-        setIsDevAdmin(false)
-        setUserId(null)
-        setOnboardingCompleted(false)
-        return
-      }
-      const json = await res.json()
-      const profile = json.data
-      setUserId(profile?.id ?? null)
-      if (!profile) {
-        setIsLoggedIn(false)
-        setUserRole('guest')
-        setIsDevAdmin(false)
-        setOnboardingCompleted(false)
-        return
-      }
-
-      const completed = Object.prototype.hasOwnProperty.call(profile, 'onboarding_completed')
-        ? profile.onboarding_completed !== false
-        : true
-      setOnboardingCompleted(completed)
-
-      if (!completed) {
-        console.info('ℹ️ Onboarding not completed – continuing in logged-in mode')
-      }
-
-      setIsLoggedIn(true)
-      setUserName(profile.name || '사용자')
-      setUserRole((profile.role as any) || 'user')
-    } catch (error) {
-      console.error('Auth check failed:', error)
-      setIsLoggedIn(false)
-      setUserRole('guest')
-      setIsDevAdmin(false)
-      setUserId(null)
-      setOnboardingCompleted(false)
-    } finally {
-      setIsCheckingAuth(false)
-    }
-  }
-
-  // 질문/정보글 구분 배지 제거 - 내부 분류용으로만 사용
-  // const getContentTypeBadge = (type: 'question' | 'post') => {
-  //   if (type === 'post') {
-  //     return (
-  //       <span className="content-type-badge content-type-badge-post">
-  //         📝 정보글
-  //       </span>
-  //     )
-  //   }
-  //   return (
-  //     <span className="content-type-badge content-type-badge-question">
-  //       ❓ 질문
-  //     </span>
-  //   )
-  // }
-
-  const renderFeedStats = (item: FeedBoardItem): ReactNode => {
-    if (item.type !== 'question') {
-      return null
-    }
-    const totalCount = item.answerCount ?? 0
-    const label = '답변'
-
-    if (totalCount === 0) {
-      return <span>아직 {label}이 없어요</span>
-    }
-
-    const expertCount = Math.max(1, Math.floor(totalCount * 0.4))
-    const othersCount = Math.max(0, totalCount - expertCount)
-
-    if (expertCount > 0 && othersCount > 0) {
-      return (
-        <>
-          <strong className="expert-highlight">Certified User {expertCount}명</strong> 외 <strong>{othersCount}명</strong>이 {label}했어요
-        </>
-      )
-    }
-
-    if (expertCount > 0) {
-      return (
-        <>
-          <strong className="expert-highlight">Certified User {expertCount}명</strong>이 {label}했어요
-        </>
-      )
-    }
-
-    return (
-      <>
-        <strong>{totalCount}명</strong>이 {label}했어요
-      </>
-    )
-  }
-
-  const handleFollowToggle = async (authorId: string, isCurrentlyFollowing: boolean) => {
-    if (!authorId) {
-      return
-    }
-
-    if (!isLoggedIn) {
-      const currentUrl = window.location.pathname
-      window.location.href = `/auth/login?redirectTo=${encodeURIComponent(currentUrl)}`
-      return
-    }
-
-    const previous = [...followedUsers]
-    setFollowedUsers((prev) => {
-      if (isCurrentlyFollowing) {
-        return prev.filter((id) => id !== authorId)
-      }
-      return [...prev, authorId]
-    })
-
-    try {
-      const method = isCurrentlyFollowing ? 'DELETE' : 'POST'
-      const res = await fetch(`/api/users/${authorId}/follow`, { method })
-      const body = await res.json().catch(() => null)
-      if (!res.ok || body?.success === false) {
-        throw new Error('follow request failed')
-      }
-      if (typeof body?.isFollowing === 'boolean') {
-        setFollowedUsers((prev) => {
-          const next = new Set(prev)
-          if (body.isFollowing) next.add(authorId)
-          else next.delete(authorId)
-          return Array.from(next)
-        })
-      }
-    } catch (error) {
-      console.error('follow toggle failed', error)
-      setFollowedUsers(previous)
-      alert('팔로우 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
-    }
-  }
-
-  // 인증 체크 중일 때 로딩 화면 표시 (FOUC 방지)
-  if (isCheckingAuth) {
-    return (
-      <PageLayout variant="centered">
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '60vh'
-        }}>
-          <div style={{ textAlign: 'center', color: '#666' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
-            <p className="notranslate" translate="no" suppressHydrationWarning>로딩 중...</p>
-          </div>
-        </div>
-      </PageLayout>
-    )
-  }
-
   return (
-    <PageLayout
-      variant="withSidebar"
-      sidebar={<Sidebar showContent={true} banners={sidebarBanners} />}
-    >
-      {/* Main Content Area */}
-      <div>
-          {/* Desktop Hero Section */}
-          {!isLoggedIn ? (
-            // 로그인 전: 플랫폼 가치 강조
-            <div className="desktop-hero">
-              <div className="hero-badge" translate="no" data-no-translate="true">
-                <span>🛡️</span>
-                <span>{BRAND_NAME} Certified Network</span>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* 메인 콘텐츠 - 질문 박스와 질문 목록 */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* 대형 질문 입력 박스 */}
+            <section className="bg-white rounded-2xl shadow-xl border-2 border-primary-blue/20 p-12">
+              <div className="text-center mb-8">
+                <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                  무엇이든 물어보세요! 🙋‍♂️
+                </h1>
+                <p className="text-xl text-gray-600">
+                  한국 생활의 모든 궁금증을 베트남 커뮤니티에서 해결하세요
+                </p>
               </div>
-              <h1 className="hero-title">
-                {BRAND_TAGLINE}<br />
-                실제 경험을 검증한 Certified User가 답변합니다
-              </h1>
-              <p className="hero-subtitle">{BRAND_SHORT_DESCRIPTION}</p>
-              <div className="hero-actions">
-                <button
-                  className="hero-btn-primary"
-                  onClick={() => window.location.href = '/auth/login'}
-                >
-                  🚀 {LOGIN_CTA_TEXT}
-                </button>
-              </div>
-            </div>
-          ) : (
-            // 로그인 후: 컴팩트 입력창
-            <div className="desktop-hero-compact">
-              <div className="hero-input-row">
-                <div className="profile-avatar-medium">
-                  👤
+
+              <div className="max-w-4xl mx-auto">
+                <div className="relative">
+                  <textarea
+                    className="w-full h-48 px-6 py-6 text-xl border-2 border-gray-200 rounded-2xl focus:border-primary-blue focus:ring-4 focus:ring-primary-blue/20 resize-none"
+                    placeholder="예시: 한국에서 E-7 비자를 신청하려고 하는데, 회사에서 도와준다고 하지만 제가 개인적으로 준비해야 할 서류가 무엇인지 궁금합니다. 특히 베트남에서 가져와야 하는 서류나 번역이 필요한 것들이 있을까요? 또한 신청 과정에서 주의해야 할 점이나 팁이 있다면 알려주세요."
+                    style={{ fontSize: '18px', lineHeight: '1.6' }}
+                  />
+                  <div className="absolute bottom-4 right-4 flex items-center space-x-4">
+                    <select className="px-4 py-2 bg-gray-100 rounded-lg text-gray-700">
+                      <option>📋 카테고리 선택</option>
+                      <option>🛂 비자/법률</option>
+                      <option>🏠 주거/부동산</option>
+                      <option>💼 취업/직장</option>
+                      <option>🎓 교육/학업</option>
+                      <option>🏥 의료/건강</option>
+                      <option>🍜 생활/문화</option>
+                    </select>
+                    <button className="btn-primary-blue px-8 py-3 text-lg font-semibold">
+                      질문하기 ✨
+                    </button>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  placeholder="비자, 유학, 취업 등 한국생활 관련 궁금한 점을 질문해보세요"
-                  className="hero-search-input"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      window.location.href = '/auth/login?redirectTo=/questions/new'
-                      return
-                    }
-                    setShowQuestionModal(true)
-                  }}
-                  readOnly
-                />
               </div>
-              <div className="hero-action-buttons">
-                <button
-                  className="hero-action-btn"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      window.location.href = '/auth/login?redirectTo=/questions/new'
-                      return
-                    }
-                    setShowQuestionModal(true)
-                  }}
-                  data-tour="ask-question"
+            </section>
+
+            {/* 최신 질문들 */}
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  🔥 최신 질문
+                </h2>
+                <a
+                  href="/questions"
+                  className="text-primary-blue hover:text-primary-dark transition-colors text-lg font-medium"
                 >
-                  ❓ Ask
-                </button>
-                <button
-                  className="hero-action-btn"
-                  onClick={() => window.location.href = '/questions'}
-                >
-                  💬 Answer
-                </button>
-                <button
-                  className="hero-action-btn"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      window.location.href = '/auth/login?redirectTo=/posts/new'
-                      return
-                    }
-                    setShowPostModal(true)
-                  }}
-                >
-                  📝 Post
-                </button>
+                  전체 보기 →
+                </a>
               </div>
-            </div>
-          )}
 
-          {/* Banner Carousel - 미션/이벤트 배너 */}
-          {isLoggedIn && (
-            <BannerCarousel banners={banners} />
-          )}
-
-          {/* Categories Tabs */}
-          <div className="category-tabs">
-            <a href="/" className="category-tab active">Popular</a>
-            <a href="/topics" className="category-tab" data-tour="topics">Topic</a>
-            <a href="/following" className="category-tab">Following</a>
+              <div className="space-y-4">
+                {mockQuestions.map((question) => (
+                  <QuestionCard
+                    key={question.id}
+                    question={question}
+                    className="hover:scale-[1.01] transition-transform duration-200"
+                  />
+                ))}
+              </div>
+            </section>
           </div>
 
-          <FeedBoard
-            mode="all"
-            renderStats={renderFeedStats}
-            followControls={{
-              followedIds: followedUsers,
-              onToggleFollow: handleFollowToggle,
-              labels: { follow: '팔로우', following: '팔로잉' }
-            }}
-            emptyState={{
-              icon: '📝',
-              title: '아직 게시물이 없습니다',
-              description: '첫 번째 게시물을 작성해보세요!',
-              actionHref: '/questions/new',
-              actionLabel: '질문 작성하기'
-            }}
-          />
-      </div>
-
-      {/* Event Modal - 베타 오픈 이벤트 팝업 */}
-      {showEventModal && (
-        <div
-          className="modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              dismissEventModal()
-            }
-          }}
-        >
-          <div className="event-modal">
-            <button
-              className="modal-close"
-              onClick={dismissEventModal}
-            >
-              ×
-            </button>
-            <div className="event-modal-content">
-              {/* Decorative Elements */}
-              <div className="event-modal-decorations">
-                <div className="decoration-1"></div>
-                <div className="decoration-2"></div>
-                <div className="decoration-3"></div>
-                <div className="decoration-4"></div>
-                <div className="decoration-dots"></div>
-                <div className="decoration-dots-bottom"></div>
+          {/* 사이드바 - AI 매칭과 통계 */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* 커뮤니티 통계 */}
+            <section className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
+                📊 커뮤니티 현황
+              </h3>
+              <div className="space-y-4">
+                <div className="text-center p-4 bg-primary-blue/5 rounded-lg">
+                  <div className="text-2xl font-bold text-primary-blue mb-1">2,847</div>
+                  <div className="text-sm text-gray-600">활성 회원</div>
+                </div>
+                <div className="text-center p-4 bg-primary-green/5 rounded-lg">
+                  <div className="text-2xl font-bold text-primary-green mb-1">94.2%</div>
+                  <div className="text-sm text-gray-600">답변율</div>
+                </div>
+                <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                  <div className="text-2xl font-bold text-yellow-600 mb-1">2.4시간</div>
+                  <div className="text-sm text-gray-600">평균 응답시간</div>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600 mb-1">156</div>
+                  <div className="text-sm text-gray-600">오늘 질문</div>
+                </div>
               </div>
+            </section>
 
-              {/* Content */}
-              <h2 className="event-modal-title">
-                {BRAND_NAME} 베타 오픈<br />챌린지 이벤트
-              </h2>
-              <p className="event-modal-subtitle">
-                한국 생활 질문답변 하고 적립금 받아가세요!
+            {/* AI 매칭 시스템 */}
+            <section className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
+                🤖 AI 전문가 매칭
+              </h3>
+              <p className="text-sm text-gray-600 mb-4 text-center">
+                질문을 올리면 AI가 자동으로 가장 적합한 전문가 5명을 찾아드립니다.
               </p>
-              <div className="event-modal-period">10월 9일 ~ 11월 30일</div>
+              <DynamicAIMatchingFlow
+                question={{
+                  title: 'E-7 비자 신청 관련 질문',
+                  content: '회사에서 도와준다고 하는데 제가 준비할 서류가 궁금합니다',
+                  category: '비자/법률',
+                  urgency: 'high'
+                }}
+              />
+            </section>
 
-              <p className="event-modal-description">
-                모든 미션은 미션 기간 안에 달성해야 혜택 대상자가 됩니다.
+            {/* 인기 카테고리 */}
+            <section className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
+                📂 인기 카테고리
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: '🛂', name: '비자/법률', count: 142 },
+                  { icon: '🏠', name: '주거', count: 89 },
+                  { icon: '💼', name: '취업', count: 156 },
+                  { icon: '🎓', name: '교육', count: 73 },
+                  { icon: '🏥', name: '의료', count: 45 },
+                  { icon: '🍜', name: '생활', count: 201 }
+                ].map((category, index) => (
+                  <div
+                    key={index}
+                    className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors cursor-pointer text-center"
+                  >
+                    <div className="text-lg mb-1">{category.icon}</div>
+                    <div className="font-medium text-gray-900 text-xs">{category.name}</div>
+                    <div className="text-xs text-gray-500">{category.count}개</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* CTA 섹션 */}
+            <section className="bg-gradient-to-br from-primary-blue to-primary-green rounded-xl p-6 text-white text-center">
+              <h3 className="text-lg font-bold mb-3">
+                🚀 전문가가 되어보세요!
+              </h3>
+              <p className="mb-4 opacity-90 text-sm">
+                질문에 답변하고 포인트를 획득하세요
               </p>
-
-              {/* Certified Mission Section */}
-              <div className="event-modal-section">
-                <h3 className="event-modal-section-title">
-                  🔥 Certified User 답변 분야
-                </h3>
-
-                <div className="event-modal-mission">
-                  <div className="event-modal-mission-title">
-                    첫 번째 미션: Certified User 답변 10개 작성하기
-                  </div>
-                  <div className="event-modal-mission-reward">
-                    💰 미션 혜택: 달성하면 네이버페이 10,000원 지급
-                  </div>
-                </div>
-
-                <div className="event-modal-mission">
-                  <div className="event-modal-mission-title">
-                    두 번째 미션: Certified User 답변 20개 작성하기
-                  </div>
-                  <div className="event-modal-mission-reward">
-                    💰 미션 혜택: 20명 추첨 후, 네이버페이 10,000원 지급
-                  </div>
-                </div>
-
-                <div className="event-modal-mission">
-                  <div className="event-modal-mission-title">
-                    세 번째 미션: 10일 이상 Certified User 답변 활동하고, 60개 이상 답변 완료하기
-                  </div>
-                  <div className="event-modal-mission-reward">
-                    💰 미션 혜택: 40명 추첨 후, 신세계 상품권 50,000원 지급
-                  </div>
-                </div>
-              </div>
-
-              {/* Newcomer Mission Section */}
-              <div className="event-modal-section">
-                <h3 className="event-modal-section-title">
-                  🆕 누구나 답변 분야
-                </h3>
-
-                <div className="event-modal-mission">
-                  <div className="event-modal-mission-title">
-                    첫 번째 미션: 누구나 답변 10개 작성하기
-                  </div>
-                  <div className="event-modal-mission-reward">
-                    💰 미션 혜택: 달성하면 네이버페이 1,000원 지급
-                  </div>
-                </div>
-
-                <div className="event-modal-mission">
-                  <div className="event-modal-mission-title">
-                    두 번째 미션: 누구나 답변 20개 작성하기
-                  </div>
-                  <div className="event-modal-mission-reward">
-                    💰 미션 혜택: 전체 회원 대상
-                  </div>
-                </div>
-              </div>
-
-              {/* Event Details */}
-              <div className="event-modal-section">
-                <h3 className="event-modal-section-title">
-                  📅 이벤트 일정
-                </h3>
-                <p className="event-modal-detail-item">
-                  <strong>[이벤트 기간]</strong><br />
-                  10월 9일 ~ 11월 30일
-                </p>
-                <p className="event-modal-detail-item">
-                  <strong>[혜택 대상자 발표]</strong><br />
-                  12월 7일 (금)
-                </p>
-                <p className="event-modal-detail-item">
-                  <strong>[보상 지급 날짜]</strong><br />
-                  12월 10일 (월)
-                </p>
-                <p className="event-modal-detail-item event-modal-detail-item-last">
-                  <strong>[보상 지급 방식]</strong><br />
-                  카카오톡 혹은 문자로 쿠폰 발송
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="event-modal-actions">
-                <button
-                  className="event-btn event-btn-secondary"
-                  onClick={dismissEventModal}
-                >
-                  닫기
-                </button>
-                <button
-                  className="event-btn event-btn-secondary"
-                  onClick={snoozeEventModal}
-                >
-                  7일 동안 안 보기
-                </button>
-                <button
-                  className="event-btn event-btn-primary"
-                  onClick={() => {
-                    dismissEventModal()
-                    window.location.href = '/questions'
-                  }}
-                >
-                  미션 달성하러 가기
-                </button>
-              </div>
-            </div>
+              <button className="bg-white text-primary-blue px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-sm w-full">
+                👥 전문가 신청하기
+              </button>
+            </section>
           </div>
         </div>
-      )}
-
-      {/* Quick Tour */}
-      {allowQuickTour && (
-        <QuickTour
-          steps={defaultTourSteps}
-          isOpen={isTourOpen}
-          onComplete={completeTour}
-          onSkip={skipTour}
-        />
-      )}
-
-      <QuestionCreateModal
-        isOpen={showQuestionModal}
-        onClose={() => setShowQuestionModal(false)}
-      />
-      <PostCreateModal
-        isOpen={showPostModal}
-        onClose={() => setShowPostModal(false)}
-      />
-
-      {/* Certification Modal */}
-      <CertificationModal
-        isOpen={showCertificationModal}
-        onClose={() => {
-          setShowCertificationModal(false)
-          // Remove URL parameter
-          const url = new URL(window.location.href)
-          url.searchParams.delete('modal')
-          window.history.pushState({}, '', url)
-        }}
-      />
-    </PageLayout>
+      </div>
+    </div>
   )
 }
