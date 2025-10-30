@@ -5,18 +5,18 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-normal focus:outline-none focus:ring-2 focus:ring-primary-blue focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-normal focus:outline-none focus:ring-2 focus:ring-vk-primary focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-primary-blue text-white hover:bg-primary-700",
+        default: "bg-vk-primary text-white hover:bg-primary-700",
         destructive: "bg-error text-white hover:bg-error/90",
         outline: "border border-light bg-primary hover:bg-secondary text-secondary hover:text-primary",
         secondary: "bg-secondary text-primary hover:bg-tertiary",
         ghost: "hover:bg-secondary hover:text-primary",
-        link: "text-primary-blue underline-offset-4 hover:underline",
-        primary: "bg-primary-blue text-white hover:bg-primary-700 hover:scale-105 transition-normal",
-        "primary-outline": "border-2 border-primary-blue text-primary-blue bg-transparent hover:bg-primary-blue hover:text-white transition-normal",
+        link: "text-vk-primary underline-offset-4 hover:underline",
+        primary: "bg-vk-primary text-white hover:bg-primary-700 hover:scale-105 transition-normal",
+        "primary-outline": "border-2 border-vk-primary text-vk-primary bg-transparent hover:bg-vk-primary hover:text-white transition-normal",
         "primary-green": "bg-trust text-white hover:bg-secondary-600 hover:scale-105 transition-normal",
       },
       size: {

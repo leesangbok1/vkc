@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getQuestionById } from '@/lib/services/questions.service'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { ValidationUtils } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
+    if (!ValidationUtils.validateId(id)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid question id', code: 'INVALID_ID' },
+        { status: 400 }
+      )
+    }
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      return NextResponse.json(
+        { success: false, error: 'Mock mode is no longer supported for /api/questions/[id]. Disable NEXT_PUBLIC_MOCK_MODE to access this endpoint.' },
+        { status: 503 }
+      )
+    }
     const supabase = await createSupabaseServerClient()
     const {
       data: { user },

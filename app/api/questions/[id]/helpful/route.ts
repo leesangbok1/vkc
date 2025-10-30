@@ -107,7 +107,13 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       isHelpful = true
     }
 
-    const serviceClient = createSupabaseServiceClient()
+    let serviceClient
+    try {
+      serviceClient = createSupabaseServiceClient()
+    } catch (serviceError) {
+      console.warn('[questions helpful] service client unavailable, falling back', serviceError)
+      serviceClient = supabase
+    }
     const {
       count: helpfulCount,
       error: countError,

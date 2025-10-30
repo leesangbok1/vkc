@@ -6,35 +6,12 @@ import FeedBoard from '@/components/feed/FeedBoard'
 export default function QuestionsListPage() {
   return (
     <PageLayout variant="withSidebar">
-      <div className="mobile-category-grid">
-        <a href="/categories/visa" className="mobile-category-item">
-          <div className="mobile-category-icon">💼</div>
-          <div className="mobile-category-label">한국 취업</div>
-        </a>
-        <a href="/categories/visa" className="mobile-category-item">
-          <div className="mobile-category-icon">✈️</div>
-          <div className="mobile-category-label">한국 비자</div>
-        </a>
-        <a href="/categories/life" className="mobile-category-item">
-          <div className="mobile-category-icon">🏠</div>
-          <div className="mobile-category-label">한국 생활</div>
-        </a>
-        <a href="/categories/legal" className="mobile-category-item">
-          <div className="mobile-category-icon">⚖️</div>
-          <div className="mobile-category-label">한국 법률</div>
-        </a>
-      </div>
-
-      <div className="filter-buttons" style={{ marginBottom: '1.5rem' }}>
-        <button className="filter-btn active" disabled>
-          전체
-        </button>
-        <button className="filter-btn" onClick={() => window.location.href = '/posts'}>
-          전체 게시글로 보기
-        </button>
-        <button className="filter-btn" onClick={() => window.location.href = '/topics'}>
-          토픽 둘러보기
-        </button>
+      <div className="feed-filter-bar">
+        <div className="feed-filter-scroll">
+          <a href="/questions" className="category-tab active">전체 질문</a>
+          <a href="/posts?type=questions" className="category-tab">답변 모아보기</a>
+          <a href="/topics" className="category-tab">토픽 둘러보기</a>
+        </div>
       </div>
 
       <FeedBoard
@@ -47,7 +24,6 @@ export default function QuestionsListPage() {
           actionHref: '/questions/new',
           actionLabel: '질문 작성하기'
         }}
-        loginRedirectPath="/questions"
       />
     </PageLayout>
   )

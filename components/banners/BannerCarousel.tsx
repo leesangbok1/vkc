@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination, Autoplay } from 'swiper/modules'
 import 'swiper/css'
@@ -13,11 +14,15 @@ interface Banner {
   imageUrl?: string
   linkUrl: string
   backgroundColor?: string
+  tagline?: string
+  ctaLabel?: string
+  highlights?: string[]
+  icon?: string
 }
 
 interface BannerCarouselProps {
   banners: Banner[]
-  variant?: 'default' | 'sidebar'
+  variant?: 'default' | 'sidebar' | 'hero'
 }
 
 export default function BannerCarousel({ banners, variant = 'default' }: BannerCarouselProps) {
@@ -26,31 +31,142 @@ export default function BannerCarousel({ banners, variant = 'default' }: BannerC
   }
 
   const isSidebar = variant === 'sidebar'
+  const isHero = variant === 'hero'
+
+  const autoplayDelay = isSidebar ? 8000 : 5000
+
+  const [sidebarIndex, setSidebarIndex] = useState(0)
+
+  useEffect(() => {
+    if (!isSidebar) return
+    setSidebarIndex(0)
+  }, [isSidebar, banners])
+
+  useEffect(() => {
+    if (!isSidebar) return
+    if (banners.length <= 1) return
+
+    const timer = window.setInterval(() => {
+      setSidebarIndex((prev) => (prev + 1) % banners.length)
+    }, autoplayDelay)
+
+    return () => window.clearInterval(timer)
+  }, [isSidebar, banners, autoplayDelay])
+
+  if (isSidebar) {
+    return (
+      <div
+        className="banner-carousel-container banner-carousel-sidebar"
+        style={{
+          width: '100%',
+          margin: '0 0 0.6rem 0',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          height: 'var(--sidebar-banner-card-h, 460px)',
+          position: 'relative',
+        }}
+      >
+        <div className="sidebar-banner-slides">
+          {banners.map((banner, index) => (
+            <article
+              key={banner.id}
+              className={`sidebar-card sidebar-banner-card sidebar-banner-carousel-card sidebar-banner-slide${index === sidebarIndex ? ' active' : ''}`}
+              style={{
+                background: banner.backgroundColor || undefined,
+                height: '100%',
+                minHeight: '100%'
+              }}
+              aria-hidden={index === sidebarIndex ? undefined : true}
+            >
+              <div className="sidebar-banner-header">
+                <div className="sidebar-banner-header-content">
+                  {banner.icon && (
+                    <span className="sidebar-banner-icon" aria-hidden="true">
+                      {banner.icon}
+                    </span>
+                  )}
+                  <div className="sidebar-banner-header-text">
+                    <h3 className="sidebar-title">{banner.title}</h3>
+                    {banner.tagline && (
+                      <p className="sidebar-subtitle">{banner.tagline}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="sidebar-banner-content">
+                <div className="sidebar-banner-scroll">
+                  {banner.description && (
+                    <p className="banner-description">{banner.description}</p>
+                  )}
+                  {Array.isArray(banner.highlights) && banner.highlights.length > 0 && (
+                    <ul className="banner-benefits">
+                      {banner.highlights.map((item, benefitIndex) => (
+                        <li key={`${banner.id}-benefit-${benefitIndex}`}>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="banner-action-btn"
+                  onClick={() => {
+                    window.location.href = banner.linkUrl
+                  }}
+                >
+                  {banner.ctaLabel ?? '자세히 보기'}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {banners.length > 1 && (
+          <div className="sidebar-banner-controls" role="tablist" aria-label="사이드바 배너">
+            {banners.map((banner, index) => (
+              <button
+                key={banner.id}
+                type="button"
+                className={`sidebar-banner-indicator${index === sidebarIndex ? ' active' : ''}`}
+                aria-label={`${index + 1}번째 배너 보기`}
+                aria-selected={index === sidebarIndex}
+                role="tab"
+                onClick={() => setSidebarIndex(index)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div
-      className={`banner-carousel-container${isSidebar ? ' banner-carousel-sidebar' : ''}`}
+      className={`banner-carousel-container${isHero ? ' banner-carousel-hero' : ''}`}
       style={{
         width: '100%',
-        margin: isSidebar ? '0 0 1.25rem 0' : '1.5rem 0',
-        borderRadius: '12px',
+        margin: isHero ? '0' : '1.5rem 0',
+        borderRadius: isHero ? '16px' : '12px',
         overflow: 'hidden',
-        ['--banner-slide-max-height' as any]: isSidebar ? '210px' : '180px'
+        height: isHero ? '100%' : undefined,
+        display: isHero ? 'flex' : undefined,
+        ['--banner-slide-max-height' as any]: isHero ? '240px' : '190px'
       }}
     >
       <Swiper
         modules={[Navigation, Pagination, Autoplay]}
         spaceBetween={20}
         slidesPerView={1}
-        navigation
+        navigation={!isHero}
         pagination={{ clickable: true }}
         autoplay={{
-          delay: 5000,
+          delay: autoplayDelay,
           disableOnInteraction: false,
         }}
         loop={banners.length > 1}
         style={{
-          borderRadius: '12px'
+          borderRadius: isHero ? '16px' : '12px'
         }}
       >
         {banners.map((banner) => (
@@ -61,7 +177,7 @@ export default function BannerCarousel({ banners, variant = 'default' }: BannerC
               style={{
                 background: banner.backgroundColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 padding: '1.5rem',
-                minHeight: '100px',
+                minHeight: '120px',
                 // Prevent height jump on long translations
                 maxHeight: 'var(--banner-slide-max-height)',
                 overflowY: 'auto',
@@ -90,8 +206,8 @@ export default function BannerCarousel({ banners, variant = 'default' }: BannerC
               </h2>
               <p style={{
                 color: 'rgba(255, 255, 255, 0.9)',
-                fontSize: '0.9rem',
-                lineHeight: '1.4'
+                fontSize: '0.95rem',
+                lineHeight: 1.5
               }}>
                 {banner.description}
               </p>
@@ -102,9 +218,10 @@ export default function BannerCarousel({ banners, variant = 'default' }: BannerC
 
       <style jsx global>{`
         .banner-carousel-container { --banner-slide-max-height: 180px; }
-        .banner-carousel-container.banner-carousel-sidebar { --banner-slide-max-height: 210px; }
+        .banner-carousel-container.banner-carousel-hero { --banner-slide-max-height: 240px; }
         @media (max-width: 768px) {
           .banner-carousel-container { --banner-slide-max-height: 160px; }
+          .banner-carousel-container.banner-carousel-hero { margin-top: 0.75rem; }
         }
 
         .swiper-button-next,
@@ -154,10 +271,12 @@ export default function BannerCarousel({ banners, variant = 'default' }: BannerC
           }
         }
 
-        .banner-carousel-sidebar .swiper-button-next,
-        .banner-carousel-sidebar .swiper-button-prev {
-          background: rgba(255, 255, 255, 0.6);
-          color: #2563eb !important;
+        .banner-carousel-hero .swiper-pagination {
+          bottom: 10px !important;
+        }
+
+        .banner-carousel-hero .swiper-pagination-bullet {
+          background: rgba(255, 255, 255, 0.8) !important;
         }
       `}</style>
     </div>

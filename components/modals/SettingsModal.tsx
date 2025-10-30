@@ -1,534 +1,524 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import BaseModal from './BaseModal'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useSafeAuth } from '@/components/providers/ClientProviders'
+import {
+  useNotificationPreferences
+} from '@/lib/hooks/useNotificationPreferences'
+
+type SettingsSection = 'account' | 'notifications'
 
 interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
+  initialSection?: SettingsSection
 }
 
-type TabType = 'profile' | 'notifications' | 'security' | 'account'
+export default function SettingsModal({ isOpen, onClose, initialSection }: SettingsModalProps) {
+  const { user, profile, signOut } = useSafeAuth()
+  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection ?? 'account')
 
-export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('profile')
-  const { user } = useAuth()
-
-  // Profile states
-  const [userName, setUserName] = useState('')
-  const [userEmail, setUserEmail] = useState('')
-  const [userExpertise, setUserExpertise] = useState('')
-  const [userBio, setUserBio] = useState('')
-  const [showSuccess, setShowSuccess] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-
-  // Notification states
-  const [notifyNewQuestions, setNotifyNewQuestions] = useState(true)
-  const [notifyAnswers, setNotifyAnswers] = useState(true)
-  const [notifyExpertMatch, setNotifyExpertMatch] = useState(false)
-  const [notifyWeeklySummary, setNotifyWeeklySummary] = useState(true)
-
-  // Load user data
   useEffect(() => {
-    if (isOpen && user) {
-      setUserName(user.name || user.email || '사용자')
-      setUserEmail(user.email || '')
+    if (!isOpen) return
+    setActiveSection(initialSection ?? 'account')
+  }, [initialSection, isOpen])
+
+  const {
+    preferences,
+    updatePreference,
+    savePreferences,
+    loading,
+    saving,
+    dirty,
+    error,
+    resetError,
+    browserPermission,
+    requestBrowserPermission
+  } = useNotificationPreferences({ enabled: isOpen })
+
+  const accountEmail = user?.email || profile?.email || '이메일 정보 없음'
+  const displayName =
+    user?.user_metadata?.name ||
+    profile?.name ||
+    user?.email?.split('@')?.[0] ||
+    '커뮤니티 회원'
+
+  const providerLabel = useMemo(() => {
+    if (!profile?.provider && !user) return '알 수 없음'
+    const provider = (profile?.provider || 'google').toLowerCase()
+    const map: Record<string, string> = {
+      google: 'Google 계정',
+      facebook: 'Facebook 계정',
+      kakao: '카카오 계정',
+      apple: 'Apple 계정',
+      mock: '테스트 계정',
+      unknown: '외부 계정'
     }
-    if (isOpen) {
-      setUserExpertise('IT 컨설팅')
-      setUserBio('10년차 IT 컨설턴트로, 중소기업의 디지털 전환을 도와드립니다.')
+    return map[provider] ?? '외부 계정'
+  }, [profile?.provider, user])
+
+  const sections: Array<{ id: SettingsSection; label: string; emoji: string }> = useMemo(
+    () => [
+      { id: 'account', label: '계정 연결', emoji: '🔐' },
+      { id: 'notifications', label: '알림 설정', emoji: '🔔' }
+    ],
+    []
+  )
+
+  const handleBrowserToggle = async () => {
+    if (browserPermission === 'granted') {
+      updatePreference('browser_notifications', !preferences.browser_notifications)
+      return
     }
-  }, [isOpen, user])
-
-  // Profile submit handler
-  const handleProfileSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    setTimeout(() => {
-      setShowSuccess(true)
-      setIsLoading(false)
-
-      setTimeout(() => setShowSuccess(false), 3000)
-    }, 1500)
+    const permission = await requestBrowserPermission()
+    if (permission !== 'granted') {
+      updatePreference('browser_notifications', false)
+    }
   }
 
-  // Tab button style
-  const tabStyle = (tab: TabType) => ({
-    flex: 1,
-    padding: '0.75rem 1rem',
-    border: 'none',
-    background: activeTab === tab ? '#3b82f6' : '#f3f4f6',
-    color: activeTab === tab ? 'white' : '#6b7280',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s'
-  })
+  const handleSavePreferences = async () => {
+    const ok = await savePreferences()
+    if (!ok) return
+    resetError()
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      onClose()
+    } catch (signOutError) {
+      console.error('[SettingsModal] signOut failed', signOutError)
+    }
+  }
 
   return (
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      width="700px"
-      adaptiveMode={true}
+      width="720px"
+      maxWidth="95vw"
+      borderRadius="24px"
+      adaptiveMode
+      showCloseButton
     >
-      {/* Header */}
-      <div style={{
-        padding: '1.5rem',
-        borderBottom: '1px solid #e5e7eb'
-      }}>
-        <h1 style={{
-          fontSize: '1.5rem',
-          fontWeight: '700',
-          color: '#1f2937',
-          marginBottom: '0.5rem'
-        }}>
-          설정
-        </h1>
-        <p style={{ color: '#6b7280', fontSize: '0.95rem' }}>
-          프로필, 알림, 보안 설정을 관리하세요
+      <header
+        style={{
+          padding: '1.5rem',
+          borderBottom: '1px solid #e5e7eb',
+          background: '#f9fafb'
+        }}
+      >
+        <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#111827', margin: 0 }}>설정</h1>
+        <p style={{ marginTop: '0.45rem', color: '#6b7280', fontSize: '0.95rem' }}>
+          계정 연동과 알림을 간편하게 관리하세요.
         </p>
-      </div>
+      </header>
 
-      {/* Tabs */}
-      <div style={{
-        display: 'flex',
-        gap: '0.5rem',
-        padding: '1rem 1.5rem',
-        borderBottom: '1px solid #e5e7eb',
-        background: '#f9fafb'
-      }}>
-        <button onClick={() => setActiveTab('profile')} style={tabStyle('profile')}>
-          👤 프로필
-        </button>
-        <button onClick={() => setActiveTab('notifications')} style={tabStyle('notifications')}>
-          🔔 알림
-        </button>
-        <button onClick={() => setActiveTab('security')} style={tabStyle('security')}>
-          🛡️ 보안
-        </button>
-        <button onClick={() => setActiveTab('account')} style={tabStyle('account')}>
-          ⚙️ 계정
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      <div style={{ padding: '1.5rem', maxHeight: '60vh', overflowY: 'auto' }}>
-        {/* Profile Tab */}
-        {activeTab === 'profile' && (
-          <div>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
-              개인정보 관리
-            </h2>
-
-            {showSuccess && (
-              <div style={{
+      <nav
+        aria-label="설정 섹션 선택"
+        style={{
+          display: 'flex',
+          gap: '0.75rem',
+          padding: '1rem 1.5rem',
+          borderBottom: '1px solid #e5e7eb'
+        }}
+      >
+        {sections.map((section) => {
+          const isActive = section.id === activeSection
+          return (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => setActiveSection(section.id)}
+              style={{
+                flex: 1,
                 padding: '0.75rem 1rem',
-                marginBottom: '1rem',
-                borderRadius: '8px',
-                background: '#d1fae5',
-                color: '#065f46',
-                border: '1px solid #a7f3d0',
-                fontSize: '0.875rem'
-              }}>
-                ✅ 프로필이 성공적으로 업데이트되었습니다!
-              </div>
-            )}
+                borderRadius: '12px',
+                border: '1px solid',
+                borderColor: isActive ? '#2563eb' : '#e5e7eb',
+                background: isActive ? 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)' : '#fff',
+                color: isActive ? '#fff' : '#1f2937',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span style={{ marginRight: '0.4rem' }} aria-hidden>
+                {section.emoji}
+              </span>
+              {section.label}
+            </button>
+          )
+        })}
+      </nav>
 
-            <form onSubmit={handleProfileSubmit}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  이름
-                </label>
-                <input
-                  type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  required
+      <div style={{ padding: '1.75rem 1.5rem', maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {activeSection === 'account' && (
+          <>
+            <section
+              style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                background: '#fff'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>로그인 정보</h2>
+                  <p style={{ marginTop: '0.35rem', color: '#6b7280', fontSize: '0.92rem' }}>
+                    {displayName}님은 {providerLabel}으로 로그인 중입니다.
+                  </p>
+                </div>
+                <span
                   style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem'
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '999px',
+                    border: '1px solid #bfdbfe',
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    fontSize: '0.78rem',
+                    fontWeight: 600
                   }}
-                />
+                >
+                  연결됨
+                </span>
               </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  이메일
-                </label>
-                <input
-                  type="email"
-                  value={userEmail}
-                  onChange={(e) => setUserEmail(e.target.value)}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  전문 분야
-                </label>
-                <input
-                  type="text"
-                  value={userExpertise}
-                  onChange={(e) => setUserExpertise(e.target.value)}
-                  placeholder="예: IT, 경영, 법률, 의료 등"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  자기소개
-                </label>
-                <textarea
-                  value={userBio}
-                  onChange={(e) => setUserBio(e.target.value)}
-                  placeholder="간단한 자기소개를 작성해주세요"
-                  style={{
-                    width: '100%',
-                    minHeight: '100px',
-                    padding: '0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem',
-                    resize: 'vertical',
-                    fontFamily: 'inherit'
-                  }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
+              <div
                 style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: 'none',
-                  background: isLoading ? '#d1d5db' : '#3b82f6',
-                  color: 'white',
-                  borderRadius: '8px',
-                  fontSize: '0.95rem',
-                  fontWeight: '600',
-                  cursor: isLoading ? 'not-allowed' : 'pointer'
+                  display: 'grid',
+                  gap: '1rem',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))'
                 }}
               >
-                {isLoading ? '💾 저장 중...' : '💾 프로필 저장'}
-              </button>
-            </form>
-          </div>
-        )}
+                <InfoCard
+                  title="이메일"
+                  value={accountEmail}
+                  description="알림과 공지 사항을 받을 메일이에요."
+                />
+                <InfoCard
+                  title="로그인 방식"
+                  value={providerLabel}
+                  description="현재 계정은 소셜 로그인으로 관리돼요."
+                />
+              </div>
 
-        {/* Notifications Tab */}
-        {activeTab === 'notifications' && (
-          <div>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
-              알림 설정
-            </h2>
-
-            <NotificationItem
-              title="새로운 질문 알림"
-              description="관심 분야에 새로운 질문이 등록될 때"
-              active={notifyNewQuestions}
-              onToggle={() => setNotifyNewQuestions(!notifyNewQuestions)}
-            />
-
-            <NotificationItem
-              title="답변 알림"
-              description="내 질문에 새로운 답변이 달릴 때"
-              active={notifyAnswers}
-              onToggle={() => setNotifyAnswers(!notifyAnswers)}
-            />
-
-            <NotificationItem
-              title="Certified User 매칭 알림"
-              description="내 질문에 적합한 Certified User가 매칭될 때"
-              active={notifyExpertMatch}
-              onToggle={() => setNotifyExpertMatch(!notifyExpertMatch)}
-            />
-
-            <NotificationItem
-              title="주간 요약 이메일"
-              description="매주 인기 질문과 답변 요약"
-              active={notifyWeeklySummary}
-              onToggle={() => setNotifyWeeklySummary(!notifyWeeklySummary)}
-              isLast
-            />
-          </div>
-        )}
-
-        {/* Security Tab */}
-        {activeTab === 'security' && (
-          <div>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
-              계정 보안
-            </h2>
-
-            <SecurityItem
-              title="Google OAuth 연동"
-              description="Google 계정으로 안전하게 로그인"
-              status="active"
-              statusText="✅ 연결됨"
-            />
-
-            <SecurityItem
-              title="2단계 인증"
-              description="추가 보안을 위한 2FA 설정"
-              status="inactive"
-              statusText="❌ 미설정"
-            />
-
-            <SecurityItem
-              title="비밀번호 변경"
-              description="90일 전 마지막 변경"
-              action={
-                <button style={{
-                  padding: '0.5rem 1rem',
-                  border: '1px solid #d1d5db',
-                  background: 'white',
-                  color: '#374151',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}>
-                  변경
-                </button>
-              }
-            />
-          </div>
-        )}
-
-        {/* Account Tab */}
-        {activeTab === 'account' && (
-          <div>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' }}>
-              계정 관리
-            </h2>
-
-            <div style={{
-              padding: '1rem',
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '8px',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{
-                fontSize: '0.95rem',
-                fontWeight: '600',
-                color: '#991b1b',
-                marginBottom: '0.5rem'
-              }}>
-                ⚠️ 계정 삭제
-              </h3>
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#7f1d1d',
-                marginBottom: '1rem',
-                lineHeight: '1.6'
-              }}>
-                계정을 삭제하면 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.
-                작성한 질문, 답변, 댓글 등 모든 활동 기록이 삭제됩니다.
-              </p>
               <button
-                onClick={() => {
-                  if (confirm('정말로 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-                    alert('계정 삭제 기능은 추후 구현 예정입니다.')
+                type="button"
+                onClick={handleSignOut}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '0.65rem 1rem',
+                  borderRadius: '10px',
+                  border: '1px solid #ef4444',
+                  background: '#fff5f5',
+                  color: '#b91c1c',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer'
+                }}
+              >
+                로그아웃
+              </button>
+            </section>
+
+            <section
+              style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                background: '#f9fafb',
+                color: '#4b5563',
+                fontSize: '0.9rem',
+                lineHeight: 1.6
+              }}
+            >
+              🔒 Viet K-Connect는 지금은 비밀번호 없이 Google 계정으로 로그인합니다. 다른 연동은 준비 중이며, 보안 관련 안내가 있을 경우 이메일로 안내드릴게요.
+            </section>
+          </>
+        )}
+
+        {activeSection === 'notifications' && (
+          <>
+            <section
+              style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                background: '#fff'
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>알림 채널</h2>
+                <p style={{ marginTop: '0.35rem', color: '#6b7280', fontSize: '0.92rem' }}>
+                  받아보고 싶은 채널과 유형을 선택하세요.
+                </p>
+              </div>
+
+              {error && (
+                <div
+                  role="alert"
+                  style={{
+                    padding: '0.9rem 1rem',
+                    borderRadius: '12px',
+                    background: '#fee2e2',
+                    border: '1px solid #fecaca',
+                    color: '#b91c1c',
+                    fontSize: '0.9rem',
+                    lineHeight: 1.5
+                  }}
+                >
+                  {error}
+                  <button
+                    type="button"
+                    onClick={resetError}
+                    style={{
+                      marginLeft: '0.75rem',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#b91c1c',
+                      fontWeight: 600,
+                      textDecoration: 'underline',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    닫기
+                  </button>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <NotificationToggleRow
+                  label="이메일 알림"
+                  description="새 답변, 댓글, 인증 알림을 이메일로 받아요."
+                  icon="📧"
+                  loading={loading}
+                  checked={preferences.email_notifications}
+                  onToggle={() => updatePreference('email_notifications', !preferences.email_notifications)}
+                />
+
+                <NotificationToggleRow
+                  label="브라우저 알림"
+                  description={
+                    browserPermission === 'granted'
+                      ? '브라우저에서 실시간 알림이 켜져 있습니다.'
+                      : '브라우저 알림 권한을 허용하면 바로 안내해 드려요.'
                   }
-                }}
+                  icon="💻"
+                  loading={loading}
+                  checked={browserPermission === 'granted' && preferences.browser_notifications}
+                  onToggle={handleBrowserToggle}
+                  cta={
+                    browserPermission !== 'granted'
+                      ? {
+                          label: '권한 요청',
+                          onClick: handleBrowserToggle
+                        }
+                      : undefined
+                  }
+                />
+
+                <NotificationToggleRow
+                  label="푸시 알림 (베타)"
+                  description="PWA 설치 후 모바일 푸시로 받아볼 수 있어요."
+                  icon="📱"
+                  loading={loading}
+                  checked={preferences.push_notifications}
+                  onToggle={() => updatePreference('push_notifications', !preferences.push_notifications)}
+                />
+
+                <NotificationToggleRow
+                  label="주간 요약 이메일"
+                  description="한 주간 받은 공감, 인기 글을 요약해 드려요."
+                  icon="🗓️"
+                  loading={loading}
+                  checked={preferences.weekly_digest}
+                  onToggle={() => updatePreference('weekly_digest', !preferences.weekly_digest)}
+                />
+              </div>
+
+              <div
                 style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: 'none',
-                  background: '#dc2626',
-                  color: 'white',
-                  borderRadius: '8px',
-                  fontSize: '0.95rem',
-                  fontWeight: '600',
-                  cursor: 'pointer'
+                  background: '#eff6ff',
+                  borderRadius: '12px',
+                  padding: '0.85rem 1rem',
+                  color: '#1d4ed8',
+                  fontSize: '0.9rem'
                 }}
               >
-                🗑️ 계정 삭제
-              </button>
-            </div>
-
-            <div style={{
-              padding: '1rem',
-              background: '#f0f9ff',
-              border: '1px solid #bae6fd',
-              borderRadius: '8px'
-            }}>
-              <h3 style={{
-                fontSize: '0.95rem',
-                fontWeight: '600',
-                color: '#0369a1',
-                marginBottom: '0.5rem'
-              }}>
-                📊 계정 정보
-              </h3>
-              <div style={{ fontSize: '0.875rem', color: '#075985', lineHeight: '1.8' }}>
-                <p>가입일: 2025년 10월 1일</p>
-                <p>마지막 로그인: 방금 전</p>
-                <p>작성한 질문: 12개</p>
-                <p>작성한 답변: 34개</p>
+                기본적으로 내 질문의 답변, 댓글, 멘션 알림은 켜져 있습니다.
               </div>
-            </div>
-          </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  style={{
+                    padding: '0.65rem 1.1rem',
+                    borderRadius: '10px',
+                    border: '1px solid #d1d5db',
+                    background: '#fff',
+                    color: '#4b5563',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  닫기
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSavePreferences}
+                  disabled={saving || loading || !dirty}
+                  style={{
+                    padding: '0.65rem 1.4rem',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: dirty ? 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)' : '#e5e7eb',
+                    color: dirty ? '#fff' : '#9ca3af',
+                    fontWeight: 700,
+                    cursor: saving || loading || !dirty ? 'not-allowed' : 'pointer',
+                    boxShadow: dirty ? '0 10px 24px rgba(37, 99, 235, 0.2)' : 'none',
+                    opacity: saving ? 0.75 : 1
+                  }}
+                >
+                  {saving ? '저장 중...' : '변경 내용 저장'}
+                </button>
+              </div>
+            </section>
+          </>
         )}
       </div>
     </BaseModal>
   )
 }
 
-// Notification Item Component
-function NotificationItem({
-  title,
-  description,
-  active,
-  onToggle,
-  isLast = false
-}: {
+interface InfoCardProps {
   title: string
+  value: string
   description: string
-  active: boolean
-  onToggle: () => void
-  isLast?: boolean
-}) {
+}
+
+function InfoCard({ title, value, description }: InfoCardProps) {
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '1rem',
-      borderRadius: '8px',
-      background: '#f9fafb',
-      border: '1px solid #e5e7eb',
-      marginBottom: isLast ? 0 : '0.75rem'
-    }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>
-          {title}
-        </div>
-        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-          {description}
-        </div>
-      </div>
-      <div
-        onClick={onToggle}
-        style={{
-          position: 'relative',
-          width: '48px',
-          height: '26px',
-          borderRadius: '13px',
-          background: active ? '#3b82f6' : '#d1d5db',
-          cursor: 'pointer',
-          transition: 'background 0.2s'
-        }}
-      >
-        <div style={{
-          position: 'absolute',
-          top: '3px',
-          left: active ? '25px' : '3px',
-          width: '20px',
-          height: '20px',
-          borderRadius: '50%',
-          background: 'white',
-          transition: 'left 0.2s'
-        }} />
-      </div>
+    <div
+      style={{
+        border: '1px solid #e5e7eb',
+        borderRadius: '12px',
+        padding: '1rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.45rem',
+        background: '#f9fafb'
+      }}
+    >
+      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>
+        {title}
+      </span>
+      <span style={{ fontSize: '1rem', fontWeight: 600, color: '#111827' }}>{value}</span>
+      <span style={{ fontSize: '0.88rem', color: '#6b7280', lineHeight: 1.5 }}>{description}</span>
     </div>
   )
 }
 
-// Security Item Component
-function SecurityItem({
-  title,
-  description,
-  status,
-  statusText,
-  action
-}: {
-  title: string
+interface NotificationToggleRowProps {
+  label: string
   description: string
-  status?: 'active' | 'inactive'
-  statusText?: string
-  action?: React.ReactNode
-}) {
+  icon: string
+  checked: boolean
+  loading: boolean
+  onToggle: () => void
+  cta?: { label: string; onClick: () => void }
+}
+
+function NotificationToggleRow({
+  label,
+  description,
+  icon,
+  checked,
+  loading,
+  onToggle,
+  cta
+}: NotificationToggleRowProps) {
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '1rem',
-      borderRadius: '8px',
-      background: '#f9fafb',
-      border: '1px solid #e5e7eb',
-      marginBottom: '0.75rem'
-    }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>
-          {title}
-        </div>
-        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-          {description}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '1rem 1.1rem',
+        borderRadius: '14px',
+        border: '1px solid #e5e7eb',
+        background: '#fff',
+        gap: '1rem'
+      }}
+    >
+      <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center', flex: 1 }}>
+        <span style={{ fontSize: '1.5rem', lineHeight: 1 }} aria-hidden>
+          {icon}
+        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', textAlign: 'left' }}>
+          <span style={{ fontSize: '1rem', fontWeight: 600, color: '#1f2937' }}>{label}</span>
+          <span style={{ fontSize: '0.92rem', color: '#6b7280', lineHeight: 1.5 }}>{description}</span>
         </div>
       </div>
-      {status && statusText && (
-        <div style={{
-          padding: '0.25rem 0.75rem',
-          borderRadius: '6px',
-          fontSize: '0.875rem',
-          fontWeight: 600,
-          background: status === 'active' ? '#d1fae5' : '#fee2e2',
-          color: status === 'active' ? '#065f46' : '#991b1b'
-        }}>
-          {statusText}
-        </div>
-      )}
-      {action}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {cta && (
+          <button
+            type="button"
+            onClick={cta.onClick}
+            style={{
+              padding: '0.45rem 0.8rem',
+              borderRadius: '999px',
+              border: '1px solid #bfdbfe',
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {cta.label}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={loading}
+          style={{
+            width: '52px',
+            height: '30px',
+            borderRadius: '999px',
+            border: 'none',
+            background: checked ? '#2563eb' : '#e5e7eb',
+            position: 'relative',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          <span
+            style={{
+              position: 'absolute',
+              top: '2px',
+              left: checked ? '24px' : '2px',
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              background: '#fff',
+              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.2)',
+              transition: 'left 0.2s ease'
+            }}
+          />
+        </button>
+      </div>
     </div>
   )
 }

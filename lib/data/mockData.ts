@@ -4645,7 +4645,7 @@ export const MOCK_BANNERS: Banner[] = [
     id: 'banner1',
     title: '🎯 베타 오픈 챌린지 이벤트',
     description: '한국생활 질문에 답변하고 최대 50,000원 상품권 받아가세요! (~11월 30일)',
-    linkUrl: '/missions',
+    linkUrl: '/?modal=missions',
     backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
   },
   {
@@ -4659,7 +4659,7 @@ export const MOCK_BANNERS: Banner[] = [
     id: 'banner3',
     title: '🎯 아하 답변 작성 챌린지 이벤트',
     description: '전문가 답변 10개 작성하고 10,000원 받아가세요! 9월 15일 ~ 10월 31일',
-    linkUrl: '/events/visa-challenge',
+    linkUrl: '/?modal=visa-challenge',
     backgroundColor: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
   },
   {

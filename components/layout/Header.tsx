@@ -4,8 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserRole, getRoleDisplayInfo } from '@/lib/utils/permissions'
 import { BRAND_NAME } from '@/lib/constants/branding'
+import { getRandomQuestionExample } from '@/lib/utils/question-placeholders'
+import { DEFAULT_AVATAR_URL } from '@/lib/constants/avatar'
 import BrandLogo from '@/components/common/BrandLogo'
 import LoginPromptModal from '@/components/modals/LoginPromptModal'
+import { useLoginModal } from '@/contexts/LoginModalContext'
 
 type Notification = {
   id: string
@@ -53,6 +56,7 @@ function buildRelatedUrl(actionUrl?: string | null, relatedType?: string | null,
 
 export default function Header() {
   const router = useRouter()
+  const { openLoginModal } = useLoginModal()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true) // FOUC 방지
   const [userName, setUserName] = useState('사용자')
@@ -70,8 +74,11 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [recentNotifications, setRecentNotifications] = useState<Notification[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [topicSuggestions, setTopicSuggestions] = useState<Category[]>([])
   const [adminPending, setAdminPending] = useState<number>(0)
-  const [searchPlaceholder, setSearchPlaceholder] = useState('')
+  const [searchPlaceholder, setSearchPlaceholder] = useState('어떤 도움이 필요하신가요?')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const headerRef = useRef<HTMLElement | null>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const notificationsRef = useRef<HTMLDivElement>(null)
   const languageMenuRef = useRef<HTMLDivElement>(null)
@@ -81,22 +88,38 @@ export default function Header() {
     console.log('🔍 Header userRole state:', userRole)
   }, [userRole])
 
-  // 랜덤 검색 placeholder 설정
   useEffect(() => {
-    setSearchPlaceholder('어떤 도움이 필요하신가요?')
-  }, [])
-
-  useEffect(() => {
-    if (categories.length > 0) {
-      const firstCategory = categories[0]
-      setSearchPlaceholder(`${firstCategory.name} 관련 질문을 검색해보세요`)
+    const example = getRandomQuestionExample()
+    if (example?.title) {
+      setSearchPlaceholder(`예: ${example.title}`)
     }
-  }, [categories])
+  }, [])
 
   useEffect(() => {
     checkAuth()
     loadCategories()
     setCurrentPath(window.location.pathname)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleProfileUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ avatar_url?: string | null; name?: string }>).detail
+      if (!detail) return
+      if (detail.avatar_url !== undefined) {
+        setAvatarUrl(detail.avatar_url ?? null)
+      }
+      const nextDisplayName = detail.name
+      if (nextDisplayName) {
+        setUserName(nextDisplayName)
+      }
+    }
+
+    window.addEventListener('vk-profile-updated', handleProfileUpdated)
+    return () => {
+      window.removeEventListener('vk-profile-updated', handleProfileUpdated)
+    }
   }, [])
 
   useEffect(() => {
@@ -133,6 +156,43 @@ export default function Header() {
   }, [userRole])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const root = document.documentElement
+
+    const updateHeaderHeight = () => {
+      const element = headerRef.current
+      if (!element) return
+
+      const { height } = element.getBoundingClientRect()
+      if (height > 0) {
+        root.style.setProperty('--header-height', `${Math.round(height)}px`)
+      }
+    }
+
+    updateHeaderHeight()
+
+    let resizeObserver: ResizeObserver | undefined
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        updateHeaderHeight()
+      })
+      if (headerRef.current) {
+        resizeObserver.observe(headerRef.current)
+      }
+    }
+
+    window.addEventListener('resize', updateHeaderHeight)
+    window.addEventListener('orientationchange', updateHeaderHeight)
+
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight)
+      window.removeEventListener('orientationchange', updateHeaderHeight)
+      resizeObserver?.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false)
@@ -163,6 +223,7 @@ export default function Header() {
       setIsLoggedIn(false)
       setUserRole(UserRole.GUEST)
       setIsDevAdmin(false)
+      setAvatarUrl(null)
       setIsCheckingAuth(false)
       return
     }
@@ -176,6 +237,7 @@ export default function Header() {
         setIsLoggedIn(false)
         setUserRole(UserRole.GUEST)
         setIsDevAdmin(false)
+        setAvatarUrl(null)
         return
       }
 
@@ -185,6 +247,7 @@ export default function Header() {
       // 온보딩 미완료여도 세션이 있으면 로그인 상태로 표시 (아이콘/메뉴 노출)
       setIsLoggedIn(true)
       setUserName(userProfile.name || '사용자')
+      setAvatarUrl(typeof userProfile.avatar_url === 'string' && userProfile.avatar_url.length > 0 ? userProfile.avatar_url : null)
 
       const roleMapping: { [key: string]: UserRole } = {
         user: UserRole.USER,
@@ -203,6 +266,7 @@ export default function Header() {
       setIsLoggedIn(false)
       setUserRole(UserRole.GUEST)
       setIsDevAdmin(false)
+      setAvatarUrl(null)
     } finally {
       setIsCheckingAuth(false)
     }
@@ -359,8 +423,22 @@ export default function Header() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     if (searchQuery.trim()) {
+      setShowSearchDropdown(false)
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
     }
+  }
+
+  function handleSearchFocus() {
+    if (categories.length > 0) {
+      const shuffled = [...categories]
+        .map((item) => ({ item, sortKey: Math.random() }))
+        .sort((a, b) => a.sortKey - b.sortKey)
+        .map(({ item }) => item)
+      setTopicSuggestions(shuffled.slice(0, Math.min(8, shuffled.length)))
+    } else {
+      setTopicSuggestions([])
+    }
+    setShowSearchDropdown(true)
   }
 
   // 질문하기 버튼 핸들러
@@ -377,7 +455,7 @@ export default function Header() {
   const roleInfo = getRoleDisplayInfo(userRole)
 
   return (
-    <header className="header" suppressHydrationWarning>
+    <header ref={headerRef} className="header" suppressHydrationWarning>
       <div className="header-container">
         {/* Left: Logo & Navigation */}
         <div className="header-left">
@@ -404,22 +482,21 @@ export default function Header() {
             >
               🏠
             </a>
-            <a
-              href="/posts"
-              className="nav-icon"
-              title="전체 게시글"
-              style={{
-                background: currentPath.startsWith('/posts') ? '#e8f4fd' : 'transparent',
-                borderBottom: currentPath.startsWith('/posts') ? '2px solid #3b82f6' : '2px solid transparent'
-              }}
-            >
-              📰
-            </a>
           </nav>
         </div>
 
         {/* Center: Search */}
-        <div ref={searchRef} className="search-container" style={{ position: 'relative' }}>
+        <div
+          ref={searchRef}
+          className="search-container"
+          style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '420px',
+            minWidth: '260px',
+            flex: '1 1 320px',
+          }}
+        >
           <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
             <div className="search-icon">🔍</div>
             <input
@@ -428,7 +505,7 @@ export default function Header() {
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setShowSearchDropdown(true)}
+              onFocus={handleSearchFocus}
               style={{ color: '#1f2937' }}
             />
           </form>
@@ -439,43 +516,58 @@ export default function Header() {
               position: 'absolute',
               top: 'calc(100% + 8px)',
               left: 0,
-              right: 0,
+              right: 'auto',
               background: 'white',
               border: '1px solid #e5e7eb',
               borderRadius: '8px',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               zIndex: 1000,
-              maxHeight: '400px',
-              overflowY: 'auto'
+              width: '50%',
+              minWidth: '160px',
+              maxWidth: '210px',
+              padding: '0.65rem 0.75rem 0.75rem',
+              boxSizing: 'border-box'
             }}>
-              {/* Topic 목록 - 실제 카테고리 데이터 */}
-              <div style={{ padding: '0.5rem 0' }}>
-                {categories.length > 0 ? (
-                  categories.map((category) => (
-                    <a
-                      key={category.id}
-                      href={`/topics/${category.slug}`}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.75rem 1rem',
-                        textDecoration: 'none',
-                        color: '#374151',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                    >
-                      <span style={{ fontSize: '1.25rem' }}>{category.icon || '📂'}</span>
-                      <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>
-                        <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Topic: </span>
-                        {category.name}
-                      </span>
-                    </a>
-                  ))
-                ) : (
-                  <div style={{ padding: '1rem', textAlign: 'center', color: '#9ca3af' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: '0.45rem',
+                }}
+              >
+                {(topicSuggestions.length ? topicSuggestions : categories.slice(0, 8)).map((category) => (
+                  <a
+                    key={category.id}
+                    href={`/topics/${category.slug}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      padding: '0.45rem 0.6rem',
+                      borderRadius: '9999px',
+                      background: '#f3f4f6',
+                      color: '#1f2937',
+                      textDecoration: 'none',
+                      fontSize: '0.82rem',
+                      transition: 'background 0.2s, transform 0.2s',
+                      lineHeight: 1.25,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#e0f2fe'
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#f3f4f6'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal' }}>
+                      {category.name}
+                    </span>
+                  </a>
+                ))}
+                {categories.length === 0 && (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#9ca3af', padding: '0.75rem 0' }}>
                     카테고리를 불러오는 중...
                   </div>
                 )}
@@ -486,37 +578,8 @@ export default function Header() {
 
         {/* Right: Actions */}
         <div className="header-right">
-          <a
-            href="/following"
-            className="nav-icon"
-            title="팔로잉"
-            style={{
-              background: currentPath === '/following' ? '#e8f4fd' : 'transparent',
-              borderBottom: currentPath === '/following' ? '2px solid #3b82f6' : '2px solid transparent'
-            }}
-            translate="no"
-            data-no-translate="true"
-          >
-            👥
-          </a>
-          {isLoggedIn && (
-            <a
-              href="/bookmarks"
-              className="nav-icon"
-              title="북마크"
-              style={{
-                background: currentPath === '/bookmarks' ? '#e8f4fd' : 'transparent',
-                borderBottom: currentPath === '/bookmarks' ? '2px solid #3b82f6' : '2px solid transparent'
-              }}
-              translate="no"
-              data-no-translate="true"
-            >
-              🔖
-            </a>
-          )}
-
           {/* Language Selector */}
-          <div ref={languageMenuRef} className="dropdown-container">
+          <div ref={languageMenuRef} className="dropdown-container mobile-hidden">
             <button
               className="nav-icon"
               title="번역"
@@ -621,8 +684,26 @@ export default function Header() {
             // 로그인 후: 프로필 아바타 + 드롭다운 메뉴
             <div ref={profileMenuRef} className="dropdown-container">
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div className="header-profile-avatar" onClick={() => setShowProfileMenu(!showProfileMenu)} title="내 정보">
-                  👤
+                <div
+                  className="header-profile-avatar"
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  title="내 정보"
+                  role="button"
+                  aria-haspopup="menu"
+                  aria-label="내 프로필 메뉴 열기"
+                  style={{ overflow: 'hidden' }}
+                >
+                  <img
+                    src={avatarUrl || DEFAULT_AVATAR_URL}
+                    alt={`${userName}의 프로필 사진`}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '50%',
+                      pointerEvents: 'none'
+                    }}
+                  />
                 </div>
                 {isDevAdmin && (
                   <span style={{
@@ -652,7 +733,7 @@ export default function Header() {
                   <div className="profile-dropdown-cta">
                     <button
                       onClick={() => {
-                        window.location.href = '/questions/new'
+                        router.push('/?modal=question')
                         setShowProfileMenu(false)
                       }}
                       className="profile-cta-button"
@@ -666,18 +747,54 @@ export default function Header() {
                   {/* 공통 메뉴: 프로필 / 내 게시글 / User Rank · 미션 / 설정 */}
                   {userRole !== UserRole.GUEST && (
                     <div className="profile-menu-section">
-                      <a href="/profile" className="profile-menu-item">
+                      <button
+                        type="button"
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setShowProfileMenu(false)
+                          router.push('/?modal=profile')
+                        }}
+                      >
                         <span className="profile-menu-icon">👤</span>
                         <span className="profile-menu-text">프로필</span>
-                      </a>
+                      </button>
+                      <button
+                        type="button"
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setShowProfileMenu(false)
+                          router.push('/?modal=followers')
+                        }}
+                      >
+                        <span className="profile-menu-icon">👥</span>
+                        <span className="profile-menu-text">팔로워 · 팔로잉</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setShowProfileMenu(false)
+                          router.push('/?modal=bookmarks')
+                        }}
+                      >
+                        <span className="profile-menu-icon">🔖</span>
+                        <span className="profile-menu-text">북마크</span>
+                      </button>
                       <a href="/my-questions" className="profile-menu-item">
                         <span className="profile-menu-icon">📝</span>
                         <span className="profile-menu-text">내 게시글</span>
                       </a>
-                      <a href="/user-rank" className="profile-menu-item">
+                      <button
+                        type="button"
+                        className="profile-menu-item"
+                        onClick={() => {
+                          setShowProfileMenu(false)
+                          router.push('/?modal=user-rank')
+                        }}
+                      >
                         <span className="profile-menu-icon">🏅</span>
                         <span className="profile-menu-text">User Rank · 미션</span>
-                      </a>
+                      </button>
                       <a href="/settings" className="profile-menu-item">
                         <span className="profile-menu-icon">⚙️</span>
                         <span className="profile-menu-text">설정</span>
@@ -690,21 +807,32 @@ export default function Header() {
                     <>
                       <div className="profile-divider"></div>
                       <div className="profile-menu-section">
-                        <a href="/admin" className="profile-menu-item">
+                        <button
+                          type="button"
+                          className="profile-menu-item"
+                          onClick={() => {
+                            setShowProfileMenu(false)
+                            router.push('/admin')
+                          }}
+                        >
                           <span className="profile-menu-icon">👑</span>
-                          <span className="profile-menu-text">관리자 대시보드</span>
+                          <span className="profile-menu-text">관리자 패널</span>
                           {adminPending > 0 && (
-                            <span style={{
-                              marginLeft: '8px',
-                              background: '#f59e0b',
-                              color: 'white',
-                              borderRadius: '9999px',
-                              padding: '2px 8px',
-                              fontSize: '12px',
-                              fontWeight: 700
-                            }}>{adminPending}</span>
+                            <span
+                              style={{
+                                marginLeft: '8px',
+                                background: '#f59e0b',
+                                color: 'white',
+                                borderRadius: '9999px',
+                                padding: '2px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {adminPending}
+                            </span>
                           )}
-                        </a>
+                        </button>
                       </div>
                     </>
                   )}
@@ -726,8 +854,7 @@ export default function Header() {
               id="login-btn"
               title="로그인"
               onClick={() => {
-                const redirectTo = encodeURIComponent(currentPath)
-                window.location.href = `/auth/login?redirectTo=${redirectTo}`
+                openLoginModal({ redirectTo: currentPath })
               }}
             >
               로그인

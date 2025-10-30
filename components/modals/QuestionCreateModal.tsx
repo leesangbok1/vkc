@@ -3,10 +3,18 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import BaseModal from './BaseModal'
+import RichEditor from '@/components/editor/RichEditor'
+import { EDITOR_USAGE_GUIDE } from '@/lib/constants/editor'
+import {
+  DEFAULT_QUESTION_CONTENT_GUIDE,
+  DEFAULT_QUESTION_TITLE_PLACEHOLDER,
+  getRandomQuestionPlaceholders,
+} from '@/lib/utils/question-placeholders'
 
 interface CategoryOption {
-  id: number
+  id: number | string
   name: string
+  icon?: string | null
 }
 
 interface QuestionCreateModalProps {
@@ -28,6 +36,10 @@ export default function QuestionCreateModal({
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [categoryError, setCategoryError] = useState<string | null>(null)
+  const [titlePlaceholder, setTitlePlaceholder] = useState(DEFAULT_QUESTION_TITLE_PLACEHOLDER)
+  const [contentPlaceholder, setContentPlaceholder] = useState(DEFAULT_QUESTION_CONTENT_GUIDE)
+  const MIN_TITLE_LENGTH = 5
+  const MIN_CONTENT_LENGTH = 10
 
   useEffect(() => {
     async function loadCategories() {
@@ -62,27 +74,47 @@ export default function QuestionCreateModal({
     }
   }, [isOpen])
 
+  useEffect(() => {
+    if (!isOpen) return
+    const placeholders = getRandomQuestionPlaceholders()
+    setTitlePlaceholder(placeholders.title)
+    setContentPlaceholder(placeholders.content)
+  }, [isOpen])
+
   // 문자 카운터
   const updateCharCounter = (current: number, max: number) => {
     return `${current} / ${max}`
   }
 
   // 폼 유효성 검사
-  const isValid = title.trim().length >= 5 && content.trim().length >= 10
+  const isValid =
+    title.trim().length >= MIN_TITLE_LENGTH &&
+    content.trim().length >= MIN_CONTENT_LENGTH &&
+    !!categoryId
 
-  // 제출 핸들러
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const submitQuestion = async () => {
+    if (submitting) return
 
-    if (title.trim().length < 5) {
-      alert('제목은 최소 5자 이상 작성해주세요')
+    const trimmedTitle = title.trim()
+    const trimmedContent = content.trim()
+
+    if (trimmedTitle.length < MIN_TITLE_LENGTH) {
+      alert(`제목은 최소 ${MIN_TITLE_LENGTH}자 이상 작성해주세요`)
       return
     }
 
-    if (content.trim().length < 10) {
-      alert('내용은 최소 10자 이상 작성해주세요')
+    if (trimmedContent.length < MIN_CONTENT_LENGTH) {
+      alert(`내용은 최소 ${MIN_CONTENT_LENGTH}자 이상 작성해주세요`)
       return
     }
+
+    if (!categoryId) {
+      alert('카테고리를 선택해주세요')
+      return
+    }
+
+    const numericCategoryId = Number(categoryId)
+    const normalizedCategoryId = Number.isFinite(numericCategoryId) ? numericCategoryId : categoryId
 
     setSubmitting(true)
 
@@ -93,39 +125,57 @@ export default function QuestionCreateModal({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: title.trim(),
-          content: content.trim(),
-          category_id: categoryId,
+          title: trimmedTitle,
+          content: trimmedContent,
+          category_id: normalizedCategoryId,
         }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
+      const payload = await response.json().catch(() => null)
 
-        // 성공 콜백 실행
-        if (onSuccess) {
-          onSuccess(data.id)
-        } else {
-          alert('질문이 성공적으로 등록되었습니다!')
-          router.push(`/questions/${data.id}`)
-        }
-
-        // 모달 닫기
-        onClose()
-
-        // 폼 초기화
-        setTitle('')
-        setContent('')
-        setCategoryId('1')
-      } else {
-        alert('질문 작성 중 오류가 발생했습니다.')
+      if (!response.ok) {
+        const message = payload?.error || '질문 작성 중 오류가 발생했습니다.'
+        const details = payload?.details || payload?.hint
+        alert(details ? `${message}\n세부 정보: ${details}` : message)
+        return
       }
+
+      const createdIdValue = payload?.data?.id ?? payload?.id
+      const createdId = createdIdValue ? String(createdIdValue) : null
+
+      if (!createdId) {
+        console.warn('[QuestionCreateModal] Missing question id in response payload:', payload)
+        alert('질문은 등록되었지만 상세 페이지 이동에 실패했습니다. 새로고침 후 다시 확인해주세요.')
+        onClose()
+        return
+      }
+
+      if (onSuccess) {
+        onSuccess(createdId)
+      } else {
+        alert('질문이 성공적으로 등록되었습니다!')
+        router.push(`/questions/${createdId}`)
+      }
+
+      // 모달 닫기
+      onClose()
+
+      // 폼 초기화
+      setTitle('')
+      setContent('')
+      setCategoryId(categories.length > 0 ? String(categories[0].id) : '')
     } catch (error) {
       console.error('Question submission failed:', error)
       alert('질문 작성 중 오류가 발생했습니다.')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // 제출 핸들러
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await submitQuestion()
   }
 
   // 취소 핸들러
@@ -135,7 +185,7 @@ export default function QuestionCreateModal({
       if (confirm('작성 중인 내용이 있습니다. 정말 취소하시겠습니까?')) {
         setTitle('')
         setContent('')
-        setCategoryId('1')
+        setCategoryId(categories.length > 0 ? String(categories[0].id) : '')
         onClose()
       }
     } else {
@@ -194,6 +244,7 @@ export default function QuestionCreateModal({
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               required
+              disabled={loadingCategories || (!!categoryError && categories.length === 0)}
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -203,12 +254,28 @@ export default function QuestionCreateModal({
                 backgroundColor: 'white'
               }}
             >
-              {CATEGORIES.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.icon} {category.name}
+              {loadingCategories ? (
+                <option value="" disabled>
+                  카테고리를 불러오는 중입니다...
                 </option>
-              ))}
+              ) : categories.length > 0 ? (
+                categories.map((category) => (
+                  <option key={category.id} value={String(category.id)}>
+                    {category.icon ? `${category.icon} ` : ''}
+                    {category.name}
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>
+                  {categoryError || '사용 가능한 카테고리가 없습니다.'}
+                </option>
+              )}
             </select>
+            {!loadingCategories && categoryError && (
+              <p style={{ color: '#ef4444', marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                {categoryError}
+              </p>
+            )}
           </div>
 
           {/* Question Title */}
@@ -228,7 +295,7 @@ export default function QuestionCreateModal({
             <input
               type="text"
               id="question-title"
-              placeholder="간단하고 명확한 질문 제목을 작성해주세요"
+              placeholder={titlePlaceholder}
               maxLength={80}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -272,112 +339,26 @@ export default function QuestionCreateModal({
             >
               질문 내용<span style={{ color: '#ef4444' }}>*</span>
             </label>
-
-            {/* Formatting Toolbar */}
-            <div style={{
-              display: 'flex',
-              gap: '0.5rem',
-              padding: '0.5rem',
-              background: '#f9fafb',
-              borderRadius: '8px 8px 0 0',
-              border: '1px solid #d1d5db',
-              borderBottom: 'none'
-            }}>
-              <button
-                type="button"
-                title="이미지 첨부"
-                style={{
-                  padding: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
-                }}
-              >
-                📷
-              </button>
-              <button
-                type="button"
-                title="목록"
-                style={{
-                  padding: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
-                }}
-              >
-                📝
-              </button>
-              <button
-                type="button"
-                title="굵게"
-                style={{
-                  padding: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                B
-              </button>
-              <button
-                type="button"
-                title="링크"
-                style={{
-                  padding: '0.5rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
-                }}
-              >
-                🔗
-              </button>
-            </div>
-
-            <textarea
-              id="question-content"
-              placeholder="구체적인 상황과 궁금한 점을 자세히 설명해주세요.
-
-예시:
-- 현재 상황은 어떤가요?
-- 어떤 도움이 필요한가요?
-- 시도해본 방법이 있나요?"
-              maxLength={10000}
+            <RichEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                minHeight: '200px',
-                padding: '0.75rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '0 0 8px 8px',
-                fontSize: '0.95rem',
-                resize: 'vertical',
-                fontFamily: 'inherit'
-              }}
+              onChange={setContent}
+              minRows={12}
+              maxLength={10000}
+              disabled={submitting}
+              placeholder={contentPlaceholder}
+              onSubmitShortcut={submitQuestion}
+              helperText={EDITOR_USAGE_GUIDE}
             />
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               marginTop: '0.5rem',
-              fontSize: '0.8125rem',
-              color: content.length > 9000 ? '#ef4444' : '#6b7280'
+              fontSize: '0.75rem',
+              color: content.trim().length < MIN_CONTENT_LENGTH ? '#ef4444' : '#6b7280'
             }}>
-              <span>
-                {content.length > 0 && content.length < 10 && (
-                  <span style={{ color: '#ef4444' }}>최소 10자</span>
-                )}
-              </span>
-              <span>{updateCharCounter(content.length, 10000)}</span>
+              <span>최소 {MIN_CONTENT_LENGTH}자 이상 작성해주세요.</span>
+              <span>Ctrl + Enter로 빠른 등록</span>
             </div>
             <div style={{
               marginTop: '0.5rem',

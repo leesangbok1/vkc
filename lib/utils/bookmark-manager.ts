@@ -14,11 +14,24 @@ export interface Bookmark {
 
 const API_ENDPOINT = '/api/bookmarks'
 
-function mapBookmark(payload: any): Bookmark {
+type BookmarkRow = {
+  id?: string | number | null
+  target_type?: string | null
+  target_id?: string | number | null
+  title?: string | null
+  content?: string | null
+  created_at?: string | null
+}
+
+function mapBookmark(payload: BookmarkRow): Bookmark {
+  const targetType = typeof payload.target_type === 'string' ? payload.target_type : 'question'
+  const targetId = payload.target_id != null ? String(payload.target_id) : ''
+  const bookmarkId = payload.id != null ? String(payload.id) : `temp-${targetId || Date.now()}`
+
   return {
-    id: String(payload.id),
-    type: (payload.target_type ?? 'question') as Bookmark['type'],
-    targetId: String(payload.target_id),
+    id: bookmarkId,
+    type: targetType === 'answer' || targetType === 'post' ? targetType : 'question',
+    targetId,
     title: typeof payload.title === 'string' ? payload.title : null,
     content: typeof payload.content === 'string' ? payload.content : null,
     createdAt: typeof payload.created_at === 'string'
@@ -37,7 +50,7 @@ export async function getBookmarks(
     if (type) params.set('target_type', type)
 
     const url = params.size > 0 ? `${API_ENDPOINT}?${params.toString()}` : API_ENDPOINT
-    const res = await fetch(url, { cache: 'no-store' })
+    const res = await fetch(url, { cache: 'no-store', credentials: 'include' })
 
     if (!res.ok) {
       if (res.status === 401) {
@@ -66,6 +79,7 @@ export async function addBookmark(input: {
   try {
     const res = await fetch(API_ENDPOINT, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         target_id: input.targetId,
@@ -108,7 +122,8 @@ export async function removeBookmark(
     }
 
     const res = await fetch(`${API_ENDPOINT}/${bookmarkId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      credentials: 'include',
     })
 
     if (res.status === 404) {

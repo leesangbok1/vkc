@@ -179,6 +179,18 @@
   --muted-foreground: #737373;
   --foreground: #0a0a0a;
   --background: #ffffff;
+  --primary-foreground: #ffffff;
+  --secondary-foreground: var(--foreground);
+  --destructive: var(--error-500);
+  --destructive-foreground: #ffffff;
+  --accent: var(--primary-100);
+  --accent-foreground: var(--primary-700);
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+  --input: var(--border);
+  --ring: var(--vk-primary);
 
   /* Background Colors */
   --bg-primary: #ffffff;
@@ -2501,7 +2513,7 @@ a:hover {
 
 /* Main Layout */
 .main-layout {
-  padding-top: 32px; /* 헤더 높이 - 더욱 위로 올림 (40px → 32px) */
+  padding-top: calc(var(--header-height) + 0.25rem);
   min-height: 100vh;
   height: auto; /* sticky를 위한 명시적 높이 */
   background: #fff;
@@ -2509,11 +2521,11 @@ a:hover {
 
 /* P.1 페이지용 Container - 통합 레이아웃 시스템 (Pattern 1: Main + Sidebar) */
 .main-layout .container {
-  max-width: 1040px; /* 700px + 20px + 320px = 중앙 정렬 */
+  max-width: var(--layout-max-width);
   width: 100%;
-  margin: 0 auto 0 calc(50% - 520px - 40px); /* 왼쪽으로 더 이동 (20px → 40px) */
-  padding: 0 1rem 1rem 1rem; /* 좌우 동일 패딩 */
-  display: flex; /* Grid → Flex 변경 (sticky 호환성) */
+  margin: 0 auto;
+  padding: 0 var(--container-padding) 1.5rem;
+  display: flex;
   flex-direction: row;
   gap: var(--layout-gap);
   position: relative; /* fixed sidebar를 위한 positioning context */
@@ -2538,9 +2550,10 @@ a:hover {
 }
 
 .main-layout .main-content {
-  width: var(--content-width); /* 700px 명시적 너비 */
-  flex-shrink: 0; /* 너비 고정 */
-  margin-top: 0; /* 여백 제거 - 내용물을 위로 */
+  width: 100%;
+  max-width: var(--content-width);
+  flex-shrink: 1;
+  margin-top: 0;
 }
 
 .main-layout .sidebar {
@@ -2548,13 +2561,16 @@ a:hover {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  position: sticky !important; /* container 기준 sticky로 자연 정렬 */
-  top: 72px !important; /* 헤더 높이 + 여백 */
-  align-self: flex-start; /* 상단 정렬 고정 */
+  gap: 0.6rem;
+  position: sticky !important;
+  top: calc(var(--header-height) + 0.5rem) !important;
+  align-self: flex-start;
   max-height: calc(100vh - 88px);
   overflow-y: auto;
   z-index: 10;
+  margin-left: 0;
+  margin-top: 0;
+  padding-left: 0;
 }
 
 /* Sticky Sidebar - 스크롤 시 고정 (deprecated - 이제 .sidebar에 통합) */
@@ -12397,4 +12413,150 @@ select.question-field-input {
   .base-modal:not(.full-screen) {
     max-height: 85vh;
   }
+}
+
+/* Feed Action Tools */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.action-bar--compact {
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.action-bar .action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  background-color: #ffffff;
+  color: var(--gray-600);
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.action-bar .action-btn--compact {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.action-bar .action-btn:hover:not(:disabled) {
+  background-color: var(--primary-50);
+  border-color: var(--primary-200);
+  color: var(--primary-600);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.18);
+}
+
+.action-bar .action-btn:disabled,
+.action-bar .action-btn[data-loading='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+.action-bar .action-btn.is-active {
+  background-color: var(--primary-50);
+  border-color: var(--primary-400);
+  color: var(--primary-600);
+}
+
+.action-bar .action-btn--helpful.is-active {
+  background-color: var(--success-100);
+  border-color: var(--success-500);
+  color: var(--success-700);
+}
+
+.action-bar .action-btn--bookmark.is-active {
+  background-color: var(--warning-100);
+  border-color: var(--warning-500);
+  color: var(--warning-700);
+}
+
+.action-bar .action-btn--accept {
+  margin-left: auto;
+  background: linear-gradient(135deg, var(--vk-primary) 0%, var(--vk-primary-hover) 100%);
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(86, 130, 239, 0.2);
+}
+
+.action-bar .action-btn--accept:hover:not(:disabled) {
+  box-shadow: 0 6px 18px rgba(86, 130, 239, 0.35);
+}
+
+.bookmark-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--gray-200);
+  background-color: #ffffff;
+  color: var(--gray-600);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.bookmark-btn:hover:not(:disabled) {
+  background-color: var(--warning-100);
+  border-color: var(--warning-300);
+  color: var(--warning-700);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.18);
+}
+
+.bookmark-btn--active {
+  background-color: var(--warning-100);
+  border-color: var(--warning-500);
+  color: var(--warning-700);
+}
+
+.bookmark-btn:disabled,
+.bookmark-btn[data-loading='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .action-bar {
+    gap: 0.5rem;
+  }
+
+  .action-bar .action-btn,
+  .action-bar .bookmark-btn {
+    flex: 1 1 calc(50% - 0.5rem);
+    justify-content: center;
+  }
+}
+
+
+/* Hero card shadow override */
+.home-hero-card {
+  box-shadow: none;
+}
+
+.home-hero-card:hover,
+.home-hero-card:focus-within {
+  box-shadow: none;
 }

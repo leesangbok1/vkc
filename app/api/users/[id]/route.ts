@@ -1,12 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServiceClient } from '@/lib/supabase-server'
+import { createSupabaseServiceClient, createSupabaseServerClient } from '@/lib/supabase-server'
 
 type RouteParams = { id: string }
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<RouteParams> }) {
   try {
     const { id } = await params
-    const supabase = createSupabaseServiceClient()
+    let supabase
+    try {
+      supabase = createSupabaseServiceClient()
+    } catch (serviceError) {
+      console.warn('[GET /api/users/:id] service client unavailable, falling back', serviceError)
+      supabase = await createSupabaseServerClient()
+    }
+
+    let viewerId: string | null = null
+    let viewerIsAdmin = false
+
+    try {
+      const sessionClient = await createSupabaseServerClient()
+      const {
+        data: { user: viewer }
+      } = await sessionClient.auth.getUser()
+      viewerId = viewer?.id ?? null
+
+      if (viewerId) {
+        const { data: viewerProfile } = await supabase
+          .from('users')
+          .select('role, admin_yn')
+          .eq('id', viewerId)
+          .maybeSingle()
+
+        if (viewerProfile) {
+          const role = typeof viewerProfile.role === 'string' ? viewerProfile.role.toLowerCase() : ''
+          viewerIsAdmin = viewerProfile.admin_yn === 'Y' || role === 'admin'
+        }
+      }
+    } catch (viewerError) {
+      console.warn('[GET /api/users/:id] failed to resolve viewer context', viewerError)
+    }
 
     const {
       data: userRow,
@@ -25,6 +57,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<R
           verification_type,
           visa_type,
           company,
+          specialty_areas,
+          interests,
           years_in_korea,
           region,
           specialty_areas,
@@ -38,7 +72,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<R
           helpful_answer_count,
           last_active,
           created_at,
-          updated_at
+          updated_at,
+          badges
         `
       )
       .eq('id', id)
@@ -132,6 +167,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<R
       console.error('[GET /api/users/:id] answers query failed', answersError)
     }
 
+    const viewerCanManagePosts = Boolean((viewerId && viewerId === id) || viewerIsAdmin)
+
     return NextResponse.json({
       success: true,
       data: {
@@ -154,6 +191,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<R
             commentCount: row.comment_count ?? 0,
             views: row.view_count ?? 0,
             createdAt: row.created_at,
+            viewer_can_manage: viewerCanManagePosts,
           })),
           answers: (answersRows || []).map((row) => ({
             id: row.id,

@@ -81,6 +81,10 @@ export default function NotificationCenter({ className }: NotificationCenterProp
 
   // 알림을 읽음으로 표시
   const markAsRead = async (notificationIds: string[]) => {
+    const unreadBeingMarked = notifications.filter(
+      notification => notificationIds.includes(notification.id) && !notification.isRead
+    ).length
+
     try {
       await notificationService.markAsRead(notificationIds)
       setNotifications(prev =>
@@ -90,9 +94,13 @@ export default function NotificationCenter({ className }: NotificationCenterProp
             : notification
         )
       )
-      setUnreadCount(prev => Math.max(0, prev - notificationIds.length))
+      if (unreadBeingMarked > 0) {
+        setUnreadCount(prev => Math.max(0, prev - unreadBeingMarked))
+      }
+      setError(null)
     } catch (error) {
       logger.error('Failed to mark notifications as read', error as Error)
+      setError('알림을 읽음으로 표시하는 중 오류가 발생했습니다.')
     }
   }
 
@@ -343,8 +351,10 @@ export default function NotificationCenter({ className }: NotificationCenterProp
                 size="sm"
                 className="w-full text-center text-sm text-gray-600 hover:text-gray-900"
                 onClick={() => {
-                  // 알림 설정 페이지로 이동
-                  window.location.href = '/settings/notifications'
+                  const returnTo = typeof window !== 'undefined'
+                    ? `${window.location.pathname}${window.location.search}`
+                    : '/'
+                  window.location.href = `/settings/notifications?returnTo=${encodeURIComponent(returnTo)}`
                 }}
               >
                 <Settings className="h-4 w-4 mr-1" />

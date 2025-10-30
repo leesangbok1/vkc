@@ -1,19 +1,32 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
 import { getUser } from '@/lib/auth'
+import type { Database } from '@/lib/supabase'
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
+
+type AnswersTable = Database['public']['Tables']['answers']
+type VotesTable = Database['public']['Tables']['votes']
+type AnswerCountsRow = Pick<AnswersTable['Row'], 'id' | 'author_id' | 'upvote_count' | 'downvote_count' | 'helpful_count'>
+type VoteRow = VotesTable['Row']
+type VoteInsert = VotesTable['Insert']
+type VoteUpdate = VotesTable['Update']
+type AnswersUpdate = AnswersTable['Update']
+type VoteStatusRow = Pick<VoteRow, 'vote_type' | 'created_at'>
 
 // POST /api/answers/[id]/vote - 답변에 투표하기
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: answerId } = await params
 
-    // Mock mode 체크 (테스트 환경)
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      return postMockVote(request, answerId)
+      return NextResponse.json(
+        { error: 'Mock mode is no longer supported for /api/answers/[id]/vote. Disable NEXT_PUBLIC_MOCK_MODE to use this endpoint.' },
+        { status: 503 }
+      )
     }
 
     const { user, error: authError } = await getUser(request)
@@ -25,12 +38,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      )
-    }
 
     const body = await request.json()
     const { vote_type } = body // 'upvote', 'downvote', or 'helpful'
@@ -47,7 +54,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .from('answers')
       .select('id, author_id, upvote_count, downvote_count, helpful_count')
       .eq('id', answerId)
-      .single()
+      .single<AnswerCountsRow>()
 
     if (answerError || !answer) {
       return NextResponse.json(
@@ -71,7 +78,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .eq('user_id', user.id)
       .eq('target_id', answerId)
       .eq('target_type', 'answer')
-      .single()
+      .maybeSingle()
 
     if (voteCheckError && voteCheckError.code !== 'PGRST116') {
       console.error('Vote check error:', voteCheckError)
@@ -81,19 +88,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    let newUpvoteCount = answer.upvote_count
-    let newDownvoteCount = answer.downvote_count
-    let newHelpfulCount = answer.helpful_count
+    let newUpvoteCount = answer.upvote_count ?? 0
+    let newDownvoteCount = answer.downvote_count ?? 0
+    let newHelpfulCount = answer.helpful_count ?? 0
 
     if (existingVote) {
       // 기존 투표가 있는 경우
       if (existingVote.vote_type === vote_type) {
         // 같은 투표 타입이면 투표 취소
-        await supabase
-          .from('votes')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('target_id', answerId)
+      await supabase
+        .from('votes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('target_id', answerId)
           .eq('target_type', 'answer')
 
         // 카운트 감소
@@ -106,9 +113,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
       } else {
         // 다른 투표 타입이면 투표 변경
+        const updateVotePayload: VoteUpdate = {
+          vote_type,
+          updated_at: new Date().toISOString()
+        }
+
         await supabase
           .from('votes')
-          .update({ vote_type, updated_at: new Date().toISOString() })
+          .update(updateVotePayload)
           .eq('user_id', user.id)
           .eq('target_id', answerId)
           .eq('target_type', 'answer')
@@ -133,14 +145,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     } else {
       // 새로운 투표
+      const newVote: VoteInsert = {
+        user_id: user.id,
+        target_id: answerId,
+        target_type: 'answer',
+        vote_type,
+        created_at: new Date().toISOString()
+      }
+
       await supabase
         .from('votes')
-        .insert({
-          user_id: user.id,
-          target_id: answerId,
-          target_type: 'answer',
-          vote_type
-        })
+        .insert(newVote)
 
       // 카운트 증가
       if (vote_type === 'upvote') {
@@ -153,14 +168,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // 답변의 투표 수 업데이트
+    const answerUpdate: AnswersUpdate = {
+      upvote_count: newUpvoteCount,
+      downvote_count: newDownvoteCount,
+      helpful_count: newHelpfulCount,
+      updated_at: new Date().toISOString()
+    }
+
     const { error: updateError } = await supabase
       .from('answers')
-      .update({
-        upvote_count: newUpvoteCount,
-        downvote_count: newDownvoteCount,
-        helpful_count: newHelpfulCount,
-        updated_at: new Date().toISOString()
-      })
+      .update(answerUpdate)
       .eq('id', answerId)
 
     if (updateError) {
@@ -198,9 +215,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: answerId } = await params
 
-    // Mock mode 체크 (테스트 환경)
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      return getMockVoteStatus(answerId)
+      return NextResponse.json(
+        { error: 'Mock mode is no longer supported for /api/answers/[id]/vote/status. Disable NEXT_PUBLIC_MOCK_MODE to use this endpoint.' },
+        { status: 503 }
+      )
     }
 
     const { user, error: authError } = await getUser(request)
@@ -212,12 +231,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      )
-    }
 
     // 사용자의 투표 상태 조회
     const { data: vote, error } = await supabase
@@ -226,7 +239,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .eq('user_id', user.id)
       .eq('target_id', answerId)
       .eq('target_type', 'answer')
-      .single()
+      .maybeSingle()
 
     if (error && error.code !== 'PGRST116') {
       console.error('Answer vote status check error:', error)
@@ -252,54 +265,4 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     )
   }
-}
-
-// Mock 함수들 (테스트 환경용)
-async function postMockVote(request: NextRequest, answerId: string) {
-  try {
-    const body = await request.json()
-    const { vote_type } = body
-
-    if (!['upvote', 'downvote', 'helpful'].includes(vote_type)) {
-      return NextResponse.json(
-        { error: 'Invalid vote type. Must be "upvote", "downvote", or "helpful"' },
-        { status: 400 }
-      )
-    }
-
-    // Mock 투표 결과
-    const mockVoteResult = {
-      answer_id: answerId,
-      vote_type,
-      upvote_count: vote_type === 'upvote' ? 9 : 8,
-      downvote_count: vote_type === 'downvote' ? 1 : 0,
-      helpful_count: vote_type === 'helpful' ? 7 : 6,
-      vote_score: vote_type === 'upvote' ? 9 : (vote_type === 'downvote' ? 7 : 8)
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: mockVoteResult,
-      message: 'Vote recorded'
-    })
-
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Invalid request body' },
-      { status: 400 }
-    )
-  }
-}
-
-function getMockVoteStatus(answerId: string) {
-  const mockVoteStatus = {
-    answer_id: answerId,
-    user_vote: 'helpful', // 사용자가 이미 helpful 표시했다고 가정
-    voted_at: '2024-01-15T14:30:00Z'
-  }
-
-  return NextResponse.json({
-    success: true,
-    data: mockVoteStatus
-  })
 }

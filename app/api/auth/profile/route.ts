@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase-server'
 import { upsertUserWithFallback } from '@/lib/utils/supabase-user'
+import type { PostgrestError } from '@supabase/supabase-js'
+import type { Database } from '@/lib/supabase'
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>
+type SupabaseServiceClient = ReturnType<typeof createSupabaseServiceClient>
+type SupabaseAnyClient = SupabaseServerClient | SupabaseServiceClient
+type UserRow = Database['public']['Tables']['users']['Row']
+type UserInsertPayload = Database['public']['Tables']['users']['Insert'] & Record<string, unknown>
+type UserUpdatePayload = Database['public']['Tables']['users']['Update'] & Record<string, unknown>
 
 // GET /api/auth/profile - 사용자 프로필 조회
 export async function GET(request: NextRequest) {
@@ -54,7 +61,7 @@ export async function PUT(request: NextRequest) {
       return putMockProfile(request)
     }
 
-    const body = await request.json()
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
 
     const supabase = await createSupabaseServerClient()
 
@@ -78,17 +85,36 @@ export async function PUT(request: NextRequest) {
       'name', 'bio', 'visa_type', 'company', 'years_in_korea',
       'region', 'preferred_language', 'specialties', 'interests',
       'languages', 'notification_settings',
-      'onboarding_completed', 'residence', 'gender', 'age', 'category'
-    ]
-    const existingColumns = Object.keys(currentProfile || {})
-    const updateData = Object.keys(body)
-      .filter(key => allowedFields.includes(key) && existingColumns.includes(key))
-      .reduce((obj, key) => {
-        obj[key] = body[key]
-        return obj
-      }, {} as Record<string, unknown>)
+      'onboarding_completed', 'residence', 'gender', 'age', 'category',
+      'avatar_url'
+    ] as const
+    const existingColumns = new Set(Object.keys(currentProfile || {}))
+    const updateData: UserUpdatePayload = {}
 
-    ;(updateData as any).updated_at = new Date().toISOString()
+    allowedFields.forEach((key) => {
+      if (!existingColumns.has(key)) return
+      if (!Object.prototype.hasOwnProperty.call(body, key)) return
+
+      const rawValue = body[key]
+      switch (key) {
+        case 'avatar_url': {
+          const value = typeof rawValue === 'string' ? rawValue.trim() : ''
+          updateData.avatar_url = value.length > 0 ? value : null
+          break
+        }
+        case 'name': {
+          updateData[key] =
+            typeof rawValue === 'string'
+              ? (rawValue as string).trim()
+              : (rawValue as UserUpdatePayload[typeof key])
+          break
+        }
+        default:
+          updateData[key] = rawValue as UserUpdatePayload[typeof key]
+      }
+    })
+
+    updateData.updated_at = new Date().toISOString()
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ success: true, data: currentProfile, message: 'No updatable fields present' })
@@ -103,7 +129,11 @@ export async function PUT(request: NextRequest) {
 
     if (error) {
       console.error('Profile update error:', error)
-      return NextResponse.json({ error: 'Failed to update profile', code: (error as any).code, details: (error as any).details }, { status: 500 })
+      const normalized = normalizePostgrestError(error)
+      return NextResponse.json(
+        { error: 'Failed to update profile', code: normalized.code, details: normalized.details },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
@@ -216,6 +246,7 @@ async function putMockProfile(request: NextRequest) {
     // Mock 업데이트된 프로필 생성 (허용되지 않은 필드 제외)
     const baseProfile = {
       id: 'user_mock_123',
+      name: '슬기로운 한국생활123',
       avatar_url: null,
       provider: 'email',
       provider_id: 'email_123',
@@ -285,17 +316,32 @@ async function putMockProfile(request: NextRequest) {
   }
 }
 
-async function ensureUserProfile(supabase: SupabaseServerClient, user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }) {
-  const basePayload = {
+async function ensureUserProfile(
+  supabase: SupabaseServerClient,
+  user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }
+): Promise<UserRow | null> {
+  const rawName =
+    user.user_metadata?.nickname ||
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    (user.email ? user.email.split('@')[0] : '') ||
+    '커넥터'
+
+  const sanitizedName =
+    typeof rawName === 'string' && rawName.trim().length > 0
+      ? rawName.trim()
+      : `커넥터${String(Math.floor(Math.random() * 900) + 100)}`
+
+  const basePayload: UserInsertPayload = {
     id: user.id,
     email: user.email ?? '',
-    name: (user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'New User') as string,
-    updated_at: new Date().toISOString()
+    name: sanitizedName,
+    updated_at: new Date().toISOString(),
   }
 
   const existing = await supabase
     .from('users')
-    .select('*')
+    .select<UserRow>('*')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -309,7 +355,7 @@ async function ensureUserProfile(supabase: SupabaseServerClient, user: { id: str
 
   const reread = await supabase
     .from('users')
-    .select('*')
+    .select<UserRow>('*')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -320,7 +366,13 @@ async function ensureUserProfile(supabase: SupabaseServerClient, user: { id: str
 
   if (!reread.data) {
     try {
-      const service = createSupabaseServiceClient()
+      let service: SupabaseAnyClient
+      try {
+        service = createSupabaseServiceClient()
+      } catch (serviceError) {
+        console.warn('ensureUserProfile: service client unavailable, falling back', serviceError)
+        service = supabase
+      }
       const upsertResult = await upsertUserWithFallback(service, {
         ...basePayload,
         created_at: new Date().toISOString()
@@ -336,7 +388,7 @@ async function ensureUserProfile(supabase: SupabaseServerClient, user: { id: str
 
     const recheck = await supabase
       .from('users')
-      .select('*')
+      .select<UserRow>('*')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -348,4 +400,15 @@ async function ensureUserProfile(supabase: SupabaseServerClient, user: { id: str
   }
 
   return reread.data ?? null
+}
+
+function normalizePostgrestError(error: PostgrestError | null | undefined) {
+  if (!error) {
+    return { code: null, details: null }
+  }
+
+  return {
+    code: error.code ?? null,
+    details: error.details ?? error.message ?? null,
+  }
 }

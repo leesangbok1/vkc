@@ -1,11 +1,15 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSafeAuth } from '@/components/providers/ClientProviders'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertTriangle, Send, Tag } from 'lucide-react'
+import {
+  buildQuestionPlaceholders,
+  getRandomQuestionPlaceholders,
+} from '@/lib/utils/question-placeholders'
 
 interface Category {
   id: number
@@ -35,6 +39,9 @@ const defaultCategories: Category[] = [
   { id: 10, name: '기타', slug: 'others', icon: '❓', color: '#78909C' }
 ]
 
+const CONTENT_REMINDER = '자세한 정보를 제공해주시면 더 정확한 답변을 받을 수 있습니다.'
+const INITIAL_PLACEHOLDERS = buildQuestionPlaceholders(null, { extraGuide: CONTENT_REMINDER })
+
 export default function QuestionForm({
   categories = defaultCategories,
   onSuccess,
@@ -50,6 +57,8 @@ export default function QuestionForm({
     tags: '',
     urgency: 'normal'
   })
+  const [titlePlaceholder, setTitlePlaceholder] = useState(INITIAL_PLACEHOLDERS.title)
+  const [contentPlaceholder, setContentPlaceholder] = useState(INITIAL_PLACEHOLDERS.content)
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -120,6 +129,12 @@ export default function QuestionForm({
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  useEffect(() => {
+    const placeholders = getRandomQuestionPlaceholders({ extraGuide: CONTENT_REMINDER })
+    setTitlePlaceholder(placeholders.title)
+    setContentPlaceholder(placeholders.content)
+  }, [])
+
   if (!user) {
     return (
       <div className="text-center py-8">
@@ -147,7 +162,7 @@ export default function QuestionForm({
             type="text"
             value={formData.title}
             onChange={handleInputChange}
-            placeholder="예: E-7 비자 신청 시 필요한 서류가 궁금합니다"
+            placeholder={titlePlaceholder}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             maxLength={200}
             required
@@ -189,14 +204,7 @@ export default function QuestionForm({
             name="content"
             value={formData.content}
             onChange={handleInputChange}
-            placeholder="구체적인 상황과 질문 내용을 자세히 적어주세요.
-
-예시:
-- 현재 상황: D-2 비자로 한국에 거주 중, 대학원 졸업 예정
-- 궁금한 점: E-7 비자 신청을 위해 제가 개인적으로 준비해야 할 서류
-- 특히 알고 싶은 것: 베트남에서 가져와야 하는 서류나 번역이 필요한 것들
-
-자세한 정보를 제공해주시면 더 정확한 답변을 받을 수 있습니다."
+            placeholder={contentPlaceholder}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             rows={8}
             required

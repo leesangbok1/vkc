@@ -328,7 +328,7 @@ export default function WalletPage() {
                         fontWeight: '600',
                         cursor: 'pointer'
                       }}
-                      onClick={() => router.push('/missions')}
+                    onClick={() => router.push('/?modal=missions')}
                     >
                       미션 달성하러 가기
                     </button>
@@ -466,7 +466,7 @@ export default function WalletPage() {
                   cursor: 'pointer',
                   position: 'relative'
                 }}
-                onClick={() => router.push('/missions')}
+                onClick={() => router.push('/?modal=missions')}
               >
                 더 벌러가기
               </button>

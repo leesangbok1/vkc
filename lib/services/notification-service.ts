@@ -4,6 +4,7 @@ import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supab
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import { Database } from '@/lib/supabase'
 import { createLogger } from '@/lib/utils/error-logger'
+import { normalizePriority } from '@/lib/services/notification-preferences'
 
 type NotificationRow = Database['public']['Tables']['notifications']['Row']
 type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
@@ -21,6 +22,25 @@ export interface NotificationData {
   metadata?: Record<string, any>
 }
 
+type NotificationPriority = 'low' | 'medium' | 'high' | 'urgent'
+
+interface ClientNotificationPreferences {
+  browser_notifications: boolean
+  priority_threshold: NotificationPriority
+}
+
+const DEFAULT_CLIENT_PREFERENCES: ClientNotificationPreferences = {
+  browser_notifications: true,
+  priority_threshold: 'medium'
+}
+
+const PRIORITY_ORDER: Record<NotificationPriority, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  urgent: 3
+}
+
 export interface NotificationSubscriptionOptions {
   userId: string
   onNotification?: (notification: NotificationData) => void
@@ -36,6 +56,7 @@ class NotificationService {
   private channels = new Map<string, RealtimeChannel>()
   private subscribers = new Map<string, NotificationSubscriptionOptions>()
   private isInitialized = false
+  private preferenceCache = new Map<string, ClientNotificationPreferences>()
 
   static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -111,6 +132,7 @@ class NotificationService {
         if (status === 'SUBSCRIBED') {
           this.logger.info('Successfully subscribed to notifications', { userId })
           options.onConnect?.()
+          void this.ensurePreferencesLoaded(userId)
         } else if (status === 'CHANNEL_ERROR') {
           this.logger.error('Failed to subscribe to notifications', undefined, { userId })
           options.onError?.(new Error('Failed to subscribe to notifications'))
@@ -167,7 +189,7 @@ class NotificationService {
 
       // 브라우저 알림 표시 (권한이 있는 경우)
       if ('Notification' in window && Notification.permission === 'granted') {
-        this.showBrowserNotification(notification)
+        void this.showBrowserNotification(notification, options.userId)
       }
 
     } catch (error) {
@@ -204,9 +226,32 @@ class NotificationService {
   /**
    * 브라우저 알림 표시
    */
-  private showBrowserNotification(notification: NotificationData) {
+  private async showBrowserNotification(notification: NotificationData, userId: string) {
     if (notification.isRead) {
       return // 읽은 알림은 브라우저 알림 안함
+    }
+
+    const preferences = await this.ensurePreferencesLoaded(userId)
+
+    if (!preferences.browser_notifications) {
+      this.logger.info('Browser notification skipped (preference disabled)', {
+        notificationId: notification.id,
+        userId
+      })
+      return
+    }
+
+    const priority: NotificationPriority =
+      (notification.priority as NotificationPriority) || 'medium'
+
+    if (PRIORITY_ORDER[priority] < PRIORITY_ORDER[preferences.priority_threshold]) {
+      this.logger.info('Browser notification skipped (priority below threshold)', {
+        notificationId: notification.id,
+        userId,
+        priority,
+        threshold: preferences.priority_threshold
+      })
+      return
     }
 
     const browserNotification = new Notification(notification.title, {
@@ -237,17 +282,35 @@ class NotificationService {
    * DB row를 NotificationData로 변환
    */
   private transformNotification(row: NotificationRow): NotificationData {
+    const payloadData = typeof (row as any).data === 'object' && (row as any).data !== null
+      ? (row as any).data
+      : {}
+    const rawMetadata = (payloadData as any).metadata
+    const metadata = typeof rawMetadata === 'object' && rawMetadata !== null ? rawMetadata : {}
+    const actionUrl =
+      (row as any).action_url ||
+      (payloadData as any).action_url ||
+      (metadata as any).action_url ||
+      null
+
+    const priorityValue =
+      (row as any).priority ??
+      (payloadData as any).priority ??
+      (metadata as any).priority ??
+      null
+    const priority = normalizePriority(typeof priorityValue === 'string' ? priorityValue : null)
+
     return {
       id: row.id,
       title: row.title,
       message: row.message || '',
       type: row.type as NotificationData['type'],
-      priority: (row as any).priority || 'medium',
+      priority,
       isRead: row.is_read,
       createdAt: row.created_at,
       expiresAt: (row as any).expires_at || undefined,
-      actionUrl: (row as any).action_url || undefined,
-      metadata: (row as any).metadata || {}
+      actionUrl: actionUrl || undefined,
+      metadata: metadata || {}
     }
   }
 
@@ -404,6 +467,68 @@ class NotificationService {
     }
 
     this.logger.info('NotificationService cleaned up')
+  }
+
+  /**
+   * 캐시된 사용자 알림 선호도 갱신
+   */
+  setClientPreferences(userId: string, preferences: Partial<ClientNotificationPreferences>): void {
+    const current = this.preferenceCache.get(userId) ?? DEFAULT_CLIENT_PREFERENCES
+    const next: ClientNotificationPreferences = {
+      ...current,
+      ...preferences
+    }
+    this.preferenceCache.set(userId, next)
+  }
+
+  /**
+   * 선호도 캐시 초기화
+   */
+  resetPreferenceCache(userId?: string): void {
+    if (userId) {
+      this.preferenceCache.delete(userId)
+    } else {
+      this.preferenceCache.clear()
+    }
+  }
+
+  private async ensurePreferencesLoaded(userId: string): Promise<ClientNotificationPreferences> {
+    const cached = this.preferenceCache.get(userId)
+    if (cached) return cached
+
+    try {
+      const response = await fetch('/api/users/notification-preferences', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const payload = await response.json().catch(() => null)
+        const prefs = payload?.preferences || {}
+        const preferenceValue: ClientNotificationPreferences = {
+          browser_notifications:
+            typeof prefs.browser_notifications === 'boolean'
+              ? prefs.browser_notifications
+              : DEFAULT_CLIENT_PREFERENCES.browser_notifications,
+          priority_threshold:
+            ['low', 'medium', 'high', 'urgent'].includes(prefs.priority_threshold)
+              ? prefs.priority_threshold
+              : DEFAULT_CLIENT_PREFERENCES.priority_threshold
+        }
+
+        this.preferenceCache.set(userId, preferenceValue)
+        return preferenceValue
+      }
+    } catch (error) {
+      this.logger.warn('Failed to load notification preferences, using defaults', {
+        userId,
+        responseData: error instanceof Error ? error.message : String(error)
+      })
+    }
+
+    this.preferenceCache.set(userId, DEFAULT_CLIENT_PREFERENCES)
+    return DEFAULT_CLIENT_PREFERENCES
   }
 }
 

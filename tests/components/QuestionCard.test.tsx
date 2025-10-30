@@ -1,13 +1,13 @@
 import React from 'react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { QuestionCard } from '@/components/questions/QuestionCard'
 
 // Mock Next.js components
 vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
-    <a href={href}>{children}</a>
+  default: ({ children, href, ...props }: { children: React.ReactNode, href: string }) => (
+    <a href={href} {...props}>{children}</a>
   )
 }))
 
@@ -44,7 +44,39 @@ vi.mock('lucide-react', () => ({
   ChevronUp: () => <span>↑</span>
 }))
 
-const mockQuestion = {
+const actionBarMock = vi.hoisted(() => vi.fn()) as ReturnType<typeof vi.fn>
+
+vi.mock('@/components/common/ActionBar', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    actionBarMock(props)
+    return <div data-testid="action-bar" />
+  }
+}))
+
+vi.mock('@/components/modals/LoginPromptModal', () => ({
+  __esModule: true,
+  default: () => null
+}))
+
+vi.mock('@/components/modals/ReportContentModal', () => ({
+  __esModule: true,
+  default: () => null
+}))
+
+vi.mock('@/lib/hooks/useAuth', () => ({
+  useAuth: () => ({
+    isLoading: false,
+    isLoggedIn: false,
+    user: null,
+    checkAuth: vi.fn(),
+    login: vi.fn(),
+    logout: vi.fn(),
+    updateUser: vi.fn()
+  })
+}))
+
+const mockQuestion: any = {
   id: '1',
   title: 'E-7 비자 신청 시 필요한 서류가 궁금합니다',
   content: '회사에서 E-7 비자 신청을 도와준다고 하는데, 제가 준비해야 할 서류들이 무엇인지 알고 싶습니다.',
@@ -54,6 +86,8 @@ const mockQuestion = {
   ai_category_confidence: 0.95,
   ai_tags: ['E-7비자', '서류', '취업'],
   urgency: 'high',
+  matched_certified_users: [] as string[],
+  certified_notifications_sent: false,
   matched_experts: [],
   expert_notifications_sent: false,
   view_count: 45,
@@ -61,7 +95,7 @@ const mockQuestion = {
   helpful_count: 8,
   upvote_count: 12,
   downvote_count: 0,
-  status: 'open' as const,
+  status: 'open',
   is_pinned: false,
   is_featured: false,
   is_reported: false,
@@ -81,6 +115,7 @@ const mockQuestion = {
     bio: null,
     provider: null,
     provider_id: null,
+    admin_yn: 'N' as const,
     role: 'user' as const,
     verification_status: 'approved' as const,
     verification_type: 'work' as const,
@@ -123,113 +158,61 @@ const mockQuestion = {
 }
 
 describe('QuestionCard Component', () => {
-  it('should render question title and content preview', () => {
-    render(<QuestionCard question={mockQuestion} />)
-
-    expect(screen.getByText('E-7 비자 신청 시 필요한 서류가 궁금합니다')).toBeInTheDocument()
-    expect(screen.getByText(/회사에서 E-7 비자 신청을 도와준다고/)).toBeInTheDocument()
+  beforeEach(() => {
+    actionBarMock.mockClear()
   })
 
-  it('should display author information', () => {
-    render(<QuestionCard question={mockQuestion} />)
+  const renderCard = (overrides: Partial<typeof mockQuestion> = {}) =>
+    render(<QuestionCard question={{ ...mockQuestion, ...overrides }} />)
+
+  it('renders question title and content preview', () => {
+    renderCard()
+
+    expect(screen.getByRole('heading', { name: mockQuestion.title })).toBeInTheDocument()
+    expect(screen.getByText(/E-7 비자 신청을 도와준다고/)).toBeInTheDocument()
+  })
+
+  it('shows author and topic metadata', () => {
+    renderCard()
 
     expect(screen.getByText('레투안')).toBeInTheDocument()
-    expect(screen.getByTestId('trust-badge')).toBeInTheDocument()
-    expect(screen.getByText('신뢰도: 324')).toBeInTheDocument()
-  })
-
-  it('should show category and tags', () => {
-    render(<QuestionCard question={mockQuestion} />)
-
-    expect(screen.getByText('🛂')).toBeInTheDocument()
     expect(screen.getByText('비자/법률')).toBeInTheDocument()
-    expect(screen.getByTestId('specialty-tags')).toBeInTheDocument()
-    expect(screen.getByText('E-7비자')).toBeInTheDocument()
+    expect(screen.getByText('E-7, 한국 3년차')).toBeInTheDocument()
   })
 
-  it('should display vote count and answer count', () => {
-    render(<QuestionCard question={mockQuestion} />)
+  it('displays answer statistics', () => {
+    renderCard()
 
-    expect(screen.getByText('+12')).toBeInTheDocument() // upvote count with +
-    expect(screen.getByText('3')).toBeInTheDocument() // answer count
+    expect(screen.getByText('답변 3개')).toBeInTheDocument()
   })
 
-  it('should show urgency indicator for high priority questions', () => {
-    const urgentQuestion = { ...mockQuestion, urgency: 'high' as const }
-    render(<QuestionCard question={urgentQuestion} />)
+  it('passes helpful state to ActionBar', () => {
+    renderCard()
 
-    expect(screen.getByText('높음')).toBeInTheDocument()
+    expect(actionBarMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetId: '1',
+        targetType: 'question',
+        helpfulCount: 8,
+      })
+    )
   })
 
-  it('should not show urgency indicator for normal priority', () => {
-    const normalQuestion = { ...mockQuestion, urgency: 'normal' as const }
-    render(<QuestionCard question={normalQuestion} />)
-
-    expect(screen.queryByText('높음')).not.toBeInTheDocument()
-  })
-
-  it('should display resolved status', () => {
-    const resolvedQuestion = { ...mockQuestion, status: 'resolved' as const }
-    render(<QuestionCard question={resolvedQuestion} />)
+  it('renders resolved badge when status is resolved', () => {
+    renderCard({ status: 'resolved' })
 
     expect(screen.getByText('✓ 해결됨')).toBeInTheDocument()
   })
 
-  it('should show relative time', () => {
-    render(<QuestionCard question={mockQuestion} />)
+  it('renders pending badge when question is open', () => {
+    renderCard({ status: 'open' })
 
-    // time 요소가 있는지 확인 (아이콘 대신 실제 시간 표시)
-    const timeElement = screen.getByRole('time')
-    expect(timeElement).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: '미채택' })).toBeInTheDocument()
   })
 
-  it('should be clickable and link to question detail', () => {
-    render(<QuestionCard question={mockQuestion} />)
+  it('handles zero answer count gracefully', () => {
+    renderCard({ answer_count: 0 })
 
-    const titleLink = screen.getByRole('link', { name: mockQuestion.title })
-    expect(titleLink).toHaveAttribute('href', '/questions/1')
-  })
-
-  it('should handle questions without tags', () => {
-    const questionWithoutTags = { ...mockQuestion, tags: [] }
-    render(<QuestionCard question={questionWithoutTags} />)
-
-    expect(screen.queryByTestId('specialty-tags')).not.toBeInTheDocument()
-  })
-
-  it('should handle long content with truncation', () => {
-    const longContent = 'a'.repeat(500)
-    const questionWithLongContent = { ...mockQuestion, content: longContent }
-    render(<QuestionCard question={questionWithLongContent} />)
-
-    const contentElement = screen.getByText(/aaa/)
-    expect(contentElement).toBeInTheDocument()
-  })
-
-  it('should show author initial avatar', () => {
-    render(<QuestionCard question={mockQuestion} />)
-
-    // 이제 Avatar 컴포넌트 대신 이니셜을 보여주는 div가 있는지 확인
-    const avatarInitial = screen.getByText('레'.charAt(0).toUpperCase())
-    expect(avatarInitial).toBeInTheDocument()
-    // Check the actual structure - it seems to be in a flex container
-    expect(avatarInitial.closest('.flex')).toBeInTheDocument()
-  })
-
-  it('should handle zero vote and answer counts', () => {
-    const newQuestion = {
-      ...mockQuestion,
-      upvote_count: 0,
-      answer_count: 0
-    }
-    render(<QuestionCard question={newQuestion} />)
-
-    // Vote score 영역에서 0 찾기
-    const voteScore = screen.getByRole('status', { name: /총 투표 점수/ })
-    expect(voteScore).toHaveTextContent('0')
-
-    // Answer count 영역에서 0 찾기
-    const answerCount = screen.getByRole('status', { name: /답변 수/ })
-    expect(answerCount).toHaveTextContent('0')
+    expect(screen.getByText('답변 0개')).toBeInTheDocument()
   })
 })

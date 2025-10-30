@@ -1,34 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
 import FeedCard from '@/components/feed/FeedCard'
 import { FeedSkeleton } from '@/components/questions/FeedSkeleton'
 import { FeedEmptyState } from '@/components/questions/FeedEmptyState'
 import { truncateToSentences } from '@/lib/utils/text-utils'
-
-const extractMediaUrls = (source: any): string[] => {
-  if (!source) return []
-  const candidates = [
-    source.attachments,
-    source.images,
-    source.image_urls,
-    source.media_urls,
-    source.media
-  ]
-
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate.filter((value) => typeof value === 'string' && value.length > 0)
-    }
-  }
-
-  if (typeof source.imageUrl === 'string') {
-    return [source.imageUrl]
-  }
-
-  return []
-}
+import { getFollowedUsers, toggleFollowUser } from '@/lib/utils/follow-manager'
+import { extractMediaUrls } from '@/lib/utils/media'
 
 type FeedQuestion = {
   id: string
@@ -37,10 +17,13 @@ type FeedQuestion = {
   created_at?: string
   answer_count?: number
   category?: { name?: string | null } | null
+  helpful_count?: number
+  is_helpful_by_viewer?: boolean
   author?: {
     id?: string
     name?: string | null
     role?: string | null
+    avatar_url?: string | null
     visaType?: string | null
     yearsInKorea?: number | null
   }
@@ -60,7 +43,9 @@ type RecommendedUser = {
 }
 
 export default function FollowingPage() {
+  const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [viewerId, setViewerId] = useState<string | null>(null)
   const [feed, setFeed] = useState<FeedQuestion[]>([])
   const [feedLoading, setFeedLoading] = useState(true)
   const [feedError, setFeedError] = useState<string | null>(null)
@@ -71,6 +56,11 @@ export default function FollowingPage() {
   const [recommendedError, setRecommendedError] = useState<string | null>(null)
 
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set())
+  const fallbackAttemptedRef = useRef(false)
+  const handleLoginRedirect = useCallback(() => {
+    const redirectTarget = encodeURIComponent('/following')
+    router.push(`/auth/login?redirectTo=${redirectTarget}`)
+  }, [router])
 
   useEffect(() => {
     let ignore = false
@@ -82,9 +72,7 @@ export default function FollowingPage() {
           if (!ignore) {
             setIsLoggedIn(false)
             const redirect = encodeURIComponent('/following')
-            if (typeof window !== 'undefined') {
-              window.location.href = `/auth/login?redirectTo=${redirect}`
-            }
+            router.push(`/auth/login?redirectTo=${redirect}`)
           }
           return
         }
@@ -95,16 +83,17 @@ export default function FollowingPage() {
           ? profileData.interests
           : []
 
-        const followingRes = await fetch('/api/users/following', { cache: 'no-store' })
         let followingSet = new Set<string>()
-        if (followingRes.ok) {
-          const followingJson = await followingRes.json()
-          const followingData: string[] = Array.isArray(followingJson?.data) ? followingJson.data : []
-          followingSet = new Set(followingData)
+        try {
+          const followed = await getFollowedUsers(true)
+          followingSet = new Set(followed.map((user) => user.id))
+        } catch (followError) {
+          console.error('[FollowingPage] failed to load following list', followError)
         }
 
         if (!ignore) {
           setIsLoggedIn(true)
+          setViewerId(profileData.id ?? null)
           setViewerTopics(interests)
           setFollowingIds(followingSet)
         }
@@ -112,6 +101,7 @@ export default function FollowingPage() {
         console.error('[FollowingPage] profile load failed', error)
         if (!ignore) {
           setIsLoggedIn(false)
+          setViewerId(null)
         }
       }
     }
@@ -120,7 +110,7 @@ export default function FollowingPage() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [router])
 
   useEffect(() => {
     if (!isLoggedIn) return
@@ -136,7 +126,7 @@ export default function FollowingPage() {
         if (feedRes.status === 401) {
           if (!ignore) {
             const redirect = encodeURIComponent('/following')
-            window.location.href = `/auth/login?redirectTo=${redirect}`
+            router.push(`/auth/login?redirectTo=${redirect}`)
           }
           return
         }
@@ -157,6 +147,9 @@ export default function FollowingPage() {
               author: q.author,
               answer_count: q.answer_count,
               created_at: q.created_at,
+              helpful_count: q.helpful_count ?? q.helpfulCount ?? 0,
+              is_helpful_by_viewer: q.is_helpful_by_viewer,
+              category: q.category ?? null,
             }))
           )
         }
@@ -172,29 +165,84 @@ export default function FollowingPage() {
 
     loadFeed()
     return () => { ignore = true }
-  }, [isLoggedIn])
+  }, [isLoggedIn, router])
 
   useEffect(() => {
     if (!isLoggedIn) return
 
     let ignore = false
 
+    const fetchFallbackUsers = async (): Promise<RecommendedUser[]> => {
+      const fallbackRes = await fetch('/api/users/popular?limit=50', { cache: 'no-store' })
+      const fallbackPayload = await fallbackRes.json().catch(() => null)
+      if (!fallbackRes.ok) {
+        const fallbackMessage =
+          fallbackPayload?.error ||
+          fallbackPayload?.details ||
+          `popular users failed ${fallbackRes.status}`
+        throw new Error(fallbackMessage)
+      }
+      const fallbackUsers = Array.isArray(fallbackPayload?.data) ? fallbackPayload.data : []
+      return fallbackUsers.map((user: any) => ({
+        id: user.id,
+        name: typeof user.name === 'string' && user.name.length > 0 ? user.name : '사용자',
+        role: user.role,
+        avatar_url: user.avatar_url ?? null,
+        helpful_answer_count: user.helpful_answer_count ?? null,
+        answer_count: user.answer_count ?? null,
+        trust_score: user.trust_score ?? null,
+        score: typeof user.score === 'number' ? user.score : null,
+        specialties: Array.isArray(user.specialties) ? user.specialties : null,
+        interests: Array.isArray(user.interests) ? user.interests : null,
+      }))
+    }
+
+    const fetchPrimaryUsers = async (): Promise<RecommendedUser[]> => {
+      const res = await fetch('/api/users/recommended?limit=50', { cache: 'no-store' })
+      const payload = await res.json().catch(() => null)
+      if (!res.ok) {
+        const message =
+          payload?.error || payload?.details || `recommended users failed ${res.status}`
+        throw new Error(message)
+      }
+      return Array.isArray(payload?.data) ? payload.data : []
+    }
+
     async function loadRecommended() {
+      fallbackAttemptedRef.current = false
       setRecommendedLoading(true)
       setRecommendedError(null)
 
-      try {
-        const res = await fetch('/api/users/popular?limit=50', { cache: 'no-store' })
-        if (!res.ok) {
-          throw new Error(`popular users failed ${res.status}`)
-        }
+      const applyUsers = (users: RecommendedUser[] | null | undefined) => {
+        if (ignore) return
+        setRecommended(Array.isArray(users) ? users : [])
+        setRecommendedError(null)
+      }
 
-        const json = await res.json()
-        const users: RecommendedUser[] = Array.isArray(json?.data) ? json.data : []
-        const ranked = rankRecommendedUsers(users, viewerTopics)
-        if (!ignore) setRecommended(ranked)
+      try {
+        let users = await fetchPrimaryUsers()
+        if ((!users || users.length === 0) && !fallbackAttemptedRef.current) {
+          fallbackAttemptedRef.current = true
+          users = await fetchFallbackUsers()
+        }
+        applyUsers(users)
       } catch (error: any) {
         console.error('[FollowingPage] recommended load failed', error)
+        if (!fallbackAttemptedRef.current) {
+          try {
+            fallbackAttemptedRef.current = true
+            const fallbackUsers = await fetchFallbackUsers()
+            applyUsers(fallbackUsers)
+            return
+          } catch (fallbackError: any) {
+            console.error('[FollowingPage] fallback popular load failed', fallbackError)
+            if (!ignore) {
+              setRecommended([])
+              setRecommendedError(fallbackError?.message || '추천 사용자를 불러오지 못했습니다.')
+            }
+            return
+          }
+        }
         if (!ignore) {
           setRecommended([])
           setRecommendedError(error?.message || '추천 사용자를 불러오지 못했습니다.')
@@ -210,40 +258,42 @@ export default function FollowingPage() {
 
   const toggleFollow = async (userId: string) => {
     if (!userId) return
+    if (viewerId && viewerId === userId) {
+      alert('내 계정은 팔로우할 수 없습니다.')
+      return
+    }
 
     const alreadyFollowing = followingIds.has(userId)
-    const next = new Set(followingIds)
+    const previous = new Set(followingIds)
+    const optimistic = new Set(followingIds)
     if (alreadyFollowing) {
-      next.delete(userId)
+      optimistic.delete(userId)
     } else {
-      next.add(userId)
+      optimistic.add(userId)
     }
-    setFollowingIds(next)
+    setFollowingIds(optimistic)
 
     try {
-      const method = alreadyFollowing ? 'DELETE' : 'POST'
-      const res = await fetch(`/api/users/${userId}/follow`, { method })
-      if (!res.ok) {
-        throw new Error('follow toggle failed')
+      const { success, isFollowing, error } = await toggleFollowUser(userId, {
+        viewerId,
+      })
+      if (!success) {
+        if (error === 'SELF_FOLLOW') {
+          setFollowingIds(previous)
+          alert('내 계정은 팔로우할 수 없습니다.')
+          return
+        }
+        throw new Error(error || 'follow toggle failed')
       }
-      const data = await res.json().catch(() => null)
-      if (typeof data?.isFollowing === 'boolean') {
-        setFollowingIds((prev) => {
-          const update = new Set(prev)
-          if (data.isFollowing) update.add(userId)
-          else update.delete(userId)
-          return update
-        })
-      }
+      setFollowingIds((prev) => {
+        const update = new Set(prev)
+        if (isFollowing) update.add(userId)
+        else update.delete(userId)
+        return update
+      })
     } catch (error) {
       console.error('toggleFollow error', error)
-      // rollback
-      setFollowingIds((prev) => {
-        const rollback = new Set(prev)
-        if (alreadyFollowing) rollback.add(userId)
-        else rollback.delete(userId)
-        return rollback
-      })
+      setFollowingIds(new Set(previous))
       alert('팔로우 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
     }
   }
@@ -282,8 +332,10 @@ export default function FollowingPage() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>팔로잉 추천</h2>
-            <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>내 토픽과 인기순 기반</span>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+              팔로잉 추천
+              <span className="sr-only"> · 개인 관심사와 인기 지표를 활용한 추천</span>
+            </h2>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
@@ -296,39 +348,88 @@ export default function FollowingPage() {
             ) : (
               recommended.slice(0, 12).map((user) => {
                 const isFollowing = followingIds.has(user.id)
+                const displayName = user.name || '커뮤니티 멤버'
+                const helpfulCount = user.helpful_answer_count ?? 0
+                const answerCount = user.answer_count ?? 0
+                const trustScore =
+                  typeof user.trust_score === 'number'
+                    ? Math.round(user.trust_score)
+                    : null
+                const tagCandidates = [
+                  ...(Array.isArray(user.specialties) ? user.specialties : []),
+                  ...(Array.isArray(user.interests) ? user.interests : []),
+                ]
+                const tags = Array.from(
+                  new Set(
+                    tagCandidates
+                      .filter((tag) => typeof tag === 'string' && tag.trim().length > 0)
+                      .map((tag) => tag.trim())
+                  )
+                ).slice(0, 3)
+
+                const navigateToProfile = () => {
+                  router.push(`/users/${user.id}`)
+                }
+
+                const showPlaceholder = !user.avatar_url
+
                 return (
-                  <div
-                    key={user.id}
-                    className="question-card"
-                    style={{ marginBottom: '0.75rem', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                    onClick={() => window.location.href = `/users/${user.id}`}
-                  >
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                      <div className="author-avatar-small" aria-hidden="true"></div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
-                          {user.name}
+                  <div key={user.id} className="recommended-user-card">
+                    <div
+                      className="recommended-user-main"
+                      role="button"
+                      tabIndex={0}
+                      onClick={navigateToProfile}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          navigateToProfile()
+                        }
+                      }}
+                    >
+                      <div
+                        className="recommended-user-avatar"
+                        role={showPlaceholder ? 'img' : undefined}
+                        aria-label={showPlaceholder ? `${displayName} 프로필 이미지` : undefined}
+                      >
+                        {user.avatar_url ? (
+                          <img src={user.avatar_url} alt={`${displayName} 프로필 이미지`} />
+                        ) : (
+                          <span aria-hidden>👤</span>
+                        )}
+                      </div>
+                      <div className="recommended-user-body">
+                        <div className="recommended-user-name-row">
+                          <span className="recommended-user-name">{displayName}</span>
                           {user.role === 'verified' && (
-                            <span className="badge" style={{ background: '#2563eb', color: 'white', padding: '2px 6px', borderRadius: 12, fontSize: '0.75rem' }}>
-                              인증
-                            </span>
+                            <span className="recommended-user-badge">인증</span>
                           )}
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                          도움됨 {user.helpful_answer_count ?? 0} · 답변 {user.answer_count ?? 0} · 신뢰 {user.trust_score ?? 0}
+                        <div className="recommended-user-stats">
+                          도움됨 {helpfulCount.toLocaleString()} · 답변 {answerCount.toLocaleString()}
+                          {typeof trustScore === 'number' ? ` · 신뢰 ${trustScore}` : ''}
                         </div>
-                        {user.specialties && user.specialties.length > 0 && (
-                          <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '0.4rem' }}>
-                            #{user.specialties.slice(0, 3).join(' #')}
+                        {tags.length > 0 && (
+                          <div className="recommended-user-tags">
+                            {tags.map((tag) => (
+                              <span key={tag}>#{tag}</span>
+                            ))}
                           </div>
                         )}
                       </div>
                     </div>
                     <button
-                      className={`btn ${isFollowing ? 'btn-secondary' : 'btn-primary'}`}
+                      className={`btn ${isFollowing ? 'btn-secondary' : 'btn-primary'} recommended-user-follow ${isFollowing ? 'is-following' : ''}`}
                       onClick={(event) => {
                         event.stopPropagation()
                         toggleFollow(user.id)
+                      }}
+                      onKeyDown={(event) => {
+                        event.stopPropagation()
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          toggleFollow(user.id)
+                        }
                       }}
                     >
                       {isFollowing ? '팔로잉' : '팔로우'}
@@ -362,6 +463,8 @@ export default function FollowingPage() {
             feed.map((item) => {
               const authorId = item.author?.id ?? ''
               const isFollowing = authorId ? followingIds.has(authorId) : false
+              const helpfulCount = typeof item.helpful_count === 'number' ? item.helpful_count : 0
+              const isHelpful = Boolean(item.is_helpful_by_viewer)
 
               return (
                 <FeedCard
@@ -379,29 +482,32 @@ export default function FollowingPage() {
                   role: item.author?.role,
                   visaType: item.author?.visaType ?? null,
                   yearsInKorea: item.author?.yearsInKorea ?? null,
+                  avatarUrl: item.author?.avatar_url ?? null,
                 }}
                 stats={
                   item.answer_count && item.answer_count > 0
                     ? <span>답변 {item.answer_count}개</span>
                     : <span>아직 답변이 없어요</span>
                 }
-                mediaUrls={extractMediaUrls(item)}
-                showReportButton
-                showFollowButton={Boolean(authorId)}
-                isFollowing={Boolean(authorId && isFollowing)}
-                onToggleFollow={authorId ? () => toggleFollow(authorId) : undefined}
+                  mediaUrls={extractMediaUrls(item)}
+                  showReportButton
+                  showFollowButton={Boolean(authorId)}
+                  isFollowing={Boolean(authorId && isFollowing)}
+                  onToggleFollow={authorId ? () => toggleFollow(authorId) : undefined}
                   followLabels={{ follow: '팔로우', following: '팔로잉' }}
                   actionProps={{
                     targetType: 'question',
-                    helpfulCount: 0,
-                    requireLogin: false,
+                    helpfulCount,
+                    isHelpful,
+                    requireLogin: !isLoggedIn,
+                    onLoginRequired: handleLoginRedirect,
                     compact: true,
                   }}
                   onNavigate={(href) => {
-                    window.location.href = href
+                    router.push(href)
                   }}
                   onAuthorClick={(id) => {
-                    window.location.href = `/users/${id}`
+                    router.push(`/users/${id}`)
                   }}
                 />
               )
@@ -411,20 +517,4 @@ export default function FollowingPage() {
       </div>
     </PageLayout>
   )
-}
-
-function rankRecommendedUsers(users: RecommendedUser[], viewerTopics: string[]): RecommendedUser[] {
-  const topicSet = new Set((viewerTopics || []).map((topic) => topic.toLowerCase()))
-
-  return [...users]
-    .map((user) => {
-      const specialties = Array.isArray(user.specialties) ? user.specialties : []
-      const interests = Array.isArray(user.interests) ? user.interests : []
-      const tags = [...specialties, ...interests].map((tag) => String(tag).toLowerCase())
-      const overlap = tags.filter((tag) => topicSet.has(tag)).length
-      const baseScore = user.score ?? 0
-      const boostedScore = baseScore + overlap * 3
-      return { ...user, score: boostedScore }
-    })
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
 }

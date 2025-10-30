@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import { renderMarkdownLite } from '@/lib/utils/markdown'
 
 type RichEditorProps = {
@@ -47,6 +48,18 @@ function htmlToMarkdown(html: string): string {
         return children
       case 'u':
         return children
+      case 'span': {
+        const isBold = element.style.fontWeight === 'bold' || Number(element.style.fontWeight) >= 600
+        const isItalic = element.style.fontStyle === 'italic'
+        let result = children
+        if (isBold && result) {
+          result = `**${result}**`
+        }
+        if (isItalic && result) {
+          result = `*${result}*`
+        }
+        return result
+      }
       case 'br':
         return '\n'
       case 'p':
@@ -153,8 +166,19 @@ export default function RichEditor({
 
   const executeCommand = useCallback(
     (command: string, valueArg?: string) => {
-      if (!editorRef.current || disabled) return
-      editorRef.current.focus()
+      const editor = editorRef.current
+      if (!editor || disabled) return
+
+      if (document.activeElement !== editor) {
+        editor.focus({ preventScroll: true })
+      }
+
+      try {
+        document.execCommand('styleWithCSS', false, false)
+      } catch {
+        // ignore unsupported command errors
+      }
+
       document.execCommand(command, false, valueArg ?? undefined)
       syncMarkdown()
     },
@@ -162,7 +186,8 @@ export default function RichEditor({
   )
 
   const handleHeading = (level: 1 | 2 | 3) => {
-    executeCommand('formatBlock', `h${level}`)
+    // execCommand expects block names wrapped with angle brackets for consistent behavior
+    executeCommand('formatBlock', `<h${level}>`)
   }
 
   const handleLink = () => {
@@ -257,6 +282,11 @@ export default function RichEditor({
   const helperMessage =
     helperText || '굵게/머리글/목록/링크/이미지(5MB 이하 PNG·JPEG·WebP)를 지원합니다.'
 
+  const handleToolbarMouseDown = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    // Prevent toolbar buttons from stealing focus so the current selection is preserved
+    event.preventDefault()
+  }
+
   return (
     <div className={`vk-editor ${disabled ? 'vk-editor-disabled' : ''}`}>
       <div className="vk-editor-toolbar">
@@ -265,6 +295,7 @@ export default function RichEditor({
           className="vk-editor-btn"
           title="굵게 (Ctrl+B)"
           onClick={() => executeCommand('bold')}
+          onMouseDown={handleToolbarMouseDown}
         >
           <span className="vk-editor-btn-label">B</span>
         </button>
@@ -274,6 +305,7 @@ export default function RichEditor({
           className="vk-editor-btn"
           title="머리글 1"
           onClick={() => handleHeading(1)}
+          onMouseDown={handleToolbarMouseDown}
         >
           H1
         </button>
@@ -282,6 +314,7 @@ export default function RichEditor({
           className="vk-editor-btn"
           title="머리글 2"
           onClick={() => handleHeading(2)}
+          onMouseDown={handleToolbarMouseDown}
         >
           H2
         </button>
@@ -290,6 +323,7 @@ export default function RichEditor({
           className="vk-editor-btn"
           title="머리글 3"
           onClick={() => handleHeading(3)}
+          onMouseDown={handleToolbarMouseDown}
         >
           H3
         </button>
@@ -299,6 +333,7 @@ export default function RichEditor({
           className="vk-editor-btn"
           title="번호 목록"
           onClick={() => executeCommand('insertOrderedList')}
+          onMouseDown={handleToolbarMouseDown}
         >
           1.
         </button>
@@ -307,6 +342,7 @@ export default function RichEditor({
           className="vk-editor-btn"
           title="불릿 목록"
           onClick={() => executeCommand('insertUnorderedList')}
+          onMouseDown={handleToolbarMouseDown}
         >
           •
         </button>
@@ -314,12 +350,19 @@ export default function RichEditor({
           type="button"
           className="vk-editor-btn"
           title="인용구"
-          onClick={() => executeCommand('formatBlock', 'blockquote')}
+          onClick={() => executeCommand('formatBlock', '<blockquote>')}
+          onMouseDown={handleToolbarMouseDown}
         >
           ❝
         </button>
         <div className="vk-editor-divider" />
-        <button type="button" className="vk-editor-btn" title="링크" onClick={handleLink}>
+        <button
+          type="button"
+          className="vk-editor-btn"
+          title="링크"
+          onClick={handleLink}
+          onMouseDown={handleToolbarMouseDown}
+        >
           🔗
         </button>
         <button
@@ -327,6 +370,7 @@ export default function RichEditor({
           className="vk-editor-btn"
           title="이미지 업로드"
           onClick={() => fileInputRef.current?.click()}
+          onMouseDown={handleToolbarMouseDown}
           disabled={isUploading}
         >
           {isUploading ? '⏳' : '🖼️'}
@@ -336,6 +380,7 @@ export default function RichEditor({
           type="button"
           className={`vk-editor-btn ${isPreview ? 'active' : ''}`}
           onClick={() => setIsPreview(prev => !prev)}
+          onMouseDown={handleToolbarMouseDown}
           title={isPreview ? '편집으로 돌아가기' : '미리보기'}
         >
           {isPreview ? '편집' : '미리보기'}

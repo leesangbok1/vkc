@@ -29,12 +29,35 @@ const USER_FOLLOW_ENDPOINT = '/api/users'
 let topicCache: SubscribedTopic[] | null = null
 let followingCache: Set<string> | null = null
 
-function mapTopic(row: any): SubscribedTopic {
+type TopicRowCategory = {
+  id?: number | string | null
+  name?: string | null
+  slug?: string | null
+  icon?: string | null
+}
+
+type TopicRow = {
+  id?: string | number | null
+  category_id?: number | string | null
+  created_at?: string | null
+  category?: TopicRowCategory | null
+}
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+function mapTopic(row: TopicRow): SubscribedTopic {
   const category = row?.category ?? {}
-  const categoryId = Number(row?.category_id ?? category?.id ?? 0)
+  const categoryId = toNumber(row?.category_id) ?? toNumber(category?.id) ?? null
 
   return {
-    id: Number.isFinite(categoryId) ? categoryId : 0,
+    id: categoryId ?? 0,
     name: typeof category?.name === 'string' && category.name.length > 0
       ? category.name
       : '이름 없는 토픽',
@@ -43,12 +66,17 @@ function mapTopic(row: any): SubscribedTopic {
     subscribed_at: typeof row?.created_at === 'string'
       ? row.created_at
       : new Date().toISOString(),
-    subscriptionId: String(row?.id ?? crypto.randomUUID())
+    subscriptionId: String(row?.id ?? generateTempId())
   }
 }
 
 async function fetchWithAuth(input: RequestInfo | URL, init?: RequestInit) {
-  const res = await fetch(input, init)
+  const finalInit: RequestInit = {
+    ...(init ?? {}),
+    credentials: init?.credentials ?? 'include',
+  }
+
+  const res = await fetch(input, finalInit)
   if (res.status === 401) {
     throw new Error('Unauthorized')
   }
@@ -69,8 +97,9 @@ export async function getSubscribedTopics(forceRefresh = false): Promise<Subscri
 
     const payload = await res.json()
     const data = Array.isArray(payload?.data) ? payload.data : []
-    topicCache = data.map(mapTopic)
-    return topicCache
+    const mapped = data.map(mapTopic)
+    topicCache = mapped
+    return mapped
   } catch (error) {
     console.error('[follow-manager] getSubscribedTopics failed:', error)
     topicCache = []
@@ -78,12 +107,26 @@ export async function getSubscribedTopics(forceRefresh = false): Promise<Subscri
   }
 }
 
-export async function subscribeTopic(topic: { id: number; slug?: string }): Promise<SubscribedTopic | null> {
+type TopicIdentifier = { id?: number | null; slug?: string | null }
+
+export async function subscribeTopic(topic: TopicIdentifier): Promise<SubscribedTopic | null> {
   try {
+    const payloadBody: Record<string, unknown> = {}
+    if (typeof topic.id === 'number' && Number.isFinite(topic.id) && topic.id > 0) {
+      payloadBody.category_id = topic.id
+    }
+    if (typeof topic.slug === 'string' && topic.slug.trim().length > 0) {
+      payloadBody.category_slug = topic.slug.trim().toLowerCase()
+    }
+
+    if (!payloadBody.category_id && !payloadBody.category_slug) {
+      throw new Error('Missing category identifier')
+    }
+
     const res = await fetchWithAuth(TOPIC_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category_id: topic.id, category_slug: topic.slug })
+      body: JSON.stringify(payloadBody)
     })
 
     if (!res.ok) {
@@ -126,9 +169,17 @@ export async function unsubscribeTopic(topicIdentifier: number | string): Promis
   }
 }
 
-export async function toggleSubscribeTopic(topic: { id: number; slug?: string }): Promise<{ success: boolean; isSubscribed: boolean; topic: SubscribedTopic | null }> {
+export async function toggleSubscribeTopic(topic: TopicIdentifier): Promise<{ success: boolean; isSubscribed: boolean; topic: SubscribedTopic | null }> {
   const current = await getSubscribedTopics()
-  const existing = current.find(item => item.id === topic.id)
+  const existing = current.find(item => {
+    if (typeof topic.id === 'number' && Number.isFinite(topic.id) && topic.id > 0) {
+      return item.id === topic.id
+    }
+    if (typeof topic.slug === 'string' && topic.slug.trim().length > 0) {
+      return item.slug?.toLowerCase() === topic.slug.trim().toLowerCase()
+    }
+    return false
+  })
 
   if (existing) {
     const removed = await unsubscribeTopic(existing.subscriptionId)
@@ -138,6 +189,13 @@ export async function toggleSubscribeTopic(topic: { id: number; slug?: string })
   const created = await subscribeTopic(topic)
   const success = Boolean(created)
   return { success, isSubscribed: success, topic: created }
+}
+
+function generateTempId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `temp-${Math.random().toString(36).slice(2, 11)}`
 }
 
 function mapFollowIds(ids: string[]): FollowedUser[] {
@@ -216,16 +274,32 @@ export async function isFollowingUser(userId: string): Promise<boolean> {
   return users.some(user => user.id === userId)
 }
 
-export async function toggleFollowUser(userId: string): Promise<{ success: boolean; isFollowing: boolean }> {
+type ToggleFollowOptions = {
+  viewerId?: string | null
+}
+
+export async function toggleFollowUser(
+  userId: string,
+  options: ToggleFollowOptions = {}
+): Promise<{ success: boolean; isFollowing: boolean; error?: string }> {
+  const targetId = typeof userId === 'string' ? userId.trim() : ''
+  if (!targetId) {
+    return { success: false, isFollowing: false, error: 'INVALID_TARGET' }
+  }
+
+  if (options.viewerId && options.viewerId === targetId) {
+    return { success: false, isFollowing: false, error: 'SELF_FOLLOW' }
+  }
+
   const currentlyFollowing = await isFollowingUser(userId)
 
   if (currentlyFollowing) {
     const success = await unfollowUser(userId)
-    return { success, isFollowing: !success }
+    return { success, isFollowing: !success, error: success ? undefined : 'UNFOLLOW_FAILED' }
   }
 
   const success = await followUser(userId)
-  return { success, isFollowing: success }
+  return { success, isFollowing: success, error: success ? undefined : 'FOLLOW_FAILED' }
 }
 
 export function clearFollowCaches() {

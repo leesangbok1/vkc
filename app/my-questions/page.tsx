@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import PageLayout from '@/components/layout/PageLayout'
+import BaseModal from '@/components/modals/BaseModal'
 import StatusBadge from '@/components/common/StatusBadge'
-import { renderMarkdownLite } from '@/lib/utils/markdown'
+import FeedCard, { type FeedCardAuthor, type FeedCardActionProps } from '@/components/feed/FeedCard'
 
 type Post = {
   id: string
@@ -13,7 +13,9 @@ type Post = {
   content: string
   categoryName?: string | null
   createdAt: string
-  helpfulCount?: number
+  helpfulCount: number
+  isHelpful: boolean
+  author?: FeedCardAuthor | null
 }
 
 type Question = {
@@ -22,10 +24,11 @@ type Question = {
   content: string
   categoryName: string | null
   createdAt: string
-  viewCount: number
-  upvoteCount: number
   answerCount: number
   status: 'open' | 'resolved'
+  helpfulCount: number
+  isHelpful: boolean
+  author?: FeedCardAuthor | null
 }
 
 type Profile = {
@@ -34,31 +37,62 @@ type Profile = {
   email?: string | null
 }
 
-const markdownToPlainText = (markdown: string): string => {
-  if (typeof window === 'undefined') return markdown
-  const temp = document.createElement('div')
-  temp.innerHTML = renderMarkdownLite(markdown)
-  return temp.textContent || temp.innerText || markdown
+const mapToFeedCardAuthor = (raw: any): FeedCardAuthor | null => {
+  if (!raw) {
+    return null
+  }
+
+  return {
+    id: typeof raw.id === 'string' ? raw.id : String(raw.id ?? 'unknown'),
+    name: typeof raw.name === 'string'
+      ? raw.name
+      : typeof raw.nickname === 'string'
+        ? raw.nickname
+        : null,
+    role: raw.role ?? null,
+    visaType: raw.visa_type ?? raw.visaType ?? null,
+    yearsInKorea: raw.years_in_korea ?? raw.yearsInKorea ?? null,
+    avatarUrl:
+      typeof raw.avatar_url === 'string'
+        ? raw.avatar_url
+        : typeof raw.avatarUrl === 'string'
+          ? raw.avatarUrl
+          : null,
+  }
 }
 
 function mapApiQuestion(raw: any): Question {
   const answerCount = Number(raw?.answer_count ?? 0)
+  const status =
+    typeof raw?.status === 'string'
+      ? (raw.status === 'resolved' ? 'resolved' : 'open')
+      : answerCount > 0
+        ? 'resolved'
+        : 'open'
+
   return {
     id: String(raw?.id ?? ''),
     title: raw?.title ?? '제목 없음',
     content: raw?.content ?? '',
-    categoryName: raw?.category?.name ?? null,
+    categoryName:
+      typeof raw?.category?.name === 'string'
+        ? raw.category.name
+        : typeof raw?.category_name === 'string'
+          ? raw.category_name
+          : null,
     createdAt: raw?.created_at ?? new Date().toISOString(),
-    viewCount: Number(raw?.view_count ?? 0),
-    upvoteCount: Number(raw?.upvote_count ?? 0),
     answerCount,
-    status: answerCount > 0 ? 'resolved' : 'open',
+    status,
+    helpfulCount: Number(raw?.helpful_count ?? raw?.helpfulCount ?? 0),
+    isHelpful: Boolean(raw?.is_helpful_by_viewer),
+    author: mapToFeedCardAuthor(raw?.author),
   }
 }
 
 export default function MyQuestionsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [isModalOpen, setIsModalOpen] = useState(true)
   const [activeTab, setActiveTab] = useState<'questions' | 'posts'>('questions')
   const [questions, setQuestions] = useState<Question[]>([])
   const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('all')
@@ -70,6 +104,7 @@ export default function MyQuestionsPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [postsLoading, setPostsLoading] = useState(true)
   const [postsError, setPostsError] = useState<string | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     const tab = (searchParams?.get('tab') || '').toLowerCase()
@@ -197,9 +232,16 @@ export default function MyQuestionsPage() {
               id: String(raw?.id ?? ''),
               title: raw?.title ?? '제목 없음',
               content: raw?.content ?? '',
-              categoryName: raw?.category?.name ?? raw?.category ?? null,
+              categoryName:
+                typeof raw?.category?.name === 'string'
+                  ? raw.category.name
+                  : typeof raw?.category === 'string'
+                    ? raw.category
+                    : null,
               createdAt: raw?.created_at ?? raw?.createdAt ?? new Date().toISOString(),
-              helpfulCount: raw?.helpful_count ?? raw?.helpful ?? 0,
+              helpfulCount: Number(raw?.helpful_count ?? raw?.helpful ?? 0),
+              isHelpful: Boolean(raw?.is_helpful_by_viewer),
+              author: mapToFeedCardAuthor(raw?.author),
             }))
             .filter((item) => item.id.length > 0)
           setPosts(mapped)
@@ -238,26 +280,6 @@ export default function MyQuestionsPage() {
     [questions]
   )
 
-  function getTimeAgo(dateString: string) {
-    const now = new Date()
-    const past = new Date(dateString)
-    const diff = now.getTime() - past.getTime()
-
-    const seconds = Math.floor(diff / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-    const days = Math.floor(hours / 24)
-
-    if (days > 0) return `${days}일 전`
-    if (hours > 0) return `${hours}시간 전`
-    if (minutes > 0) return `${minutes}분 전`
-    return '방금 전'
-  }
-
-  function deleteQuestion(_id: string) {
-    alert('DB 연동 버전에서는 질문 삭제 기능이 준비 중입니다.')
-  }
-
   const handleRetry = () => setReloadKey((prev) => prev + 1)
 
   const handleChangeTab = (tab: 'questions' | 'posts') => {
@@ -272,6 +294,48 @@ export default function MyQuestionsPage() {
     router.replace(query ? `/my-questions?${query}` : '/my-questions')
   }
 
+  const handleEditPost = useCallback(
+    (postId: string) => {
+      setIsModalOpen(false)
+      router.push(`/posts/${postId}/edit`)
+    },
+    [router, setIsModalOpen]
+  )
+
+  const handleDeletePost = useCallback(
+    async (postId: string) => {
+      if (typeof window !== 'undefined') {
+        const confirmed = window.confirm(
+          '정말로 이 게시글을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.'
+        )
+        if (!confirmed) {
+          return
+        }
+      }
+
+      setPendingDeleteId(postId)
+      try {
+        const res = await fetch(`/api/posts/${postId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        const json = await res.json().catch(() => null)
+        if (!res.ok || !json?.success) {
+          const message = json?.error || '게시글 삭제에 실패했습니다.'
+          alert(message)
+          return
+        }
+        setPosts((prev) => prev.filter((item) => item.id !== postId))
+      } catch (err) {
+        console.error('[MyPosts] delete failed', err)
+        alert('게시글 삭제 중 오류가 발생했습니다.')
+      } finally {
+        setPendingDeleteId((current) => (current === postId ? null : current))
+      }
+    },
+    [setPosts, setPendingDeleteId]
+  )
+
   const isQuestionsTab = activeTab === 'questions'
   const currentLoading = isQuestionsTab ? loading : postsLoading
   const currentError = isQuestionsTab ? error : postsError
@@ -285,8 +349,26 @@ export default function MyQuestionsPage() {
     ? `총 ${posts.length}개의 정보 글`
     : '로그인 후 정보 글을 확인할 수 있습니다.'
 
+  const handleClose = () => {
+    setIsModalOpen(false)
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/')
+    }
+  }
+
   return (
-    <PageLayout variant="centered">
+    <BaseModal
+      isOpen={isModalOpen}
+      onClose={handleClose}
+      width="960px"
+      maxWidth="95vw"
+      adaptiveMode={true}
+      fullScreenOnMobile={true}
+      showBackButton={true}
+      className="my-questions-modal"
+    >
       <div className="my-questions-container">
         <div className="section my-questions-header-section">
           <div className="my-questions-header-row">
@@ -427,124 +509,120 @@ export default function MyQuestionsPage() {
           <>
             {isQuestionsTab ? (
               <div className="feed-container my-questions-list">
-                {filteredQuestions.map((question) => (
-                  <div key={question.id} className="question-card">
-                    <div className="my-question-status-badge">
-                      <StatusBadge resolved={question.status === 'resolved'} />
+                {filteredQuestions.map((question) => {
+                  const author =
+                    question.author ??
+                    (profile
+                      ? {
+                          id: profile.id,
+                          name: profile.name ?? profile.email ?? '나',
+                        }
+                      : { id: 'unknown', name: '커뮤니티 멤버' })
+
+                  const stats =
+                    question.answerCount > 0
+                      ? <span>답변 {question.answerCount}개</span>
+                      : <span>아직 답변이 없어요</span>
+
+                  const actionProps: FeedCardActionProps = {
+                    targetType: 'question',
+                    helpfulCount: question.helpfulCount,
+                    isHelpful: question.isHelpful,
+                    requireLogin: !isLoggedIn,
+                    compact: true,
+                    onLoginRequired: () => router.push('/auth/login?redirectTo=/my-questions'),
+                  }
+
+                  return (
+                    <div key={question.id} className="my-questions-feed-card">
+                      <FeedCard
+                        id={question.id}
+                        itemType="question"
+                        title={question.title}
+                        body={question.content}
+                        href={`/questions/${question.id}`}
+                        createdAt={question.createdAt}
+                        topic={question.categoryName ?? undefined}
+                        author={author}
+                        stats={stats}
+                        badge={<StatusBadge resolved={question.status === 'resolved'} compact />}
+                        actionProps={actionProps}
+                        showReportButton
+                        onNavigate={(href) => {
+                          setIsModalOpen(false)
+                          router.push(href)
+                        }}
+                        onAuthorClick={(authorId) => {
+                          setIsModalOpen(false)
+                          router.push(`/users/${authorId}`)
+                        }}
+                        ownerActions={{
+                          onEdit: () => handleEditPost(post.id),
+                          onDelete: () => handleDeletePost(post.id),
+                          isDeleting: pendingDeleteId === post.id,
+                        }}
+                      />
                     </div>
-
-                    <Link href={`/questions/${question.id}`}>
-                      <h3 className="question-title my-question-title-link">
-                        {question.title}
-                      </h3>
-                    </Link>
-
-                    <p className="question-content my-question-content-preview">
-                      {(() => {
-                        const text = markdownToPlainText(question.content)
-                        return text.length > 150 ? `${text.substring(0, 150)}...` : text
-                      })()}
-                    </p>
-
-                    {question.categoryName && (
-                      <div className="my-question-topics">
-                        <span className="tag-pill my-question-topic-tag">
-                          {question.categoryName}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="my-question-stats-actions">
-                      <div className="question-stats">
-                        <div className="stat-item">
-                          <span>👁️</span>
-                          <span>{question.viewCount}</span>
-                        </div>
-                        <div className="stat-item">
-                          <span>👍</span>
-                          <span>{question.upvoteCount}</span>
-                        </div>
-                        <div className="stat-item">
-                          <span>💬</span>
-                          <span>{question.answerCount}개 답변</span>
-                        </div>
-                        <div className="stat-item">
-                          <span className="my-question-time-stat">
-                            {getTimeAgo(question.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="my-question-actions">
-                        <Link href={`/questions/${question.id}`}>
-                          <button className="btn btn-secondary my-question-btn">
-                            자세히 보기
-                          </button>
-                        </Link>
-                        <button
-                          className="btn btn-secondary my-question-btn-delete"
-                          onClick={() => deleteQuestion(question.id)}
-                          title="삭제"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="feed-container my-questions-list">
-                {posts.map((post) => (
-                  <div key={post.id} className="question-card">
-                    <Link href={`/posts/${post.id}`}>
-                      <h3 className="question-title my-question-title-link">
-                        {post.title}
-                      </h3>
-                    </Link>
+                {posts.map((post) => {
+                  const author =
+                    post.author ??
+                    (profile
+                      ? {
+                          id: profile.id,
+                          name: profile.name ?? profile.email ?? '나',
+                        }
+                      : { id: 'unknown', name: '커뮤니티 멤버' })
 
-                    <p className="question-content my-question-content-preview">
-                      {post.content.length > 150
-                        ? `${post.content.substring(0, 150)}...`
-                        : post.content}
-                    </p>
+                  const actionProps: FeedCardActionProps = {
+                    targetType: 'post',
+                    helpfulCount: post.helpfulCount,
+                    isHelpful: post.isHelpful,
+                    requireLogin: !isLoggedIn,
+                    compact: true,
+                    onLoginRequired: () => router.push('/auth/login?redirectTo=/my-questions?tab=posts'),
+                  }
 
-                    {post.categoryName && (
-                      <div className="my-question-topics">
-                        <span className="tag-pill my-question-topic-tag">
-                          {post.categoryName}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="my-question-stats-actions">
-                      <div className="question-stats">
-                        <div className="stat-item">
-                          <span>💡</span>
-                          <span>{(post.helpfulCount ?? 0)} 도움됨</span>
-                        </div>
-                        <div className="stat-item">
-                          <span className="my-question-time-stat">
-                            {getTimeAgo(post.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="my-question-actions">
-                        <Link href={`/posts/${post.id}`}>
-                          <button className="btn btn-secondary my-question-btn">
-                            자세히 보기
-                          </button>
-                        </Link>
-                      </div>
+                  return (
+                    <div key={post.id} className="my-questions-feed-card">
+                      <FeedCard
+                        id={post.id}
+                        itemType="post"
+                        title={post.title}
+                        body={post.content}
+                        href={`/posts/${post.id}`}
+                        createdAt={post.createdAt}
+                        topic={post.categoryName ?? undefined}
+                        author={author}
+                        stats={post.helpfulCount > 0 ? <span>도움됨 {post.helpfulCount}</span> : null}
+                        actionProps={actionProps}
+                        showReportButton
+                        onNavigate={(href) => {
+                          setIsModalOpen(false)
+                          router.push(href)
+                        }}
+                        onAuthorClick={(authorId) => {
+                          setIsModalOpen(false)
+                          router.push(`/users/${authorId}`)
+                        }}
+                        ownerActions={{
+                          onEdit: () => handleEditPost(post.id),
+                          onDelete: () => handleDeletePost(post.id),
+                          isDeleting: pendingDeleteId === post.id,
+                        }}
+                      />
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </>
         )}
       </div>
-    </PageLayout>
+    </BaseModal>
   )
 }

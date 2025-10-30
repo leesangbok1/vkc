@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { BRAND_NAME } from '@/lib/constants/branding'
+import { useLoginModal } from '@/contexts/LoginModalContext'
 
 interface LoginPromptModalProps {
   isOpen: boolean
@@ -17,7 +17,7 @@ export default function LoginPromptModal({
   message = '이 기능은 로그인이 필요합니다',
   redirectTo = '/'
 }: LoginPromptModalProps) {
-  const router = useRouter()
+  const { openLoginModal } = useLoginModal()
 
   // ESC 키로 모달 닫기
   useEffect(() => {
@@ -43,9 +43,7 @@ export default function LoginPromptModal({
 
   const handleLogin = () => {
     onClose()
-    // redirectTo 파라미터와 함께 로그인 페이지로 이동
-    const loginUrl = `/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`
-    router.push(loginUrl)
+    openLoginModal({ redirectTo, message })
   }
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {

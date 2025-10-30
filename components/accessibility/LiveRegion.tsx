@@ -77,7 +77,7 @@ export function AccessibleToast({
       case 'success': return 'bg-trust text-white'
       case 'error': return 'bg-error text-white'
       case 'warning': return 'bg-warning-500 text-primary'
-      default: return 'bg-primary-blue text-white'
+      default: return 'bg-vk-primary text-white'
     }
   }
 

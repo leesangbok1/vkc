@@ -1,5 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { PostgrestError } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase'
+import type { SupabaseDbClient } from '@/lib/server/supabase-clients'
 
 const NON_REMOVABLE_FIELDS = new Set(['id', 'email'])
 const MAX_ATTEMPTS = 8
@@ -9,19 +10,26 @@ type ResilientMutationResult = {
   error: null | { code?: string; message?: string; details?: string | null; hint?: string | null }
 }
 
+type UsersTable = Database['public']['Tables']['users']
+type UserInsertPayload = UsersTable['Insert']
+type UserUpdatePayload = UsersTable['Update']
+
 export async function upsertUserWithFallback(
-  client: SupabaseClient<Database>,
-  payload: Record<string, unknown>,
-  options: { onConflict?: string } = {}
+  client: SupabaseDbClient,
+  payload: UserInsertPayload,
+  options: { onConflict?: keyof Database['public']['Tables']['users']['Row'] } = {}
 ): Promise<ResilientMutationResult> {
-  const attemptPayload: Record<string, unknown> = { ...payload }
+  const attemptPayload: Partial<UserInsertPayload> = { ...payload }
   const removedColumns: string[] = []
   let lastError: ResilientMutationResult['error'] = null
 
+  const usersQuery = client.from('users')
+
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-    const { error } = await client
-      .from('users')
-      .upsert(attemptPayload as any, { onConflict: options.onConflict ?? 'id' })
+    const { error } = await usersQuery
+      .upsert(attemptPayload as UsersTable['Insert'], {
+        onConflict: options.onConflict ? String(options.onConflict) : 'id'
+      })
 
     if (!error) {
       return { removedColumns, error: null }
@@ -37,7 +45,11 @@ export async function upsertUserWithFallback(
       break
     }
 
-    delete attemptPayload[missingColumn]
+    const columnKey = missingColumn as keyof UserInsertPayload
+    if (!Object.prototype.hasOwnProperty.call(attemptPayload, columnKey)) {
+      break
+    }
+    delete attemptPayload[columnKey]
     removedColumns.push(missingColumn)
   }
 
@@ -45,11 +57,11 @@ export async function upsertUserWithFallback(
 }
 
 export async function updateUserWithFallback(
-  client: SupabaseClient<Database>,
+  client: SupabaseDbClient,
   id: string,
-  payload: Record<string, unknown>
+  payload: Partial<UserUpdatePayload>
 ): Promise<ResilientMutationResult> {
-  const attemptPayload: Record<string, unknown> = { ...payload }
+  const attemptPayload: Partial<UserUpdatePayload> = { ...payload }
   const removedColumns: string[] = []
   let lastError: ResilientMutationResult['error'] = null
 
@@ -57,10 +69,11 @@ export async function updateUserWithFallback(
     return { removedColumns, error: null }
   }
 
+  const usersQuery = client.from('users')
+
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-    const { error } = await client
-      .from('users')
-      .update(attemptPayload as any)
+    const { error } = await usersQuery
+      .update(attemptPayload as UsersTable['Update'])
       .eq('id', id)
 
     if (!error) {
@@ -77,14 +90,18 @@ export async function updateUserWithFallback(
       break
     }
 
-    delete attemptPayload[missingColumn]
+    const columnKey = missingColumn as keyof UserUpdatePayload
+    if (!Object.prototype.hasOwnProperty.call(attemptPayload, columnKey)) {
+      break
+    }
+    delete attemptPayload[columnKey]
     removedColumns.push(missingColumn)
   }
 
   return { removedColumns, error: lastError }
 }
 
-function extractMissingColumnName(error: { code?: string; message?: string } | null) {
+function extractMissingColumnName(error: PostgrestError | null) {
   if (!error) return null
   if (error.code !== 'PGRST204') return null
 

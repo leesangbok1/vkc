@@ -1,6 +1,15 @@
 import { Database } from '@/lib/supabase'
 import { createServerLogger } from '@/lib/utils/server-logger'
 import { BRAND_NAME } from '@/lib/constants/branding'
+import { createSupabaseServiceClient } from '@/lib/supabase-server'
+import {
+  NotificationPriority,
+  filterChannels,
+  isPriorityAllowed,
+  isTypeAllowed,
+  normalizePriority,
+  resolvePreferences
+} from '@/lib/services/notification-preferences'
 
 type Answer = Database['public']['Tables']['answers']['Row']
 type Question = Database['public']['Tables']['questions']['Row']
@@ -14,7 +23,7 @@ interface NotificationData {
   type: string
   title: string
   message: string
-  priority?: 'low' | 'medium' | 'high' | 'urgent'
+  priority?: NotificationPriority
   related_id?: string
   related_type?: string
   action_url?: string
@@ -37,23 +46,87 @@ class NotificationTriggers {
    */
   private async sendNotification(data: NotificationData): Promise<void> {
     try {
-      const response = await fetch('/api/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-      })
+      const supabase = createSupabaseServiceClient()
+      const normalizedPriority = normalizePriority(data.priority)
 
-      if (!response.ok) {
-        const errorData = await response.text()
-        logger.error('Failed to send notification', undefined, {
+      const { data: profile, error: preferenceError } = await supabase
+        .from('users')
+        .select('notification_preferences')
+        .eq('id', data.target_user_id)
+        .maybeSingle()
+
+      if (preferenceError) {
+        logger.error('Failed to fetch notification preferences', preferenceError as Error, {
           action: 'sendNotification',
-          statusCode: response.status,
-          responseData: errorData,
-          notificationData: data
+          targetUserId: data.target_user_id,
+          severity: 'medium'
         })
       }
+
+      const preferences = resolvePreferences(profile?.notification_preferences)
+
+      if (!isTypeAllowed(data.type, preferences)) {
+        logger.info('Notification suppressed (type preference)', {
+          action: 'sendNotification',
+          targetUserId: data.target_user_id,
+          type: data.type
+        })
+        return
+      }
+
+      if (!isPriorityAllowed(normalizedPriority, preferences)) {
+        logger.info('Notification suppressed (priority preference)', {
+          action: 'sendNotification',
+          targetUserId: data.target_user_id,
+          type: data.type,
+          priority: normalizedPriority,
+          threshold: preferences.priority_threshold
+        })
+        return
+      }
+
+      const effectiveChannels = filterChannels(data.channels, preferences)
+
+      const payload: Database['public']['Tables']['notifications']['Insert'] = {
+        user_id: data.target_user_id,
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        related_id: data.related_id ?? null,
+        related_type: data.related_type ?? null,
+        is_read: false,
+        is_email_sent: false,
+        is_push_sent: false,
+        is_kakao_sent: false,
+        channels: effectiveChannels,
+        data: {
+          priority: normalizedPriority,
+          action_url: data.action_url ?? null,
+          metadata: data.metadata ?? {}
+        }
+      }
+
+      const { error } = await supabase
+        .from('notifications')
+        .insert(payload)
+
+      if (error) {
+        logger.error('Failed to insert notification', error as Error, {
+          action: 'sendNotification',
+          targetUserId: data.target_user_id,
+          type: data.type,
+          severity: 'high'
+        })
+        return
+      }
+
+      logger.info('Notification inserted into database', {
+        action: 'sendNotification',
+        targetUserId: data.target_user_id,
+        type: data.type,
+        priority: normalizedPriority,
+        channels: effectiveChannels
+      })
     } catch (error) {
       logger.error('Notification sending error', error as Error, {
         action: 'sendNotification',

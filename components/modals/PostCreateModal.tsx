@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import BaseModal from './BaseModal'
 import RichEditor from '@/components/editor/RichEditor'
 import { EDITOR_USAGE_GUIDE } from '@/lib/constants/editor'
+import { useAuth } from '@/lib/hooks/useAuth'
+import { useFirstPostPrompt } from '@/contexts/FirstPostPromptContext'
+import { registerFirstPostCreation } from '@/lib/utils/first-post-prompt'
 
 interface PostCreateModalProps {
   isOpen: boolean
@@ -12,18 +15,11 @@ interface PostCreateModalProps {
   onSuccess?: (postId: string) => void
 }
 
-const POST_CATEGORIES = [
-  { id: '비자/이민', name: '비자/이민', icon: '🛂' },
-  { id: '교육', name: '교육', icon: '🎓' },
-  { id: '취업', name: '취업', icon: '💼' },
-  { id: '한국생활', name: '한국생활', icon: '🏠' },
-  { id: '법률', name: '법률', icon: '⚖️' },
-  { id: '금융', name: '금융', icon: '💰' },
-  { id: '의료', name: '의료', icon: '🏥' },
-  { id: '교통', name: '교통', icon: '🚗' },
-  { id: '부동산', name: '부동산', icon: '🏢' },
-  { id: '기타', name: '기타', icon: '📌' }
-]
+interface CategoryOption {
+  id: number | string
+  name: string
+  icon?: string | null
+}
 
 export default function PostCreateModal({
   isOpen,
@@ -31,15 +27,56 @@ export default function PostCreateModal({
   onSuccess
 }: PostCreateModalProps) {
   const router = useRouter()
+  const { user } = useAuth()
+  const { openFirstPostPrompt } = useFirstPostPrompt()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [category, setCategory] = useState('기타') // 기본값
+  const [categoryId, setCategoryId] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [categoryError, setCategoryError] = useState<string | null>(null)
 
   const MIN_TITLE_LENGTH = 5
   const MIN_CONTENT_LENGTH = 20
 
-  const isValid = title.trim().length >= MIN_TITLE_LENGTH && content.trim().length >= MIN_CONTENT_LENGTH
+  const isValid =
+    title.trim().length >= MIN_TITLE_LENGTH &&
+    content.trim().length >= MIN_CONTENT_LENGTH &&
+    !!categoryId
+
+  useEffect(() => {
+    async function loadCategories() {
+      setLoadingCategories(true)
+      setCategoryError(null)
+      try {
+        const res = await fetch('/api/categories', { cache: 'no-store' })
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null)
+          throw new Error(payload?.error || '카테고리를 불러오지 못했습니다.')
+        }
+        const payload = await res.json()
+        const data = Array.isArray(payload?.data) ? payload.data : []
+        setCategories(data)
+        if (data.length > 0) {
+          setCategoryId(String(data[0].id))
+        } else {
+          setCategoryId('')
+        }
+      } catch (err: any) {
+        console.error('[PostCreateModal] loadCategories failed:', err)
+        setCategories([])
+        setCategoryError(err?.message || '카테고리를 불러오지 못했습니다.')
+        setCategoryId('')
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+
+    if (isOpen) {
+      loadCategories()
+    }
+  }, [isOpen])
 
   const submitPost = async () => {
     const trimmedTitle = title.trim()
@@ -55,6 +92,11 @@ export default function PostCreateModal({
       return
     }
 
+    if (!categoryId) {
+      alert('카테고리를 선택해주세요')
+      return
+    }
+
     setSubmitting(true)
 
     try {
@@ -66,31 +108,50 @@ export default function PostCreateModal({
         body: JSON.stringify({
           title: trimmedTitle,
           content: trimmedContent,
-          category: category,
+          category_id: Number(categoryId),
         }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
+      const payload = await response.json().catch(() => null)
 
-        // 성공 콜백 실행
-        if (onSuccess) {
-          onSuccess(data.id)
-        } else {
-          alert('게시글이 성공적으로 등록되었습니다!')
-          router.push(`/posts/${data.id}`)
-        }
-
-        // 모달 닫기
-        onClose()
-
-        // 폼 초기화
-        setTitle('')
-        setContent('')
-        setCategory('기타')
-      } else {
-        alert('게시글 작성 중 오류가 발생했습니다.')
+      if (!response.ok) {
+        const message = payload?.error || '게시글 작성 중 오류가 발생했습니다.'
+        alert(message)
+        return
       }
+
+      const createdIdValue = payload?.data?.id
+      const createdId = createdIdValue ? String(createdIdValue) : null
+
+      if (!createdId) {
+        console.warn('[PostCreateModal] Missing post id in response payload:', payload)
+        alert('게시글은 저장되었지만 상세 페이지 이동에 실패했습니다. 새로고침 후 다시 확인해주세요.')
+        onClose()
+        return
+      }
+
+      const shouldOpenFirstPostPrompt = registerFirstPostCreation(user?.id)
+      if (shouldOpenFirstPostPrompt) {
+        const returnTo = `/posts/${createdId}`
+        const notificationSettingsUrl = `/settings?section=notifications&modal=settings&returnTo=${encodeURIComponent(returnTo)}`
+        openFirstPostPrompt({
+          userId: user?.id ?? null,
+          userEmail: user?.email ?? null,
+          targetUrl: notificationSettingsUrl
+        })
+      }
+
+      if (onSuccess) {
+        onSuccess(createdId)
+      } else {
+        alert('게시글이 성공적으로 등록되었습니다!')
+        router.push(`/posts/${createdId}`)
+      }
+
+      onClose()
+      setTitle('')
+      setContent('')
+      setCategoryId(categories.length > 0 ? String(categories[0].id) : '')
     } catch (error) {
       console.error('Post submission failed:', error)
       alert('게시글 작성 중 오류가 발생했습니다.')
@@ -113,7 +174,7 @@ export default function PostCreateModal({
       if (confirm('작성 중인 내용이 있습니다. 정말 취소하시겠습니까?')) {
         setTitle('')
         setContent('')
-        setCategory('기타')
+        setCategoryId(categories.length > 0 ? String(categories[0].id) : '')
         onClose()
       }
     } else {
@@ -153,45 +214,62 @@ export default function PostCreateModal({
 
         {/* Content */}
         <div style={{ padding: '1.5rem' }}>
-          {/* Category Selection */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="post-category"
-              style={{
-                display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '0.5rem'
-              }}
-            >
-              카테고리<span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <select
-              id="post-category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '0.95rem',
-                backgroundColor: 'white'
-              }}
-            >
-              {POST_CATEGORIES.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name}
+        {/* Category Selection */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label
+            htmlFor="post-category"
+            style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}
+          >
+            카테고리<span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <select
+            id="post-category"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            required
+            disabled={loadingCategories || (!!categoryError && categories.length === 0)}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              backgroundColor: 'white'
+            }}
+          >
+            {loadingCategories ? (
+              <option value="" disabled>
+                카테고리를 불러오는 중입니다...
+              </option>
+            ) : categories.length > 0 ? (
+              categories.map((cat) => (
+                <option key={cat.id} value={String(cat.id)}>
+                  {cat.icon ? `${cat.icon} ` : ''}
+                  {cat.name}
                 </option>
-              ))}
-            </select>
-          </div>
+              ))
+            ) : (
+              <option value="" disabled>
+                {categoryError || '사용 가능한 카테고리가 없습니다.'}
+              </option>
+            )}
+          </select>
+          {!loadingCategories && categoryError && (
+            <p style={{ color: '#ef4444', marginTop: '0.5rem', fontSize: '0.85rem' }}>
+              {categoryError}
+            </p>
+          )}
+        </div>
 
-          {/* Post Title */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
+        {/* Post Title */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label
               htmlFor="post-title"
               style={{
                 display: 'block',

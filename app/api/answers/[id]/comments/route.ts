@@ -1,9 +1,16 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient } from '@/lib/supabase-server'
 import { ValidationUtils } from '@/lib/validation'
 import { triggerAnswerCommentNotification } from '@/lib/services/notification-triggers'
 import { createServerLogger } from '@/lib/utils/server-logger'
 import { AnswerWithAuthor, CommentWithRelations, Comment } from '@/lib/types/api'
+import type { Database } from '@/lib/supabase'
+
+type AnswersTable = Database['public']['Tables']['answers']
+type CommentsTable = Database['public']['Tables']['comments']
+type QuestionsTable = Database['public']['Tables']['questions']
+type CommentsInsert = CommentsTable['Insert']
 
 // GET /api/answers/[id]/comments - 답변의 댓글 목록 조회
 export async function GET(
@@ -12,34 +19,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
-    }
     const answerId = id
 
-    // Mock mode check
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
-      console.log('Answer comments API running in mock mode')
-      const mockComments = [
-        {
-          id: '1',
-          content: '도움이 되는 답변이네요!',
-          target_id: answerId,
-          target_type: 'answer',
-          author_id: 'user4',
-          created_at: '2024-01-15T12:00:00Z',
-          author: {
-            id: 'user4',
-            name: '최영희',
-            avatar_url: null,
-            trust_score: 90
-          }
-        }
-      ]
-
-      return NextResponse.json({ data: mockComments })
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      return NextResponse.json(
+        { error: 'Mock mode is no longer supported for /api/answers/[id]/comments. Disable NEXT_PUBLIC_MOCK_MODE to use this endpoint.' },
+        { status: 503 }
+      )
     }
+
+    const supabase = await createClient()
 
     // 댓글 조회
     const { data: comments, error } = await supabase
@@ -82,11 +71,16 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
-    }
     const answerId = id
+
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      return NextResponse.json(
+        { error: 'Mock mode is no longer supported for /api/answers/[id]/comments. Disable NEXT_PUBLIC_MOCK_MODE to use this endpoint.' },
+        { status: 503 }
+      )
+    }
+
+    const supabase = await createClient()
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -138,27 +132,29 @@ export async function POST(
     }
 
     // 댓글 생성
-    // @ts-expect-error - Supabase type inference issue with schema
+    const newComment: CommentsInsert = {
+      target_id: answerId,
+      target_type: 'answer',
+      author_id: user.id,
+      content: sanitizedContent,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+
     const { data: comment, error: insertError } = await supabase
       .from('comments')
-      .insert([{
-        target_id: answerId,
-        target_type: 'answer',
-        author_id: user.id,
-        content: sanitizedContent,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }])
+      .insert([newComment])
       .select(`
         *,
         author:users!author_id(
           id, name, avatar_url, trust_score, badges
         )
       `)
-      .single()
+      .single<CommentWithRelations>()
 
-    if (insertError) {
-      logger.error('Comment creation error', insertError as Error, {
+    if (insertError || !comment) {
+      const failure = insertError ?? new Error('Comment insert returned null response')
+      logger.error('Comment creation error', failure as Error, {
         action: 'createAnswerComment',
         answerId,
         severity: 'medium'

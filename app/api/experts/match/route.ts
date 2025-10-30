@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
         category,
         tags,
         urgency
-      }
+      } as unknown as QuestionWithRelations
 
       // Certified User 매칭 알고리즘 실행
       const matches = findExpertMatches(questionData, mockExperts)

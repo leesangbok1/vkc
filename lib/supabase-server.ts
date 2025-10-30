@@ -1,16 +1,8 @@
+import { createClient } from '@supabase/supabase-js'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from './supabase'
-
-const sanitizeCookieValue = (value?: string | null) => {
-  if (!value) return undefined
-  const trimmed = value.trim()
-  if (!trimmed) return undefined
-  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    return trimmed.slice(1, -1)
-  }
-  return trimmed.replace(/"/g, '')
-}
+import { sanitizeSupabaseCookieValue } from '@/lib/utils/supabase-cookie'
 
 // 서버 사이드 Supabase 클라이언트 (API Routes, Server Components용)
 export const createSupabaseServerClient = async () => {
@@ -22,13 +14,13 @@ export const createSupabaseServerClient = async () => {
   try {
     const cookieStore = await cookies()
 
-    return createServerClient<Database>(
+    return createServerClient<Database, 'public'>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           get(name: string) {
-            return sanitizeCookieValue(cookieStore.get(name)?.value)
+            return sanitizeSupabaseCookieValue(name, cookieStore.get(name)?.value)
           },
           set(name: string, value: string, options: CookieOptions) {
             // API Routes에서는 쿠키 설정 가능
@@ -64,13 +56,13 @@ export const createSupabaseServerReadClient = async () => {
   try {
     const cookieStore = await cookies()
 
-    return createServerClient<Database>(
+    return createServerClient<Database, 'public'>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           get(name: string) {
-            return sanitizeCookieValue(cookieStore.get(name)?.value)
+            return sanitizeSupabaseCookieValue(name, cookieStore.get(name)?.value)
           },
           set() {
             // 읽기 전용 클라이언트는 쿠키 설정 안함
@@ -94,19 +86,14 @@ export const createSupabaseServiceClient = () => {
     throw new Error('Missing required Supabase environment variables for service client')
   }
 
-  return createServerClient<Database>(
+  return createClient<Database, 'public'>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        get() { return null },
-        set() {},
-        remove() {},
-      },
       auth: {
         autoRefreshToken: false,
-        persistSession: false
-      }
+        persistSession: false,
+      },
     }
   )
 }

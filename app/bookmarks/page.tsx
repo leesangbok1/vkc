@@ -1,76 +1,307 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
+import FeedCard, { type FeedCardAuthor, type FeedCardItemType } from '@/components/feed/FeedCard'
+import { Badge } from '@/components/ui/badge'
+import { FeedSkeleton } from '@/components/questions/FeedSkeleton'
 import {
   getBookmarks,
   removeBookmark as removeBookmarkUtil,
-  type Bookmark
+  type Bookmark,
 } from '@/lib/utils/bookmark-manager'
+
+type BookmarkCardModel = {
+  bookmarkId: string
+  targetId: string
+  itemType: FeedCardItemType
+  title: string
+  body: string
+  href: string
+  createdAt: string
+  topic?: string
+  author?: FeedCardAuthor
+  statsLabel?: string | null
+  badgeLabel?: string | null
+}
+
+const BOOKMARK_LABEL: Record<FeedCardItemType, string> = {
+  question: '질문',
+  post: '게시글',
+  answer: '답변',
+}
+
+function normalizeAuthor(input: any | null | undefined): FeedCardAuthor | undefined {
+  if (!input || typeof input !== 'object') return undefined
+  const raw = input as Record<string, any>
+
+  const id =
+    typeof raw.id === 'string' && raw.id.trim().length > 0
+      ? raw.id.trim()
+      : typeof raw.user_id === 'string' && raw.user_id.trim().length > 0
+        ? raw.user_id.trim()
+        : 'unknown'
+
+  const name =
+    typeof raw.name === 'string' && raw.name.trim().length > 0 ? raw.name.trim() : undefined
+
+  const role =
+    typeof raw.role === 'string' && raw.role.trim().length > 0 ? raw.role.trim() : undefined
+
+  const avatarUrl =
+    typeof raw.avatar_url === 'string' && raw.avatar_url.length > 0
+      ? raw.avatar_url
+      : typeof raw.avatarUrl === 'string' && raw.avatarUrl.length > 0
+        ? raw.avatarUrl
+        : undefined
+
+  const visaType =
+    typeof raw.visa_type === 'string'
+      ? raw.visa_type
+      : typeof raw.visaType === 'string'
+        ? raw.visaType
+        : undefined
+
+  const yearsInKorea =
+    typeof raw.years_in_korea === 'number'
+      ? raw.years_in_korea
+      : typeof raw.yearsInKorea === 'number'
+        ? raw.yearsInKorea
+        : undefined
+
+  return {
+    id,
+    name,
+    role,
+    avatarUrl,
+    visaType,
+    yearsInKorea,
+  }
+}
+
+function getDefaultHref(bookmark: Bookmark): string {
+  if (bookmark.type === 'post') {
+    return `/posts/${bookmark.targetId}`
+  }
+  if (bookmark.type === 'question') {
+    return `/questions/${bookmark.targetId}`
+  }
+  return `/answers/${bookmark.targetId}`
+}
+
+function buildFallbackModel(bookmark: Bookmark): BookmarkCardModel {
+  const itemType = bookmark.type as FeedCardItemType
+  const label = BOOKMARK_LABEL[itemType]
+  const title =
+    bookmark.title && bookmark.title.trim().length > 0
+      ? bookmark.title
+      : `${label} 북마크`
+  const body =
+    bookmark.content && bookmark.content.trim().length > 0
+      ? bookmark.content
+      : '저장된 미리보기가 없습니다.'
+
+  return {
+    bookmarkId: bookmark.id,
+    targetId: bookmark.targetId,
+    itemType,
+    title,
+    body,
+    href: getDefaultHref(bookmark),
+    createdAt: bookmark.createdAt,
+    topic: itemType === 'post' ? '정보글' : undefined,
+    statsLabel: null,
+    badgeLabel: label,
+  }
+}
+
+async function hydrateBookmark(bookmark: Bookmark): Promise<BookmarkCardModel> {
+  const fallback = buildFallbackModel(bookmark)
+
+  try {
+    if (bookmark.type === 'question') {
+      const res = await fetch(`/api/questions/${bookmark.targetId}`, { cache: 'no-store' })
+      if (!res.ok) return fallback
+      const payload = await res.json().catch(() => null)
+      const question = payload?.question
+      if (!question) return fallback
+
+      const answerCount = Number(question.answer_count ?? 0)
+
+      return {
+        bookmarkId: bookmark.id,
+        targetId: question.id ?? bookmark.targetId,
+        itemType: 'question',
+        title: question.title ?? fallback.title,
+        body: question.content ?? fallback.body,
+        href: `/questions/${question.id}`,
+        createdAt: question.created_at ?? bookmark.createdAt,
+        topic: question.category?.name ?? fallback.topic,
+        author: normalizeAuthor(question.author),
+        statsLabel: answerCount > 0 ? `답변 ${answerCount}개` : null,
+        badgeLabel: BOOKMARK_LABEL.question,
+      }
+    }
+
+    if (bookmark.type === 'post') {
+      const res = await fetch(`/api/posts/${bookmark.targetId}`, { cache: 'no-store' })
+      if (!res.ok) return fallback
+      const payload = await res.json().catch(() => null)
+      const post = payload?.data
+      if (!post) return fallback
+
+      const commentCount = Number(post.comment_count ?? 0)
+      const helpfulCount = Number(post.helpful_count ?? 0)
+      const statsLabel =
+        commentCount > 0
+          ? `댓글 ${commentCount}개`
+          : helpfulCount > 0
+            ? `도움됨 ${helpfulCount}개`
+            : null
+
+      return {
+        bookmarkId: bookmark.id,
+        targetId: post.id ?? bookmark.targetId,
+        itemType: 'post',
+        title: post.title ?? fallback.title,
+        body: post.content ?? fallback.body,
+        href: `/posts/${post.id}`,
+        createdAt: post.created_at ?? bookmark.createdAt,
+        topic: post.category?.name ?? fallback.topic,
+        author: normalizeAuthor(post.author),
+        statsLabel,
+        badgeLabel: BOOKMARK_LABEL.post,
+      }
+    }
+
+    if (bookmark.type === 'answer') {
+      const res = await fetch(`/api/answers/${bookmark.targetId}`, { cache: 'no-store' })
+      if (!res.ok) return fallback
+      const payload = await res.json().catch(() => null)
+      const answer = payload?.data
+      if (!answer) return fallback
+
+      const question = answer.question
+      const questionId =
+        typeof question?.id === 'string' && question.id.length > 0 ? question.id : null
+
+      const helpfulCount = Number(answer.helpful_count ?? 0)
+
+      return {
+        bookmarkId: bookmark.id,
+        targetId: answer.id ?? bookmark.targetId,
+        itemType: 'answer',
+        title: question?.title ? `답변: ${question.title}` : fallback.title,
+        body: answer.content ?? fallback.body,
+        href: questionId ? `/questions/${questionId}#answer-${answer.id}` : fallback.href,
+        createdAt: answer.created_at ?? bookmark.createdAt,
+        topic: '답변',
+        author: normalizeAuthor(answer.author),
+        statsLabel: helpfulCount > 0 ? `도움됨 ${helpfulCount}개` : null,
+        badgeLabel: BOOKMARK_LABEL.answer,
+      }
+    }
+  } catch (error) {
+    console.warn('[BookmarksPage] hydrateBookmark failed', error)
+  }
+
+  return fallback
+}
 
 export default function BookmarksPage() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
+  const [hydratedBookmarks, setHydratedBookmarks] = useState<BookmarkCardModel[]>([])
   const [isLoadingBookmarks, setIsLoadingBookmarks] = useState(false)
+  const [isHydrating, setIsHydrating] = useState(false)
 
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
-  async function checkAuth() {
-    try {
-      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
-      if (res.ok) {
-        setIsLoggedIn(true)
-        await loadBookmarks()
-      } else {
-        router.push('/auth/login?redirectTo=/bookmarks')
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error)
-      router.push('/auth/login?redirectTo=/bookmarks')
-    } finally {
-      setIsCheckingAuth(false)
-    }
-  }
-
-  async function loadBookmarks() {
+  const loadBookmarks = useCallback(async () => {
     setIsLoadingBookmarks(true)
     try {
       const stored = await getBookmarks()
       setBookmarks(stored)
     } catch (error) {
-      console.error('Failed to load bookmarks:', error)
+      console.error('[BookmarksPage] failed to load bookmarks', error)
       setBookmarks([])
     } finally {
       setIsLoadingBookmarks(false)
     }
-  }
+  }, [])
 
-  async function removeBookmark(bookmark: Bookmark) {
-    const success = await removeBookmarkUtil(bookmark.id)
-    if (!success) {
-      alert('북마크 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.')
+  const checkAuth = useCallback(async () => {
+    setIsCheckingAuth(true)
+    try {
+      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
+      if (!res.ok) {
+        router.push('/auth/login?redirectTo=/bookmarks')
+        return
+      }
+      setIsLoggedIn(true)
+      await loadBookmarks()
+    } catch (error) {
+      console.error('[BookmarksPage] auth check failed', error)
+      router.push('/auth/login?redirectTo=/bookmarks')
+    } finally {
+      setIsCheckingAuth(false)
+    }
+  }, [router, loadBookmarks])
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth])
+
+  useEffect(() => {
+    if (!isLoggedIn) return
+    if (bookmarks.length === 0) {
+      setHydratedBookmarks([])
       return
     }
 
-    setBookmarks(prev => prev.filter(item => item.id !== bookmark.id))
-  }
+    let ignore = false
+    setIsHydrating(true)
+
+    Promise.all(bookmarks.map((bookmark) => hydrateBookmark(bookmark)))
+      .then((results) => {
+        if (ignore) return
+        setHydratedBookmarks(results)
+      })
+      .catch((error) => {
+        console.error('[BookmarksPage] hydrate failed', error)
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsHydrating(false)
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [bookmarks, isLoggedIn])
+
+  const handleRemove = useCallback(
+    async (bookmarkId: string) => {
+      const success = await removeBookmarkUtil(bookmarkId)
+      if (!success) {
+        alert('북마크 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.')
+        return
+      }
+
+      setBookmarks((prev) => prev.filter((item) => item.id !== bookmarkId))
+      setHydratedBookmarks((prev) => prev.filter((item) => item.bookmarkId !== bookmarkId))
+    },
+    []
+  )
 
   if (isCheckingAuth) {
     return (
       <PageLayout variant="centered">
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '60vh'
-        }}>
-          <div style={{ textAlign: 'center', color: '#666' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
+        <div className="loading-container">
+          <div>
+            <div className="loading-emoji" aria-hidden="true">⏳</div>
             <p>로딩 중...</p>
           </div>
         </div>
@@ -79,219 +310,85 @@ export default function BookmarksPage() {
   }
 
   return (
-    <PageLayout variant="centered">
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{
-          padding: '2rem 0',
-          borderBottom: '1px solid #e9ecef',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem'
-        }}>
+    <PageLayout variant="withSidebar">
+      <div className="bookmarks-page">
+        <header className="bookmark-page-header">
           <div>
-            <h1 style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              marginBottom: '0.5rem',
-              color: '#333'
-            }}>
-              🔖 북마크
-            </h1>
-            <p style={{
-              fontSize: '1rem',
-              color: '#666'
-            }}>
-              나중에 다시 보고 싶은 질문과 정보글을 모아보세요
+            <h1 className="bookmark-page-title">🔖 북마크</h1>
+            <p className="bookmark-page-subtitle">
+              나중에 다시 보고 싶은 질문과 정보글을 한곳에서 확인해보세요.
             </p>
           </div>
           <button
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '0.95rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              whiteSpace: 'nowrap'
-            }}
-            onClick={() => router.push('/')}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)'
-            }}
+            type="button"
+            className="bookmark-explore-btn"
+            onClick={() => router.push('/posts')}
           >
             🔍 북마크할 게시글 찾기
           </button>
-        </div>
+        </header>
 
-        {/* Bookmarks List */}
-        <div style={{ padding: '2rem 0' }}>
-          {isLoadingBookmarks ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '4rem 2rem',
-              color: '#666'
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-              <p>북마크를 불러오는 중입니다...</p>
-            </div>
-          ) : bookmarks.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '4rem 2rem',
-              background: '#f8f9fa',
-              borderRadius: '12px'
-            }}>
-              <div style={{
-                fontSize: '4rem',
-                marginBottom: '1rem'
-              }}>🔖</div>
-              <h3 style={{
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                marginBottom: '0.5rem',
-                color: '#333'
-              }}>
-                북마크가 비어있습니다
-              </h3>
-              <p style={{
-                fontSize: '1rem',
-                color: '#666',
-                marginBottom: '2rem'
-              }}>
-                질문이나 정보글에서 북마크 버튼을 눌러보세요
+        <section className="bookmark-content">
+          {isLoadingBookmarks || isHydrating ? (
+            <FeedSkeleton count={3} />
+          ) : hydratedBookmarks.length === 0 ? (
+            <div className="bookmark-empty-state">
+              <div className="text-4xl mb-4" aria-hidden="true">🗂️</div>
+              <h3>아직 저장한 북마크가 없어요</h3>
+              <p>
+                질문이나 게시글에서 북마크 버튼을 누르면 이곳에서 바로 확인할 수 있어요.
+                자주 참고하고 싶은 콘텐츠를 북마크로 모아보세요.
               </p>
               <button
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  padding: '0.75rem 2rem',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
-                }}
-                onClick={() => router.push('/')}
+                type="button"
+                className="bookmark-empty-cta"
+                onClick={() => router.push('/posts')}
               >
-                둘러보러 가기
+                <span>지금 둘러보기</span>
+                <span aria-hidden="true">→</span>
               </button>
             </div>
           ) : (
-            <div style={{
-              display: 'grid',
-              gap: '1rem'
-            }}>
-              {bookmarks.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    background: 'white',
-                    border: '1px solid #e9ecef',
-                    borderRadius: '12px',
-                    padding: '1.5rem',
-                    cursor: 'pointer',
-                    transition: 'box-shadow 0.2s, transform 0.2s',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                  onClick={() => {
-                    if (item.type === 'question') {
-                      router.push(`/questions/${item.targetId}`)
-                    } else if (item.type === 'post') {
-                      router.push(`/posts/${item.targetId}`)
-                    } else {
-                      router.push(`/questions/${item.targetId}`)
-                    }
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)'
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = 'none'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                  }}
-                >
-                  <div>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      marginBottom: '0.5rem'
-                    }}>
-                      <span style={{ fontSize: '1.25rem' }}>
-                        {item.type === 'question' ? '❓' : item.type === 'post' ? '📝' : '💬'}
-                      </span>
-                      <span style={{
-                        fontSize: '0.875rem',
-                        color: '#6b7280',
-                        fontWeight: 600,
-                        background: '#f3f4f6',
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '999px'
-                      }}>
-                        {item.type === 'question' ? '질문' : item.type === 'post' ? '게시글' : '답변'}
-                      </span>
-                      <span style={{
-                        fontSize: '0.85rem',
-                        color: '#9ca3af'
-                      }}>
-                        {new Date(item.createdAt).toLocaleString('ko-KR', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1f2937', marginBottom: '0.5rem' }}>
-                      {item.title || '제목 없는 북마크'}
-                    </div>
-                    <div style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.6 }}>
-                      {item.content
-                        ? item.content.length > 200
-                          ? `${item.content.slice(0, 200)}...`
-                          : item.content
-                        : '저장된 미리보기가 없습니다.'}
-                    </div>
-                  </div>
-                  <div>
+            <div className="feed-container bookmark-feed-container">
+              {hydratedBookmarks.map((item) => {
+                const statsNode = item.statsLabel ? <span>{item.statsLabel}</span> : undefined
+                const badgeNode = item.badgeLabel ? (
+                  <Badge variant="secondary">{item.badgeLabel}</Badge>
+                ) : undefined
+
+                return (
+                  <div key={item.bookmarkId} className="bookmark-card-wrapper">
                     <button
-                      style={{
-                        background: 'white',
-                        color: '#ef4444',
-                        border: '1px solid #fca5a5',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '8px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                      onClick={async (e) => {
-                        e.stopPropagation()
-                        await removeBookmark(item)
+                      type="button"
+                      className="bookmark-remove-button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleRemove(item.bookmarkId)
                       }}
                     >
-                      삭제
+                      <span aria-hidden="true">🗑️</span>
+                      <span>삭제</span>
                     </button>
+                    <FeedCard
+                      id={item.targetId}
+                      itemType={item.itemType}
+                      title={item.title}
+                      body={item.body}
+                      href={item.href}
+                      createdAt={item.createdAt}
+                      topic={item.topic}
+                      author={item.author}
+                      stats={statsNode}
+                      badge={badgeNode}
+                      showReportButton={false}
+                      onNavigate={(href) => router.push(href)}
+                    />
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
-        </div>
+        </section>
       </div>
     </PageLayout>
   )

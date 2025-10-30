@@ -52,33 +52,53 @@ async function applyMigrations() {
       const filePath = join(migrationsDir, file)
       const sql = readFileSync(filePath, 'utf-8')
 
-      // SQL 실행 (PostgreSQL REST API 사용)
-      const { data, error } = await supabase.rpc('exec_sql', { sql_query: sql }).catch(async () => {
-        // exec_sql 함수가 없으면 직접 SQL 실행
-        const response = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseServiceKey,
-            'Authorization': `Bearer ${supabaseServiceKey}`
-          },
-          body: JSON.stringify({ sql_query: sql })
-        })
+      let data: unknown = null
+      let error: Error | null = null
 
-        if (!response.ok) {
-          // REST API도 실패하면 직접 실행 시도
-          console.log('   ℹ️  REST API 사용 불가, 직접 실행 시도...')
-          return { data: null, error: null }
-        }
-
-        return { data: await response.json(), error: null }
-      })
+      try {
+        const response = await supabase.rpc('exec_sql', { sql_query: sql })
+        data = response.data
+        error = response.error
+      } catch (rpcError: unknown) {
+        console.warn('   ℹ️  exec_sql RPC 호출 실패, REST API로 재시도합니다.', rpcError)
+        error = rpcError instanceof Error ? rpcError : new Error(String(rpcError))
+      }
 
       if (error) {
-        console.error(`   ❌ 실패: ${error.message}`)
-        console.error(`   → 수동으로 실행하세요: ${file}`)
-      } else {
-        console.log(`   ✅ 성공`)
+        try {
+          const restResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: supabaseServiceKey ?? '',
+              Authorization: `Bearer ${supabaseServiceKey ?? ''}`
+            },
+            body: JSON.stringify({ sql_query: sql })
+          })
+
+          const responseText = await restResponse.text()
+          if (!restResponse.ok) {
+            throw new Error(
+              `REST 호출 실패 (status: ${restResponse.status})${responseText ? ` - ${responseText}` : ''}`
+            )
+          }
+
+          try {
+            data = responseText ? JSON.parse(responseText) : null
+          } catch {
+            data = responseText
+          }
+          error = null
+        } catch (restError: unknown) {
+          const reason = restError instanceof Error ? restError.message : String(restError)
+          console.error(`   ❌ 실패: ${reason}`)
+          console.error(`   → SQL Editor에서 수동 실행을 권장합니다 (${file})`)
+          continue
+        }
+      }
+
+      if (data !== null || !error) {
+        console.log('   ✅ 성공')
       }
     } catch (err) {
       console.error(`   ⚠️  오류: ${err}`)

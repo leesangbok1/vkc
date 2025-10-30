@@ -261,33 +261,44 @@ export default function ActionBar({
     setPending(false)
   }
 
+  const containerClassName = useMemo(
+    () =>
+      [
+        'action-bar',
+        compact ? 'action-bar--compact' : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    [compact]
+  )
+
+  const helpfulButtonClassName = [
+    'action-btn',
+    'action-btn--helpful',
+    compact ? 'action-btn--compact' : '',
+    localIsActive ? 'is-active' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const acceptButtonClassName = [
+    'action-btn',
+    'action-btn--accept',
+    compact ? 'action-btn--compact' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <div className="action-bar" style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: compact ? '0.5rem' : '0.75rem',
-      padding: compact ? '0.5rem 0' : '0.75rem 0'
-    }}>
+    <div className={containerClassName} role="group" aria-label="콘텐츠 인터랙션">
       {/* 도움됨 버튼 */}
       <button
+        type="button"
         onClick={handleHelpfulClick}
-        className={`action-btn ${localIsActive ? 'active' : ''}`}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.25rem',
-          padding: compact ? '0.25rem 0.5rem' : '0.5rem 0.75rem',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          background: localIsActive ? '#f0fdf4' : 'white',
-          color: localIsActive ? '#16a34a' : '#6b7280',
-          cursor: pending ? 'default' : 'pointer',
-          fontSize: compact ? '0.875rem' : '0.95rem',
-          fontWeight: localIsActive ? 600 : 400,
-          transition: 'all 0.2s',
-          opacity: pending ? 0.6 : 1,
-        }}
+        className={helpfulButtonClassName}
+        aria-pressed={localIsActive}
         disabled={pending}
+        data-loading={pending ? 'true' : undefined}
       >
         <span>{localIsActive ? '✅' : '👍'}</span>
         <span>도움됨</span>
@@ -313,23 +324,9 @@ export default function ActionBar({
       {/* 채택하기 버튼 (옵션) */}
       {showAcceptButton && !isAccepted && (
         <button
+          type="button"
           onClick={onAcceptClick}
-          className="action-btn btn-primary"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.25rem',
-            padding: compact ? '0.25rem 0.5rem' : '0.5rem 0.75rem',
-            border: 'none',
-            borderRadius: '8px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-            color: 'white',
-            cursor: 'pointer',
-            fontSize: compact ? '0.875rem' : '0.95rem',
-            fontWeight: 600,
-            marginLeft: 'auto',
-            transition: 'all 0.2s',
-          }}
+          className={acceptButtonClassName}
         >
           <span>✅</span>
           <span>채택하기</span>

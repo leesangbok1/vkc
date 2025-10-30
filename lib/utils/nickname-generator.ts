@@ -21,24 +21,118 @@ const NOUNS = [
 /**
  * 랜덤 닉네임 생성
  */
-export function generateNickname(): string {
-  const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
-  const number = Math.floor(Math.random() * 900) + 100 // 100-999
+export type NicknameContext = {
+  residence?: string
+  gender?: string
+  age?: string
+  category?: string
+  topics?: string[]
+  interests?: string[]
+}
 
-  return `${adjective} ${noun}${number}`
+const RESIDENCE_LABELS: Record<string, string[]> = {
+  korea: ['서울', '코리아', '한강'],
+  abroad: ['글로벌', '월드', '어디서나'],
+}
+
+const CATEGORY_LABELS: Record<string, string[]> = {
+  student: ['유학생', '학생', '학구파'],
+  worker: ['직장인', '전문가', '워커'],
+  resident: ['정착러', '생활자', '거주민'],
+  business: ['비즈니스', '창업자', '사장님'],
+  other: ['탐험가', '모험가', '커넥터'],
+}
+
+const AGE_LABELS: Record<string, string> = {
+  '10s': '10대',
+  '20s': '20대',
+  '30s': '30대',
+  '40s': '40대',
+  '50s': '50대',
+  '60s': '60대',
+}
+
+const TOPIC_LABELS: Record<string, string> = {
+  '한국 비자·체류': '비자',
+  '한국 직장생활': '직장',
+  '한국 생활 정착': '정착',
+  '한국에서 집 구하기': '주거',
+  '베트남 송금·금융': '금융',
+  '한국어 배우기': '한국어',
+}
+
+const GENDER_ADJECTIVES: Record<string, string[]> = {
+  male: ['열정적인', '든든한', '활기찬'],
+  female: ['빛나는', '섬세한', '따뜻한'],
+  other: ['대담한', '유연한', '열린'],
+}
+
+const DEFAULT_CORE = '커넥터'
+const MAX_NICKNAME_LENGTH = 16
+
+const choose = <T>(list: T[]): T | null => {
+  if (!Array.isArray(list) || list.length === 0) return null
+  const index = Math.floor(Math.random() * list.length)
+  return list[index] ?? null
+}
+
+const sanitizeNickname = (value: string): string => value.replace(/\s+/g, '')
+
+export function generateNickname(context: NicknameContext = {}): string {
+  const baseAdjective =
+    choose(GENDER_ADJECTIVES[context.gender ?? ''] || []) ??
+    choose(ADJECTIVES) ??
+    '즐거운'
+  const residence = choose(RESIDENCE_LABELS[context.residence ?? ''] || [])
+  const category = choose(CATEGORY_LABELS[context.category ?? ''] || [])
+  const age = context.age ? AGE_LABELS[context.age] : undefined
+  const topicSource = (context.topics && context.topics.length > 0
+    ? context.topics
+    : context.interests) || []
+  const topicName = topicSource.length > 0 ? choose(topicSource) : null
+  const topicLabel =
+    (topicName && TOPIC_LABELS[topicName]) ||
+    (topicName ? topicName.replace(/(한국|베트남)/g, '').trim() : null)
+
+  const coreSegments = [
+    baseAdjective,
+    residence,
+    age,
+    category,
+    topicLabel ? `${topicLabel}` : null,
+  ].filter((segment): segment is string => Boolean(segment && segment.trim().length > 0))
+
+  let core = coreSegments.join('')
+  if (!core || core.length < 2) {
+    const fallbackNoun = choose(NOUNS) ?? DEFAULT_CORE
+    core = `${baseAdjective}${fallbackNoun}`
+  }
+
+  const number = Math.floor(Math.random() * 900) + 100 // 100-999
+  let nickname = `${sanitizeNickname(core)}${number}`
+
+  if (nickname.length > MAX_NICKNAME_LENGTH) {
+    const trimmedCore = sanitizeNickname(core).slice(0, MAX_NICKNAME_LENGTH - 3)
+    nickname = `${trimmedCore}${number}`.slice(0, MAX_NICKNAME_LENGTH)
+  }
+
+  if (nickname.length < 4) {
+    nickname = `${DEFAULT_CORE}${number}`
+  }
+
+  return nickname
 }
 
 /**
  * 중복되지 않는 닉네임 생성 (localStorage 기반)
  */
-export function generateUniqueNickname(): string {
-  let nickname = generateNickname()
+export function generateUniqueNickname(context?: NicknameContext): string {
+  let nickname = generateNickname(context)
   let attempts = 0
 
   // 최대 10번 시도
   while (isNicknameTaken(nickname) && attempts < 10) {
-    nickname = generateNickname()
+    nickname = generateNickname(context)
     attempts++
   }
 
@@ -49,10 +143,14 @@ export function generateUniqueNickname(): string {
  * 닉네임 중복 체크 (localStorage 기반)
  */
 function isNicknameTaken(nickname: string): boolean {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return false
+  }
   try {
     // Mock: localStorage에서 모든 사용자 체크
-    const users = JSON.parse(localStorage.getItem('all_users') || '[]')
-    return users.some((u: any) => u.nickname === nickname)
+    const raw = localStorage.getItem('all_users') || '[]'
+    const users = JSON.parse(raw) as Array<{ nickname?: unknown }>
+    return users.some((user) => typeof user.nickname === 'string' && user.nickname === nickname)
   } catch (error) {
     console.error('닉네임 중복 체크 실패:', error)
     return false

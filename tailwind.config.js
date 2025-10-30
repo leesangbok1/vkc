@@ -19,7 +19,9 @@ module.exports = {
     extend: {
       colors: {
         // Blue/Green Theme Colors
-        'primary-blue': 'var(--primary-blue)',
+        'vk-primary': 'var(--vk-primary)',
+        'vk-primary-hover': 'var(--vk-primary-hover)',
+        'primary-blue': 'var(--vk-primary)',
         'primary-blue-dark': 'var(--primary-blue-dark)',
         'primary-blue-light': 'var(--primary-blue-light)',
         'primary-blue-pale': 'var(--primary-blue-pale)',
@@ -31,39 +33,85 @@ module.exports = {
         'trust': 'var(--trust-green)',
         'expert': 'var(--expert-gold)',
 
-        // Shadcn UI Colors
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+        // Design token aware colors
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
         },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+        primary: {
+          50: "var(--primary-50)",
+          100: "var(--primary-100)",
+          200: "var(--primary-200)",
+          300: "var(--primary-300)",
+          400: "var(--primary-400)",
+          500: "var(--primary-500)",
+          600: "var(--primary-600)",
+          700: "var(--primary-700)",
+          800: "var(--primary-800)",
+          900: "var(--primary-900)",
+          DEFAULT: "var(--primary-500)",
+          foreground: "var(--primary-foreground)",
+        },
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+        success: {
+          50: "var(--success-50)",
+          100: "var(--success-100)",
+          200: "var(--success-200)",
+          300: "var(--success-300)",
+          400: "var(--success-400)",
+          500: "var(--success-500)",
+          600: "var(--success-600)",
+          700: "var(--success-700)",
+          DEFAULT: "var(--success-500)",
+          foreground: "#ffffff",
+        },
+        warning: {
+          50: "var(--warning-50)",
+          100: "var(--warning-100)",
+          200: "var(--warning-200)",
+          300: "var(--warning-300)",
+          400: "var(--warning-400)",
+          500: "var(--warning-500)",
+          600: "var(--warning-600)",
+          700: "var(--warning-700)",
+          DEFAULT: "var(--warning-500)",
+          foreground: "#111827",
+        },
+        error: {
+          50: "var(--error-50)",
+          100: "var(--error-100)",
+          200: "var(--error-200)",
+          300: "var(--error-300)",
+          400: "var(--error-400)",
+          500: "var(--error-500)",
+          600: "var(--error-600)",
+          700: "var(--error-700)",
+          DEFAULT: "var(--error-500)",
+          foreground: "#ffffff",
         },
       },
       borderRadius: {

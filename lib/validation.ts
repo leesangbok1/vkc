@@ -67,6 +67,11 @@ export class ValidationUtils {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     if (uuidRegex.test(id)) return true
 
+    // Allow legacy IDs that contain letters beyond hex (e.g., seeded data)
+    const legacyIdPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{5,}$/
+    if (legacyIdPattern.test(id)) {
+      return true
+    }
     // Check for safe integer
     const intId = parseInt(id, 10)
     return !isNaN(intId) && intId > 0 && intId < Number.MAX_SAFE_INTEGER

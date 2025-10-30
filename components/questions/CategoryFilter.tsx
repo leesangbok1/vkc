@@ -181,7 +181,7 @@ export function CategoryFilter({
           className={cn(
             "px-4 py-2 rounded-full border text-sm font-medium transition-normal whitespace-nowrap",
             !selectedCategory
-              ? "bg-primary-blue text-white border-primary-blue"
+              ? "bg-vk-primary text-white border-vk-primary"
               : "bg-primary text-secondary border-light hover:bg-secondary"
           )}
         >

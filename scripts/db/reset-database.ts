@@ -7,13 +7,16 @@
 
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
+import { createInterface } from 'node:readline/promises'
+import { stdin as input, stdout as output } from 'node:process'
+import { pathToFileURL } from 'node:url'
 
 // 환경변수 로드
 dotenv.config({ path: '.env.local' })
 
 // Supabase 클라이언트 설정
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Missing Supabase environment variables')
@@ -85,24 +88,24 @@ async function resetDatabase() {
 }
 
 // 확인 프롬프트 함수
-function askForConfirmation(): Promise<boolean> {
-  const readline = require('readline')
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  })
-
-  return new Promise((resolve) => {
-    rl.question('Are you sure you want to reset the database? This cannot be undone. (yes/no): ', (answer) => {
-      rl.close()
-      resolve(answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y')
-    })
-  })
+async function askForConfirmation(): Promise<boolean> {
+  const rl = createInterface({ input, output })
+  try {
+    const answer = await rl.question(
+      'Are you sure you want to reset the database? This cannot be undone. (yes/no): '
+    )
+    return answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y'
+  } finally {
+    rl.close()
+  }
 }
 
+const isDirectExecution =
+  process.argv[1] !== undefined && pathToFileURL(process.argv[1]).href === import.meta.url
+
 // 스크립트 실행
-if (require.main === module) {
-  (async () => {
+if (isDirectExecution) {
+  ;(async () => {
     console.log('🚨 DATABASE RESET WARNING 🚨')
     console.log('This will permanently delete all data in the database.')
     console.log('')

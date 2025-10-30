@@ -6,6 +6,8 @@ import VoteButtons from '../questions/VoteButtons'
 import CommentSection from './CommentSection'
 import { Database } from '@/lib/supabase'
 import { useErrorLogger } from '@/lib/utils/error-logger'
+import { DEFAULT_AVATAR_URL } from '@/lib/constants/avatar'
+import { renderMarkdownLite } from '@/lib/utils/markdown'
 
 type Profile = Database['public']['Tables']['users']['Row']
 
@@ -87,14 +89,39 @@ export default function AnswerList({
     return null
   }
 
-  const renderBadges = (badges: Record<string, boolean>) => {
-    const activeBadges = Object.entries(badges).filter(([_, active]) => active)
+  const renderBadges = (badges: Record<string, unknown>) => {
+    if (!badges || typeof badges !== 'object') return null
 
-    if (activeBadges.length === 0) return null
+    const adminCustomRaw = badges['admin_custom']
+    const adminCustom =
+      adminCustomRaw && typeof adminCustomRaw === 'object'
+        ? {
+            label:
+              typeof (adminCustomRaw as any).label === 'string'
+                ? (adminCustomRaw as any).label.trim()
+                : '',
+            icon:
+              typeof (adminCustomRaw as any).icon === 'string'
+                ? (adminCustomRaw as any).icon.trim()
+                : '',
+          }
+        : null
+
+    const activeBadges = Object.entries(badges).filter(
+      ([key, value]) => key !== 'admin_custom' && typeof value === 'boolean' && value
+    )
+
+    if (!adminCustom && activeBadges.length === 0) return null
 
     return (
       <div className="flex flex-wrap gap-1">
-        {activeBadges.slice(0, 3).map(([badge, _]) => (
+        {adminCustom && (adminCustom.label || adminCustom.icon) && (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+            {adminCustom.icon && <span className="mr-1" aria-hidden>{adminCustom.icon}</span>}
+            {adminCustom.label || '커스텀 배지'}
+          </span>
+        )}
+        {activeBadges.slice(0, 3).map(([badge]) => (
           <span
             key={badge}
             className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
@@ -261,11 +288,10 @@ export default function AnswerList({
 
       {/* Answers List */}
       {sortedAnswers.map((answer) => {
-        const shouldTruncate = answer.content.length > 600
         const isExpanded = expandedAnswers.has(answer.id)
-        const displayContent = shouldTruncate && !isExpanded
-          ? answer.content.substring(0, 600) + '...'
-          : answer.content
+        const renderedContent = renderMarkdownLite(answer.content)
+        const plainLength = answer.content.replace(/\s+/g, ' ').trim().length
+        const shouldCollapse = plainLength > 600 || renderedContent.length > 2000
         const isOwner = currentUser?.id === answer.author.id
 
         return (
@@ -327,11 +353,12 @@ export default function AnswerList({
                 {/* Answer Content */}
                 <div className="flex-1">
                   <div className="prose max-w-none">
-                    <div className="text-gray-900 whitespace-pre-wrap leading-relaxed">
-                      {displayContent}
-                    </div>
+                    <div
+                      className={`answer-rich-content${shouldCollapse && !isExpanded ? ' collapsed' : ''}`}
+                      dangerouslySetInnerHTML={{ __html: renderedContent }}
+                    />
 
-                    {shouldTruncate && (
+                    {shouldCollapse && (
                       <button
                         onClick={() => toggleAnswerExpansion(answer.id)}
                         className="mt-2 text-blue-600 hover:text-blue-700 font-medium"
@@ -385,8 +412,8 @@ export default function AnswerList({
               <div className="answer-author-info">
                 <div className="flex items-start gap-3">
                   <img
-                    src={answer.author.avatar_url || '/default-avatar.png'}
-                    alt={answer.author.name}
+                    src={answer.author.avatar_url || DEFAULT_AVATAR_URL}
+                    alt={answer.author.name ?? '커뮤니티 멤버'}
                     className="w-10 h-10 rounded-full border-2 border-gray-200"
                   />
                   <div className="flex-1">
@@ -395,7 +422,7 @@ export default function AnswerList({
                         href={`/users/${answer.author.id}`}
                         className="answer-author-name"
                       >
-                        {answer.author.name}
+                        {answer.author.name ?? '커뮤니티 멤버'}
                       </Link>
 
                       {/* Expert Badge - Prominent Display */}

@@ -3,8 +3,60 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getUser } from '@/lib/auth'
 import { ValidationUtils } from '@/lib/validation'
 import { createServerLogger } from '@/lib/utils/server-logger'
+import {
+  NotificationPreferences,
+  NotificationPriority,
+  filterChannels,
+  isPriorityAllowed,
+  isTypeAllowed,
+  normalizePriority,
+  resolvePreferences
+} from '@/lib/services/notification-preferences'
 
 const logger = createServerLogger('NotificationsAPI', 'api')
+
+type NotificationRow = {
+  id: string
+  user_id: string
+  type: string
+  title: string
+  message: string
+  is_read: boolean
+  created_at: string
+  related_id: string | null
+  related_type: string | null
+  channels: unknown
+  data?: unknown
+}
+
+function serializeNotificationRow(row: NotificationRow) {
+  const payload = (row?.data && typeof row.data === 'object') ? row.data as Record<string, unknown> : {}
+  const metadata = (payload && typeof payload === 'object' && typeof (payload as any).metadata === 'object')
+    ? (payload as any).metadata as Record<string, unknown>
+    : {}
+
+  const priorityValue =
+    (payload as any).priority ??
+    (metadata as any).priority ??
+    null
+
+  const actionUrl =
+    (payload as any).action_url ??
+    (metadata as any).action_url ??
+    null
+
+  const channels = Array.isArray(row.channels)
+    ? row.channels
+    : (Array.isArray((payload as any)?.channels) ? (payload as any)?.channels : [])
+
+  return {
+    ...row,
+    channels,
+    priority: normalizePriority(typeof priorityValue === 'string' ? priorityValue : null),
+    action_url: typeof actionUrl === 'string' ? actionUrl : null,
+    metadata
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -63,8 +115,12 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
 
+    const normalizedNotifications = (notifications || []).map((row) =>
+      serializeNotificationRow(row as unknown as NotificationRow)
+    )
+
     return NextResponse.json({
-      notifications: notifications || [],
+      notifications: normalizedNotifications,
       pagination: {
         page,
         limit,
@@ -97,8 +153,22 @@ export async function POST(request: NextRequest) {
       message,
       related_id = null,
       related_type = null,
-      channels = ['in_app']
-    } = body
+      channels = ['in_app'],
+      priority = 'medium',
+      metadata = null,
+      action_url = null
+    } = body as {
+      target_user_id: string
+      type: string
+      title: string
+      message: string
+      related_id?: string | null
+      related_type?: string | null
+      channels?: string[]
+      priority?: NotificationPriority
+      metadata?: Record<string, unknown> | null
+      action_url?: string | null
+    }
 
     // Validate required fields
     if (!target_user_id || !type || !title || !message) {
@@ -108,10 +178,59 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const normalizedPriority = normalizePriority(priority)
+
     const supabase = await createSupabaseServerClient()
     if (!supabase) {
       return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
     }
+
+    // Load user notification preferences
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('notification_preferences')
+      .eq('id', target_user_id)
+      .maybeSingle()
+
+    if (profileError) {
+      logger.error('Notification preference fetch error', profileError as Error, {
+        action: 'fetchNotificationPreferences',
+        targetUserId: target_user_id,
+        severity: 'medium'
+      })
+    }
+
+    const preferences = resolvePreferences(profile?.notification_preferences)
+
+    if (!isTypeAllowed(type, preferences)) {
+      logger.info('Notification suppressed due to user preferences', {
+        action: 'suppressNotification',
+        targetUserId: target_user_id,
+        type
+      })
+
+      return NextResponse.json(
+        { suppressed: true, reason: 'Notification type disabled by user preferences' },
+        { status: 200 }
+      )
+    }
+
+    if (!isPriorityAllowed(normalizedPriority, preferences)) {
+      logger.info('Notification suppressed due to priority threshold', {
+        action: 'suppressNotificationPriority',
+        targetUserId: target_user_id,
+        type,
+        priority: normalizedPriority,
+        threshold: preferences.priority_threshold
+      })
+
+      return NextResponse.json(
+        { suppressed: true, reason: 'Notification priority below user threshold' },
+        { status: 200 }
+      )
+    }
+
+    const effectiveChannels = filterChannels(channels, preferences)
 
     // Create notification
     const { data: notification, error } = await supabase
@@ -127,7 +246,12 @@ export async function POST(request: NextRequest) {
         is_email_sent: false,
         is_push_sent: false,
         is_kakao_sent: false,
-        channels
+        channels: effectiveChannels,
+        data: {
+          priority: normalizedPriority,
+          action_url,
+          metadata: metadata || {}
+        }
       })
       .select('*')
       .single()
@@ -145,7 +269,10 @@ export async function POST(request: NextRequest) {
     // TODO: Send push notification if user has enabled it
     // TODO: Send email notification if configured
 
-    return NextResponse.json({ notification }, { status: 201 })
+    return NextResponse.json(
+      { notification: serializeNotificationRow(notification as unknown as NotificationRow) },
+      { status: 201 }
+    )
   } catch (error) {
     logger.error('Notification creation API error', error as Error, {
       action: 'createNotificationAPI',

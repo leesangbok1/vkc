@@ -47,7 +47,6 @@ export async function GET(request: NextRequest) {
     const includeQuestionCount = searchParams.get('include_count') === 'true'
     if (includeQuestionCount && categories) {
       for (const category of categories) {
-        // @ts-expect-error - Supabase type inference issue with schema
         const { count } = await supabase
           .from('questions')
           .select('*', { count: 'exact', head: true })
@@ -55,8 +54,7 @@ export async function GET(request: NextRequest) {
           .eq('is_approved', true)
           .eq('status', 'open')
 
-        // @ts-expect-error - Adding dynamic property to category
-        category.question_count = count || 0
+        ;(category as { question_count?: number }).question_count = count || 0
       }
     }
 
@@ -125,7 +123,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 카테고리 생성
-    // @ts-expect-error - Supabase type inference issue with schema
     const { data: category, error } = await supabase
       .from('categories')
       .insert({

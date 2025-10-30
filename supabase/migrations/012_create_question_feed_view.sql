@@ -122,13 +122,13 @@ select
   b.activity_timestamp,
   b.author_json as author,
   b.category_json as category,
-  round(0.35 * ln(1 + greatest(b.view_count, 0)::double precision), 6) as views_score,
-  round(0.45 * ln(1 + greatest(b.total_answers, 0)::double precision), 6) as answers_score,
-  round(1.2 * greatest(b.accepted_answers, 0)::double precision, 6) as accepted_score,
-  round(0.3 * ln(1 + greatest(b.helpful_votes, 0)::double precision), 6) as helpful_score,
-  round(0.6 * greatest(b.recent_answer_count, 0)::double precision, 6) as recent_answers_score,
-  round(1.0 * public.compute_exp_decay(b.created_at, 5), 6) as recency_score,
-  round(0.5 * public.compute_exp_decay(b.activity_timestamp, 3), 6) as activity_score,
+  round((0.35 * ln(1 + greatest(b.view_count, 0)::double precision))::numeric, 6) as views_score,
+  round((0.45 * ln(1 + greatest(b.total_answers, 0)::double precision))::numeric, 6) as answers_score,
+  round((1.2 * greatest(b.accepted_answers, 0)::double precision)::numeric, 6) as accepted_score,
+  round((0.3 * ln(1 + greatest(b.helpful_votes, 0)::double precision))::numeric, 6) as helpful_score,
+  round((0.6 * greatest(b.recent_answer_count, 0)::double precision)::numeric, 6) as recent_answers_score,
+  round((1.0 * public.compute_exp_decay(b.created_at, 5))::numeric, 6) as recency_score,
+  round((0.5 * public.compute_exp_decay(b.activity_timestamp, 3))::numeric, 6) as activity_score,
   round(
     (
       0.35 * ln(1 + greatest(b.view_count, 0)::double precision) +
@@ -138,7 +138,7 @@ select
       0.6 * greatest(b.recent_answer_count, 0)::double precision +
       1.0 * public.compute_exp_decay(b.created_at, 5) +
       0.5 * public.compute_exp_decay(b.activity_timestamp, 3)
-    ),
+    )::numeric,
     6
   ) as base_score
 from base b;

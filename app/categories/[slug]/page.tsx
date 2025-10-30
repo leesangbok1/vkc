@@ -8,29 +8,7 @@ import FeedCard from '@/components/feed/FeedCard'
 import { FeedSkeleton } from '@/components/questions/FeedSkeleton'
 import { FeedEmptyState } from '@/components/questions/FeedEmptyState'
 import StatusBadge from '@/components/common/StatusBadge'
-
-const extractMediaUrls = (source: any): string[] => {
-  if (!source) return []
-  const candidates = [
-    source.attachments,
-    source.images,
-    source.image_urls,
-    source.media_urls,
-    source.media
-  ]
-
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate.filter((value) => typeof value === 'string' && value.length > 0)
-    }
-  }
-
-  if (typeof source.imageUrl === 'string') {
-    return [source.imageUrl]
-  }
-
-  return []
-}
+import { extractMediaUrls } from '@/lib/utils/media'
 
 const categoryMap: Record<string, { name: string; icon: string; description: string }> = {
   visa: {
@@ -186,10 +164,12 @@ export default function CategoryPage() {
         </div>
 
         {/* Category Tabs */}
-        <div className="category-tabs">
-          <a href="/" className="category-tab">Popular</a>
-          <a href="/topics" className="category-tab">Topic</a>
-          <a href="/following" className="category-tab">Following</a>
+        <div className="feed-filter-bar">
+          <div className="feed-filter-scroll">
+            <a href="/" className="category-tab">Popular</a>
+            <a href="/topics" className="category-tab">Topic</a>
+            <a href="/following" className="category-tab">Following</a>
+          </div>
         </div>
 
         {/* Questions List */}

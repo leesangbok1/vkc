@@ -49,7 +49,7 @@ export class NotificationService {
           *,
           author:users!questions_author_id_fkey(
             id,
-            display_name
+            name
           )
         `)
         .eq('id', questionId)
@@ -62,7 +62,7 @@ export class NotificationService {
 
       // 답변 작성자 정보 조회
       const { data: answerAuthor, error: authorError } = await supabase
-        .from('users').select('display_name').eq('id', answerAuthorId).single() as any
+        .from('users').select('name').eq('id', answerAuthorId).single() as any
 
       if (authorError || !answerAuthor) {
         console.error('답변 작성자 조회 오류:', authorError)
@@ -76,12 +76,12 @@ export class NotificationService {
           fromUserId: answerAuthorId,
           type: NotificationType.NEW_ANSWER,
           title: '새로운 답변이 등록되었습니다',
-          message: `${answerAuthor.display_name}님이 "${question.title}" 질문에 답변을 남겼습니다.`,
+          message: `${answerAuthor.name}님이 "${question.title}" 질문에 답변을 남겼습니다.`,
           questionId,
           answerId,
           metadata: {
             questionTitle: question.title,
-            answerAuthorName: answerAuthor.display_name
+            answerAuthorName: answerAuthor.name
           }
         })
       }
@@ -116,9 +116,9 @@ export class NotificationService {
 
       // 새 답변 작성자 이름 조회
       const { data: newAnswerAuthor } = await supabase
-        .from('users').select('display_name').eq('id', newAnswerAuthorId).single() as any
+        .from('users').select('name').eq('id', newAnswerAuthorId).single() as any
 
-      const newAnswerAuthorName = newAnswerAuthor?.display_name || '사용자'
+      const newAnswerAuthorName = newAnswerAuthor?.name || '사용자'
 
       // 각 답변자에게 알림 전송
       for (const answerer of uniqueAnswerers) {

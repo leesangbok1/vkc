@@ -24,7 +24,7 @@ export function LoadingSpinner({
       <div className="flex flex-col items-center space-y-2">
         <div
           className={cn(
-            'animate-spin rounded-full border-2 border-gray-300 border-t-primary-blue',
+            'animate-spin rounded-full border-2 border-gray-300 border-t-vk-primary',
             sizeClasses[size]
           )}
           role="status"

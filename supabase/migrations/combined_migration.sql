@@ -137,8 +137,8 @@ CREATE TABLE IF NOT EXISTS answers (
 CREATE TABLE IF NOT EXISTS votes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  target_id UUID NOT NULL, -- questions.id 또는 answers.id
-  target_type VARCHAR(20) NOT NULL CHECK (target_type IN ('question', 'answer')),
+  target_id UUID NOT NULL, -- questions.id, answers.id 또는 posts.id
+  target_type VARCHAR(20) NOT NULL CHECK (target_type IN ('question', 'answer', 'post')),
   vote_type VARCHAR(10) NOT NULL CHECK (vote_type IN ('upvote', 'downvote', 'helpful')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,

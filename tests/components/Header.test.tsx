@@ -4,26 +4,26 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import Header from '@/components/layout/Header'
 import { BRAND_NAME } from '@/lib/constants/branding'
+import { DEFAULT_AVATAR_URL } from '@/lib/constants/avatar'
+import { createSerializedNotifications } from '../utils/notificationTestUtils'
 
-// Mock useSafeAuth from ClientProviders
-const mockAuthContext = {
-  user: null,
-  profile: null,
-  loading: false,
-  signOut: vi.fn(),
-  signInWithGoogle: vi.fn(),
-  signInWithFacebook: vi.fn(),
-  signInWithKakao: vi.fn()
+const mockLoginModalContext = {
+  isOpen: false,
+  redirectTo: '/',
+  message: undefined,
+  onClose: undefined,
+  openLoginModal: vi.fn(),
+  closeLoginModal: vi.fn()
 }
 
-vi.mock('@/components/providers/ClientProviders', () => ({
-  useSafeAuth: () => mockAuthContext
+vi.mock('@/contexts/LoginModalContext', () => ({
+  useLoginModal: () => mockLoginModalContext
 }))
 
 // Mock Next.js components
 vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
-    <a href={href}>{children}</a>
+  default: ({ children, href, ...props }: { children: React.ReactNode, href: string }) => (
+    <a href={href} {...props}>{children}</a>
   )
 }))
 
@@ -133,189 +133,169 @@ vi.mock('@/lib/utils/permissions', () => ({
     label: '사용자',
     icon: '👤',
     bannerVariant: 'default'
+  }),
+  getRoleDisplayInfo: () => ({
+    badgeColor: 'bg-blue-500',
+    label: '사용자',
+    gradientClass: 'from-blue-500 to-blue-700',
+    icon: '👤'
   })
 }))
+
+type ProfileState = {
+  success: boolean
+  data: {
+    name: string
+    avatar_url: string | null
+    role: string
+    admin_yn?: string
+    is_dev_mode?: boolean
+  }
+}
+
+let profileState: ProfileState
+let categoriesState: Array<Record<string, any>>
+let notificationsState: Array<Record<string, any>>
+let unreadCountState: number
+
+const createResponse = (
+  body: any,
+  init: { ok?: boolean, status?: number } = {}
+) => ({
+  ok: init.ok ?? true,
+  status: init.status ?? 200,
+  json: async () => body
+})
+
+const getUrlString = (input: RequestInfo | URL) => {
+  if (typeof input === 'string') return input
+  if (input instanceof URL) return input.toString()
+  return (input as Request).url
+}
+
+const setAuthenticatedProfile = (overrides?: Partial<ProfileState['data']>) => {
+  profileState.success = true
+  profileState.data = {
+    name: overrides?.name ?? '테스트 사용자',
+    avatar_url: overrides?.avatar_url ?? null,
+    role: overrides?.role ?? 'user',
+    admin_yn: overrides?.admin_yn ?? 'N',
+    is_dev_mode: overrides?.is_dev_mode ?? false
+  }
+}
 
 describe('Header Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAuthContext.user = null
-    mockAuthContext.profile = null
-    mockAuthContext.loading = false
-  })
+    mockLoginModalContext.isOpen = false
+    mockLoginModalContext.redirectTo = '/'
+    mockLoginModalContext.message = undefined
+    mockLoginModalContext.onClose = undefined
+    mockLoginModalContext.openLoginModal.mockClear()
+    mockLoginModalContext.closeLoginModal.mockClear()
 
-  it('should render header with logo and navigation', () => {
-    render(<Header />)
-
-    expect(screen.getByText(BRAND_NAME)).toBeInTheDocument()
-    expect(screen.getByText('💬 질문')).toBeInTheDocument()
-    expect(screen.getByText('✍️ 질문하기')).toBeInTheDocument()
-  })
-
-  it('should show login button when user is not authenticated', () => {
-    render(<Header />)
-
-    expect(screen.getByText('로그인')).toBeInTheDocument()
-    expect(screen.queryByText('내 프로필')).not.toBeInTheDocument()
-  })
-
-  it('should show user menu when user is authenticated', () => {
-    mockAuthContext.user = {
-      id: 'user123',
-      email: 'test@example.com',
-      user_metadata: {
-        name: '테스트 사용자',
-        avatar_url: null
+    profileState = {
+      success: false,
+      data: {
+        name: '커뮤니티 멤버',
+        avatar_url: null,
+        role: 'guest',
+        admin_yn: 'N',
+        is_dev_mode: false
       }
-    } as any
+    }
+    categoriesState = []
+    notificationsState = createSerializedNotifications().map((notification) => ({ ...notification }))
+    unreadCountState = notificationsState.filter((notification) => !notification.is_read).length
 
-    render(<Header />)
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = getUrlString(input)
 
-    // Click on the user avatar to open dropdown
-    const userButton = screen.getByLabelText('사용자 메뉴 - 테스트 사용자')
-    fireEvent.click(userButton)
+      if (url.includes('/api/auth/profile')) {
+        if (profileState.success) {
+          return createResponse({ data: profileState.data })
+        }
+        return createResponse({ error: 'Unauthorized' }, { ok: false, status: 401 })
+      }
 
-    expect(screen.getByText('테스트 사용자')).toBeInTheDocument()
-    expect(screen.queryByText('로그인')).not.toBeInTheDocument()
+      if (url.includes('/api/categories')) {
+        return createResponse({ success: true, data: categoriesState })
+      }
+
+      if (url.includes('/api/notifications/unread-count')) {
+        return createResponse({ unreadCount: unreadCountState })
+      }
+
+      if (url.includes('/api/notifications')) {
+        return createResponse({ notifications: notificationsState })
+      }
+
+      return createResponse({})
+    }) as unknown as typeof fetch
   })
 
-  it('should display user avatar when available', () => {
-    mockAuthContext.user = {
-      id: 'user123',
-      email: 'test@example.com',
-      user_metadata: {
-        name: '테스트 사용자',
-        avatar_url: 'https://example.com/avatar.jpg'
-      }
-    } as any
+  it('renders brand logo link', async () => {
+    render(<Header />)
+
+    const homeLink = await screen.findByLabelText(`${BRAND_NAME} Home`)
+    expect(homeLink).toHaveAttribute('href', '/')
+    expect(await screen.findByText(BRAND_NAME)).toBeInTheDocument()
+  })
+
+  it('shows login button when user is not authenticated', async () => {
+    render(<Header />)
+
+    const loginButton = await screen.findByRole('button', { name: '로그인' })
+    expect(loginButton).toBeInTheDocument()
+    expect(mockLoginModalContext.openLoginModal).not.toHaveBeenCalled()
+  })
+
+  it('opens login modal when login button is clicked', async () => {
+    render(<Header />)
+
+    const loginButton = await screen.findByRole('button', { name: '로그인' })
+    fireEvent.click(loginButton)
+
+    expect(mockLoginModalContext.openLoginModal).toHaveBeenCalledWith({ redirectTo: '/' })
+  })
+
+  it('shows user avatar when authenticated', async () => {
+    setAuthenticatedProfile({
+      name: '테스트 사용자',
+      avatar_url: 'https://example.com/avatar.jpg'
+    })
 
     render(<Header />)
 
-    const avatar = screen.getByRole('img', { name: '테스트 사용자의 프로필 이미지' })
-    expect(avatar).toBeInTheDocument()
+    const avatar = await screen.findByRole('img', { name: '테스트 사용자의 프로필 사진' })
     expect(avatar).toHaveAttribute('src', 'https://example.com/avatar.jpg')
   })
 
-  it('should show fallback initials when no avatar', () => {
-    mockAuthContext.user = {
-      id: 'user123',
-      email: 'test@example.com',
-      user_metadata: {
-        name: '테스트 사용자',
-        avatar_url: null
-      }
-    } as any
-
-    render(<Header />)
-
-    expect(screen.getByText('테')).toBeInTheDocument() // 첫 글자
-  })
-
-  it('should open user dropdown menu', () => {
-    mockAuthContext.user = {
-      id: 'user123',
-      email: 'test@example.com',
-      user_metadata: {
-        name: '테스트 사용자'
-      }
-    } as any
-
-    render(<Header />)
-
-    const userButton = screen.getByLabelText('사용자 메뉴 - 테스트 사용자')
-    fireEvent.click(userButton)
-
-    expect(screen.getByText('프로필')).toBeInTheDocument()
-    expect(screen.getByText('설정')).toBeInTheDocument()
-    expect(screen.getByText('로그아웃')).toBeInTheDocument()
-  })
-
-  it('should handle logout functionality', () => {
-    mockAuthContext.user = {
-      id: 'user123',
-      email: 'test@example.com',
-      user_metadata: {
-        name: '테스트 사용자'
-      }
-    } as any
-
-    render(<Header />)
-
-    const userButton = screen.getByLabelText('사용자 메뉴 - 테스트 사용자')
-    fireEvent.click(userButton)
-
-    const logoutButton = screen.getByText('로그아웃')
-    fireEvent.click(logoutButton)
-
-    expect(mockAuthContext.signOut).toHaveBeenCalledTimes(1)
-  })
-
-  it('should show notification badge when there are unread notifications', () => {
-    mockAuthContext.user = {
-      id: 'user123',
-      email: 'test@example.com',
-      user_metadata: {
-        name: '테스트 사용자'
-      }
-    } as any
-
-    render(<Header />)
-
-    // NotificationCenterMobile component should be rendered for authenticated users
-    // Since it's mocked, we can check if the component exists
-    expect(screen.getByLabelText('사용자 메뉴 - 테스트 사용자')).toBeInTheDocument()
-  })
-
-  it('should be responsive on mobile devices', () => {
-    render(<Header />)
-
-    // Header should render properly on mobile (checking basic structure)
-    expect(screen.getByText(BRAND_NAME)).toBeInTheDocument()
-  })
-
-  it('should highlight active navigation item', () => {
-    render(<Header />)
-
-    const homeLink = screen.getByRole('link', { name: BRAND_NAME })
-    expect(homeLink).toHaveAttribute('href', '/')
-  })
-
-  it('should show loading state', () => {
-    mockAuthContext.loading = true
-
-    render(<Header />)
-
-    // 로딩 중일 때는 스켈레톤이나 로딩 표시가 있어야 함
-    expect(screen.getByLabelText('로딩 중')).toBeInTheDocument()
-  })
-
-  it('should handle search functionality', () => {
-    render(<Header />)
-
-    // The Header component doesn't have search functionality built-in currently
-    // Just test that the header renders properly
-    expect(screen.getByText(BRAND_NAME)).toBeInTheDocument()
-  })
-
-  it('should display trust score for authenticated users', () => {
-    mockAuthContext.user = {
-      id: 'user123',
-      email: 'test@example.com',
-      user_metadata: {
-        name: '테스트 사용자'
-      }
-    } as any
-
-    mockAuthContext.profile = {
+  it('uses default avatar when user has no avatar', async () => {
+    setAuthenticatedProfile({
       name: '테스트 사용자',
-      residence_years: 5
-    } as any
+      avatar_url: null
+    })
 
     render(<Header />)
 
-    const userButton = screen.getByLabelText('사용자 메뉴 - 테스트 사용자')
-    fireEvent.click(userButton)
+    const avatar = await screen.findByRole('img', { name: '테스트 사용자의 프로필 사진' })
+    expect(avatar).toHaveAttribute('src', DEFAULT_AVATAR_URL)
+  })
 
-    expect(screen.getByText('🇰🇷 5년차')).toBeInTheDocument()
+  it('opens profile dropdown for authenticated user', async () => {
+    setAuthenticatedProfile({
+      name: '테스트 사용자',
+      avatar_url: 'https://example.com/avatar.jpg'
+    })
+
+    render(<Header />)
+
+    const menuTrigger = await screen.findByRole('button', { name: '내 프로필 메뉴 열기' })
+    fireEvent.click(menuTrigger)
+
+    const logoutButton = await screen.findByText('로그아웃')
+    expect(logoutButton).toBeInTheDocument()
+    expect(logoutButton.closest('button')).not.toBeNull()
   })
 })

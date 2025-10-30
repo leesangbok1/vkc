@@ -9,10 +9,10 @@ interface StatusBadgeProps {
 }
 
 export default function StatusBadge({ resolved, compact = false, className }: StatusBadgeProps) {
-  const label = resolved ? '해결됨' : '미해결'
+  const label = resolved ? '해결됨' : '미채택'
   const tooltip = resolved
     ? '답변이 채택되어 해결된 상태입니다. 채택된 답변이 유지되는 동안 해결 상태로 표시됩니다.'
-    : '아직 채택된 답변이 없어 미해결 상태입니다. 답변을 채택하면 해결됨으로 전환됩니다.'
+    : '아직 채택된 답변이 없어 미채택 상태입니다. 답변을 채택하면 해결됨으로 전환됩니다.'
 
   return (
     <span
@@ -22,7 +22,7 @@ export default function StatusBadge({ resolved, compact = false, className }: St
       aria-label={label}
     >
       <span className={`vk-status-pill ${resolved ? 'resolved' : 'pending'}`}>
-        {resolved ? '✓ 해결됨' : '미해결'}
+        {resolved ? '✓ 해결됨' : '미채택'}
       </span>
       <span className="vk-status-tooltip" role="tooltip">
         <strong>{label}</strong>

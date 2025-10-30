@@ -3,6 +3,29 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+let activeModalCount = 0
+let previousBodyOverflow: string | null = null
+
+function lockBodyScroll() {
+  if (typeof document === 'undefined') return
+
+  if (activeModalCount === 0) {
+    previousBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+  }
+  activeModalCount += 1
+}
+
+function unlockBodyScroll() {
+  if (typeof document === 'undefined') return
+
+  activeModalCount = Math.max(0, activeModalCount - 1)
+  if (activeModalCount === 0) {
+    document.body.style.overflow = previousBodyOverflow ?? ''
+    previousBodyOverflow = null
+  }
+}
+
 export interface BaseModalProps {
   isOpen: boolean
   onClose: () => void
@@ -45,11 +68,10 @@ export default function BaseModal({
   closeOnEscape = true
 }: BaseModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
   const [isMobile, setIsMobile] = useState(false)
-  const [viewportHeight, setViewportHeight] = useState(0)
   const portalRef = useRef<HTMLDivElement | null>(null)
   const [isPortalReady, setIsPortalReady] = useState(false)
-  const bodyOverflowRef = useRef<string>('')
 
   // 터치 제스처 상태
   const [dragStartY, setDragStartY] = useState(0)
@@ -57,11 +79,14 @@ export default function BaseModal({
   const [isDragging, setIsDragging] = useState(false)
   const [canCloseOnOverlay, setCanCloseOnOverlay] = useState(false)
 
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
   // 모바일 감지
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768)
-      setViewportHeight(window.innerHeight)
     }
 
     checkMobile()
@@ -72,30 +97,27 @@ export default function BaseModal({
 
   // Escape key 닫기
   useEffect(() => {
-    if (typeof document === 'undefined') return
+    if (typeof document === 'undefined' || !isOpen) return
 
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && closeOnEscape) {
-        onClose()
+      if (e.key === 'Escape' && closeOnEscape) {
+        onCloseRef.current()
       }
     }
 
-    if (isOpen) {
-      if (closeOnEscape) {
-        document.addEventListener('keydown', handleEscape)
-      }
-      // Body scroll 방지
-      bodyOverflowRef.current = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
+    if (closeOnEscape) {
+      document.addEventListener('keydown', handleEscape)
     }
+
+    lockBodyScroll()
 
     return () => {
       if (closeOnEscape) {
         document.removeEventListener('keydown', handleEscape)
       }
-      document.body.style.overflow = bodyOverflowRef.current || ''
+      unlockBodyScroll()
     }
-  }, [isOpen, onClose, closeOnEscape])
+  }, [isOpen, closeOnEscape])
 
   // 터치 제스처 핸들러 (모바일 스와이프로 닫기)
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -206,7 +228,7 @@ export default function BaseModal({
         justifyContent: 'center',
         zIndex: 1000,
         backdropFilter: 'blur(4px)',
-        animation: 'modalFadeIn 0.3s ease-out'
+        animation: 'modalFadeIn 0.3s ease-out forwards'
       }}
     >
       <div

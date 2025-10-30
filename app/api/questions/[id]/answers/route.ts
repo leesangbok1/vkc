@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient as createClient, createSupabaseServiceClient } from '@/lib/supabase-server'
 import { ValidationUtils } from '@/lib/validation'
 import { applyRateLimit } from '@/lib/middleware/rate-limit'
+import { buildMockAnswers, getMockQuestionById, isMockModeEnabled } from '../../mock-data'
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 type ServiceClient = ReturnType<typeof createSupabaseServiceClient> | null
+type SupabaseAnyClient = SupabaseClient | NonNullable<ServiceClient>
 
 type QuestionRecord = {
   id: string
@@ -31,12 +33,13 @@ export async function GET(
     const serviceClient = tryCreateServiceClient()
     const { searchParams } = new URL(request.url)
 
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
+    if (isMockModeEnabled()) {
       const { page, limit } = ValidationUtils.validatePagination(searchParams)
       const mockAnswers = buildMockAnswers(questionId)
+      const mockQuestion = getMockQuestionById(questionId)
       return NextResponse.json({
         data: mockAnswers,
-        question: { id: questionId, title: 'Mock Question' },
+        question: { id: mockQuestion.id, title: mockQuestion.title },
         pagination: {
           page,
           limit,
@@ -170,28 +173,6 @@ export async function POST(
       )
     }
 
-    if (questionRecord.author_id === user.id) {
-      return NextResponse.json(
-        { error: 'You cannot answer your own question' },
-        { status: 400 }
-      )
-    }
-
-    const duplicateCheck = await hasExistingAnswer(questionId, user.id, supabase, serviceClient)
-    if (duplicateCheck.error) {
-      return NextResponse.json(
-        { error: 'Failed to check existing answers', details: duplicateCheck.error.message },
-        { status: 500 }
-      )
-    }
-
-    if (duplicateCheck.exists) {
-      return NextResponse.json(
-        { error: 'You have already answered this question' },
-        { status: 400 }
-      )
-    }
-
     const { data: answer, error: insertError } = await supabase
       .from('answers')
       .insert([{
@@ -314,53 +295,8 @@ async function fetchQuestionWithFallback(
   return (data ?? null) as QuestionRecord | null
 }
 
-async function hasExistingAnswer(
-  questionId: string,
-  userId: string,
-  supabase: SupabaseClient,
-  serviceClient: ServiceClient
-): Promise<{ exists: boolean; error?: any }> {
-  const primary = await supabase
-    .from('answers')
-    .select('id')
-    .eq('question_id', questionId)
-    .eq('author_id', userId)
-    .maybeSingle()
-
-  if (primary.data) {
-    return { exists: true }
-  }
-
-  if (primary.error && primary.error.code !== 'PGRST116') {
-    console.error('[answers route] duplicate check failed (client)', primary.error)
-    if (!serviceClient) {
-      return { exists: false, error: primary.error }
-    }
-  }
-
-  if (serviceClient) {
-    const fallback = await serviceClient
-      .from('answers')
-      .select('id')
-      .eq('question_id', questionId)
-      .eq('author_id', userId)
-      .maybeSingle()
-
-    if (fallback.data) {
-      return { exists: true }
-    }
-
-    if (fallback.error && fallback.error.code !== 'PGRST116') {
-      console.error('[answers route] duplicate check failed (service)', fallback.error)
-      return { exists: false, error: fallback.error }
-    }
-  }
-
-  return { exists: false }
-}
-
 function buildAnswersQuery(
-  client: any,
+  client: SupabaseAnyClient,
   questionId: string,
   sort: 'best' | 'newest' | 'oldest' | 'votes'
 ) {
@@ -407,34 +343,4 @@ function normalizeSort(sortParam: string | null): 'best' | 'newest' | 'oldest' |
 
 function safeNumber(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
-}
-
-function buildMockAnswers(questionId: string) {
-  return [
-    {
-      id: 'mock-answer-1',
-      content: '비자 연장은 출입국관리소에서 가능합니다. 필요 서류를 미리 준비하세요.',
-      question_id: questionId,
-      author_id: 'user2',
-      is_accepted: true,
-      helpful_count: 15,
-      upvote_count: 12,
-      downvote_count: 0,
-      created_at: '2024-01-15T10:00:00Z',
-      updated_at: '2024-01-15T10:00:00Z',
-      author: {
-        id: 'user2',
-        name: '김영수',
-        avatar_url: null,
-        trust_score: 85,
-        badges: {},
-        visa_type: 'E-7',
-        company: 'LG전자',
-        years_in_korea: 3,
-        region: null,
-        answer_count: 42,
-        helpful_answer_count: 18
-      }
-    }
-  ]
 }

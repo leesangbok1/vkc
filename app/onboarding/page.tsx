@@ -16,26 +16,128 @@ type SurveyData = {
 
 // 인기 토픽 6개
 const POPULAR_TOPICS = [
-  { id: 1, name: '한국 비자·체류', icon: '🛂' },
-  { id: 2, name: '한국 직장생활', icon: '💼' },
-  { id: 4, name: '한국 생활 정착', icon: '🌏' },
-  { id: 6, name: '한국에서 집 구하기', icon: '🏠' },
-  { id: 8, name: '베트남 송금·금융', icon: '💰' },
-  { id: 9, name: '한국어 배우기', icon: '📚' }
+  { id: 1, slug: 'visa', name: '한국 비자·체류', icon: '🛂' },
+  { id: 2, slug: 'employment', name: '한국 직장생활', icon: '💼' },
+  { id: 6, slug: 'daily-life', name: '한국 생활 정착', icon: '🌏' },
+  { id: 3, slug: 'housing', name: '한국에서 집 구하기', icon: '🏠' },
+  { id: 7, slug: 'finance', name: '베트남 송금·금융', icon: '💰' },
+  { id: 4, slug: 'education', name: '한국어 배우기', icon: '📚' }
 ]
 
 function OnboardingInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirectTo') || '/'
+  const redirectParam = searchParams.get('redirectTo')
+  const redirectTo = redirectParam && redirectParam.startsWith('/')
+    ? redirectParam
+    : '/'
   const [currentStep, setCurrentStep] = useState(1)
   const [surveyData, setSurveyData] = useState<SurveyData>({})
   const [categoryOther, setCategoryOther] = useState('')
   const [selectedTopics, setSelectedTopics] = useState<number[]>([])
   const [isNextDisabled, setIsNextDisabled] = useState(true)
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true)
+  const [allowOnboarding, setAllowOnboarding] = useState(false)
   const progressBarRef = useRef<HTMLDivElement>(null)
 
   const totalSteps = 5 // 4 → 5로 변경 (토픽 선택 추가)
+
+  useEffect(() => {
+    let cancelled = false
+    const onboardingPath =
+      redirectTo && redirectTo !== '/'
+        ? `/onboarding?redirectTo=${encodeURIComponent(redirectTo)}`
+        : '/onboarding'
+    const loginRedirect = `/auth/login?redirectTo=${encodeURIComponent(onboardingPath)}`
+
+    const prefillFromProfile = (profile: Record<string, any>) => {
+      const nextData: SurveyData = {}
+      if (typeof profile.residence === 'string' && profile.residence.length > 0) {
+        nextData.residence = profile.residence
+      }
+      if (typeof profile.gender === 'string' && profile.gender.length > 0) {
+        nextData.gender = profile.gender
+      }
+      if (typeof profile.age === 'string' && profile.age.length > 0) {
+        nextData.age = profile.age
+      }
+      if (typeof profile.category === 'string' && profile.category.length > 0) {
+        const normalized = profile.category
+        if (['student', 'worker', 'other'].includes(normalized)) {
+          nextData.category = normalized
+          if (normalized !== 'other') {
+            setCategoryOther('')
+          }
+        } else {
+          nextData.category = 'other'
+          setCategoryOther(normalized)
+        }
+      }
+      if (!cancelled) {
+        setSurveyData(prev => ({ ...prev, ...nextData }))
+      }
+
+      if (Array.isArray(profile.interests)) {
+        const matchedIds = POPULAR_TOPICS.filter(topic =>
+          profile.interests.includes(topic.name)
+        ).map(topic => topic.id)
+        if (!cancelled && matchedIds.length > 0) {
+          setSelectedTopics(matchedIds)
+        }
+      }
+    }
+
+    const verifyAccess = async () => {
+      setIsCheckingAccess(true)
+      try {
+        const response = await fetch('/api/auth/profile', { cache: 'no-store' })
+        if (!response.ok) {
+          if (response.status === 401) {
+            router.replace(loginRedirect)
+            return
+          }
+          console.error('Failed to load profile for onboarding guard. Status:', response.status)
+          router.replace(loginRedirect)
+          return
+        }
+
+        const payload = await response.json().catch(() => null)
+        const profile = payload?.data
+        if (!profile || typeof profile !== 'object') {
+          router.replace(loginRedirect)
+          return
+        }
+
+        prefillFromProfile(profile as Record<string, any>)
+
+        const onboardingCompleted = Object.prototype.hasOwnProperty.call(profile, 'onboarding_completed')
+          ? profile.onboarding_completed !== false
+          : true
+
+        if (onboardingCompleted) {
+          router.replace(redirectTo || '/')
+          return
+        }
+
+        if (!cancelled) {
+          setAllowOnboarding(true)
+        }
+      } catch (error) {
+        console.error('Onboarding access verification failed:', error)
+        router.replace(loginRedirect)
+      } finally {
+        if (!cancelled) {
+          setIsCheckingAccess(false)
+        }
+      }
+    }
+
+    verifyAccess()
+
+    return () => {
+      cancelled = true
+    }
+  }, [redirectTo, router])
 
   // Validate current step
   useEffect(() => {
@@ -106,8 +208,15 @@ function OnboardingInner() {
       .map(topicId => POPULAR_TOPICS.find(t => t.id === topicId)?.name)
       .filter((name): name is string => Boolean(name))
 
-    // 자동 닉네임 생성
-    const autoNickname = generateUniqueNickname()
+    // 자동 닉네임 생성 (온보딩 정보 기반)
+    const autoNickname = generateUniqueNickname({
+      residence: finalData.residence,
+      gender: finalData.gender,
+      age: finalData.age,
+      category: finalData.category,
+      topics: selectedTopicNames,
+      interests: selectedTopicNames
+    })
 
     console.log('✅ 프로필 설정 완료:', finalData)
     console.log('✅ 자동 생성된 닉네임:', autoNickname)
@@ -116,6 +225,7 @@ function OnboardingInner() {
     // 실제 DB 업데이트: 서버 API 사용 (SSR 쿠키 기반으로 인증 처리)
     try {
       const profilePayload = {
+        name: autoNickname,
         interests: selectedTopicNames,
         residence: finalData.residence || null,
         gender: finalData.gender || null,
@@ -166,7 +276,7 @@ function OnboardingInner() {
           if (!topic) return
           await subscribeTopic({
             id: topic.id,
-            slug: topic.name.replace(/\s+/g, '-').toLowerCase()
+            slug: topic.slug
           })
         })
       )
@@ -186,6 +296,23 @@ function OnboardingInner() {
       progressBarRef.current.style.setProperty('--progress', `${progress}%`)
     }
   }, [progress])
+
+  if (isCheckingAccess) {
+    return (
+      <main className="onboarding-layout">
+        <div className="survey-container">
+          <div className="survey-header">
+            <h1 className="survey-title">프로필 설정</h1>
+            <p className="survey-subtitle">맞춤형 정보를 준비중입니다...</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  if (!allowOnboarding) {
+    return null
+  }
 
   return (
     <main className="onboarding-layout">

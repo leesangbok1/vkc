@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase-server'
 
 type PopularUser = {
   id: string
@@ -21,7 +21,15 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '30', 10), 1), 50)
     const supabase = await createSupabaseServerClient()
 
-    const { data: users, error } = await supabase
+    let queryClient
+    try {
+      queryClient = createSupabaseServiceClient()
+    } catch (error) {
+      console.warn('[GET /api/users/popular] service client unavailable, fallback to session client', error)
+      queryClient = supabase
+    }
+
+    const { data: users, error } = await queryClient
       .from('users')
       .select('id, name, avatar_url, role, trust_score, answer_count, helpful_answer_count')
       .neq('role', 'guest')

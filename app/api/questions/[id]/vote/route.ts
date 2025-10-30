@@ -11,9 +11,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: questionId } = await params
 
-    // Mock mode 체크 (테스트 환경)
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      return postMockVote(request, questionId)
+      return NextResponse.json(
+        { error: 'Mock mode is no longer supported for /api/questions/[id]/vote. Disable NEXT_PUBLIC_MOCK_MODE to use this endpoint.' },
+        { status: 503 }
+      )
     }
 
     const { user, error: authError } = await getUser(request)
@@ -25,12 +27,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      )
-    }
 
     const body = await request.json()
     const { vote_type } = body // 'upvote' or 'downvote'
@@ -182,9 +178,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id: questionId } = await params
 
-    // Mock mode 체크 (테스트 환경)
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-      return getMockVoteStatus(questionId)
+      return NextResponse.json(
+        { error: 'Mock mode is no longer supported for /api/questions/[id]/vote/status. Disable NEXT_PUBLIC_MOCK_MODE to use this endpoint.' },
+        { status: 503 }
+      )
     }
 
     const { user, error: authError } = await getUser(request)
@@ -196,12 +194,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      )
-    }
 
     // 사용자의 투표 상태 조회
     const { data: vote, error } = await supabase
@@ -236,53 +228,4 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     )
   }
-}
-
-// Mock 함수들 (테스트 환경용)
-async function postMockVote(request: NextRequest, questionId: string) {
-  try {
-    const body = await request.json()
-    const { vote_type } = body
-
-    if (!['upvote', 'downvote'].includes(vote_type)) {
-      return NextResponse.json(
-        { error: 'Invalid vote type. Must be "upvote" or "downvote"' },
-        { status: 400 }
-      )
-    }
-
-    // Mock 투표 결과
-    const mockVoteResult = {
-      question_id: questionId,
-      vote_type,
-      upvote_count: vote_type === 'upvote' ? 13 : 12,
-      downvote_count: vote_type === 'downvote' ? 1 : 0,
-      vote_score: vote_type === 'upvote' ? 13 : 11
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: mockVoteResult,
-      message: 'Vote recorded'
-    })
-
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Invalid request body' },
-      { status: 400 }
-    )
-  }
-}
-
-function getMockVoteStatus(questionId: string) {
-  const mockVoteStatus = {
-    question_id: questionId,
-    user_vote: 'upvote', // 사용자가 이미 upvote 했다고 가정
-    voted_at: '2024-01-15T12:00:00Z'
-  }
-
-  return NextResponse.json({
-    success: true,
-    data: mockVoteStatus
-  })
 }

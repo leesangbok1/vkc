@@ -1,8 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import Link from 'next/link'
-import { UserRole, getRoleDisplayInfo } from '@/lib/utils/permissions'
+import { UserRole } from '@/lib/utils/permissions'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +16,6 @@ import {
   Activity,
   Bell,
   TrendingUp,
-  FileText,
   ChevronLeft,
   ChevronRight,
   Home

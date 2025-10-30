@@ -129,7 +129,17 @@ class ErrorLogger {
     const prefix = `[${entry.context.category?.toUpperCase()}] ${entry.context.component || 'Unknown'}`
 
     console.group(`🐛 ${prefix} - ${entry.message}`)
-    console.error('Error:', entry.error)
+    const severity = entry.context.severity ?? 'medium'
+    const logFn =
+      severity === 'low' ? console.info :
+      severity === 'medium' ? console.warn :
+      console.error
+
+    if (entry.error) {
+      logFn('Error:', entry.error)
+    } else {
+      logFn('No Error instance supplied')
+    }
     console.log('Context:', entry.context)
     console.log('Error ID:', entry.errorId)
     if (entry.stackTrace) {

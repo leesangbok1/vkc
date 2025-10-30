@@ -9,6 +9,7 @@ import {
   toggleSubscribeTopic,
   type SubscribedTopic
 } from '@/lib/utils/follow-manager'
+import { safeJsonFetch } from '@/lib/utils/fetcher'
 import PageLayout from '@/components/layout/PageLayout'
 import ClientOnly from '@/components/common/ClientOnly'
 import RelatedQuestionsFeed from '@/components/topics/RelatedQuestionsFeed'
@@ -52,16 +53,17 @@ export default function TopicsPage() {
   async function loadTopics() {
     setIsLoadingTopics(true)
     try {
-      const res = await fetch('/api/categories?include_count=true', { cache: 'no-store' })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null)
-        throw new Error(payload?.error || '토픽 정보를 불러오지 못했습니다.')
+      const { ok, data, error } = await safeJsonFetch<any>(
+        '/api/categories?include_count=true',
+        { cache: 'no-store' }
+      )
+      if (!ok || !data) {
+        throw new Error(error || '토픽 정보를 불러오지 못했습니다.')
       }
 
-      const json = await res.json()
-      const data = Array.isArray(json?.data) ? json.data : []
+      const categories = Array.isArray(data?.data) ? data.data : []
 
-      setTopics(data.map((category: any) => ({
+      setTopics(categories.map((category: any) => ({
         id: Number(category.id),
         name: String(category.name || '이름 없는 토픽'),
         icon: typeof category.icon === 'string' && category.icon.length > 0 ? category.icon : undefined,
@@ -162,24 +164,32 @@ export default function TopicsPage() {
             </p>
 
             <div className="topics-actions">
-              <div className="topics-search">
-                <span className="topics-search-icon">🔍</span>
+              <label htmlFor="topics-search-input" className="topics-search">
+                <span className="topics-search-icon" aria-hidden="true">🔍</span>
                 <input
-                  type="text"
+                  id="topics-search-input"
+                  type="search"
                   placeholder="원하는 토픽을 검색해보세요"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  className="topics-search-input"
                 />
-              </div>
+              </label>
 
-              <div className="topics-filter-tabs">
+              <div className="topics-filter-tabs" role="tablist" aria-label="토픽 필터">
                 <button
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === 'all'}
                   className={`topics-filter-tab ${filter === 'all' ? 'active' : ''}`}
                   onClick={() => setFilter('all')}
                 >
                   전체 토픽
                 </button>
                 <button
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === 'following'}
                   className={`topics-filter-tab ${filter === 'following' ? 'active' : ''}`}
                   onClick={() => setFilter('following')}
                   disabled={!isAuthenticated}
@@ -192,21 +202,21 @@ export default function TopicsPage() {
 
           <div className="topics-stats">
             <div className="topics-stat-card">
-              <div className="topics-stat-icon">📚</div>
+              <div className="topics-stat-icon" aria-hidden="true">📚</div>
               <div>
                 <div className="topics-stat-value">{topics.length}</div>
                 <div className="topics-stat-label">등록된 토픽</div>
               </div>
             </div>
             <div className="topics-stat-card">
-              <div className="topics-stat-icon">⭐</div>
+              <div className="topics-stat-icon" aria-hidden="true">⭐</div>
               <div>
                 <div className="topics-stat-value">{followingCount}</div>
                 <div className="topics-stat-label">나의 팔로잉</div>
               </div>
             </div>
             <div className="topics-stat-card">
-              <div className="topics-stat-icon">💬</div>
+              <div className="topics-stat-icon" aria-hidden="true">💬</div>
               <div>
                 <div className="topics-stat-value">
                   {topics.reduce((sum, topic) => sum + topic.questionCount, 0)}
@@ -220,26 +230,37 @@ export default function TopicsPage() {
         {/* Topics Grid */}
         <section className="topics-grid-section">
           {isLoadingTopics || isLoadingSubscriptions ? (
-            <div className="topics-loading-state">
-              <div className="topics-spinner">⏳</div>
+            <div className="topics-loading-state" role="status" aria-live="polite">
+              <div className="topics-spinner" aria-hidden="true">⏳</div>
               <p>토픽 정보를 불러오는 중입니다...</p>
             </div>
           ) : filteredTopics.length === 0 ? (
             <div className="topics-empty-state">
-              <div className="topics-empty-icon">🔎</div>
+              <div className="topics-empty-icon" aria-hidden="true">🔎</div>
               <h3>조건에 맞는 토픽이 없습니다</h3>
               <p>검색어나 필터를 변경해보세요.</p>
             </div>
           ) : (
             <div className="topics-grid">
               {filteredTopics.map((topic) => (
-                <div key={topic.id} className={`topic-card ${topic.isFollowing ? 'following' : ''}`}>
+                <div
+                  key={topic.id}
+                  className={`topic-card ${topic.isFollowing ? 'topic-card-following following' : ''}`}
+                >
                   <div className="topic-card-header">
-                    <div className="topic-icon">{topic.icon || '📌'}</div>
+                    <div className="topic-icon" aria-hidden="true">{topic.icon || '📌'}</div>
+                    <div className="topic-card-header-info">
+                      <h3 className="topic-name">{topic.name}</h3>
+                      <p className="topic-question-count">
+                        질문 {topic.questionCount.toLocaleString()}개
+                      </p>
+                    </div>
                     <button
+                      type="button"
                       className={`topic-follow-btn ${topic.isFollowing ? 'following' : ''}`}
                       onClick={() => toggleFollow(topic)}
                       disabled={processingTopicId === topic.id}
+                      aria-pressed={topic.isFollowing}
                     >
                       {processingTopicId === topic.id
                         ? '처리 중...'
@@ -247,13 +268,16 @@ export default function TopicsPage() {
                     </button>
                   </div>
 
-                  <h3 className="topic-name">{topic.name}</h3>
                   <p className="topic-description">{topic.description}</p>
 
                   <div className="topic-meta">
-                    <span>질문 {topic.questionCount.toLocaleString()}개</span>
-                    <Link href={`/topics/${topic.slug}`} className="topic-detail-link">
-                      자세히 보기 →
+                    <span>누적 질문 {topic.questionCount.toLocaleString()}개</span>
+                    <Link
+                      href={`/topics/${topic.slug}`}
+                      className="topic-detail-link"
+                      aria-label={`${topic.name} 토픽 페이지로 이동`}
+                    >
+                      토픽 페이지 →
                     </Link>
                   </div>
                 </div>

@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import type { Database } from '@/lib/supabase'
+import { getServerDbClient } from '@/lib/server/supabase-clients'
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
+
+type UsersTable = Database['public']['Tables']['users']
+type CertificationRequestsTable = Database['public']['Tables']['certification_requests']
+type AdminCheckRow = Pick<UsersTable['Row'], 'role' | 'admin_yn'>
+type CertificationRequestRow = CertificationRequestsTable['Row']
+type CertificationRequestUpdate = CertificationRequestsTable['Update']
 
 export async function PATCH(
   request: NextRequest,
@@ -15,7 +22,7 @@ export async function PATCH(
     const { notes } = body
 
     // Get session to verify admin access
-    const supabase = await createSupabaseServerClient()
+    const supabase = await getServerDbClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -32,9 +39,11 @@ export async function PATCH(
       .eq('id', session.user.id)
       .maybeSingle()
 
+    const adminProfile = userData as AdminCheckRow | null
+
     const isAdmin =
-      userData?.admin_yn === 'Y' ||
-      userData?.role === 'admin'
+      adminProfile?.admin_yn === 'Y' ||
+      adminProfile?.role === 'admin'
 
     if (userError || !isAdmin) {
       return NextResponse.json(
@@ -44,17 +53,21 @@ export async function PATCH(
     }
 
     // Update admin notes
+    const certUpdate: CertificationRequestUpdate = {
+      admin_notes: notes,
+      updated_at: new Date().toISOString()
+    }
+
     const { data: certRequest, error: updateError } = await supabase
       .from('certification_requests')
-      .update({
-        admin_notes: notes,
-        updated_at: new Date().toISOString()
-      })
+      .update<CertificationRequestUpdate>(certUpdate)
       .eq('id', certificationId)
       .select()
-      .single()
+      .maybeSingle()
 
-    if (updateError || !certRequest) {
+    const certRequestRow = certRequest as CertificationRequestRow | null
+
+    if (updateError || !certRequestRow) {
       console.error('Failed to update admin notes:', updateError)
       return NextResponse.json(
         { error: 'Failed to update admin notes' },
@@ -65,7 +78,7 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       message: 'Admin notes updated successfully',
-      certification: certRequest
+      certification: certRequestRow
     })
 
   } catch (error) {

@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <ClientProviders>
           <HeaderClient />
-          <main className="app-main-content">
+          <main className="app-main-content" id="main-content">
             {children}
           </main>
           <ChatbotButtonClient />

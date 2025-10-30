@@ -9,34 +9,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
-    }
     const questionId = id
 
-    // Mock mode check
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true' || !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('supabase.co')) {
-      console.log('Question comments API running in mock mode')
-      const mockComments = [
-        {
-          id: '1',
-          content: '좋은 질문이네요!',
-          target_id: questionId,
-          target_type: 'question',
-          author_id: 'user3',
-          created_at: '2024-01-15T11:00:00Z',
-          author: {
-            id: 'user3',
-            name: '박민수',
-            avatar_url: null,
-            trust_score: 75
-          }
-        }
-      ]
-
-      return NextResponse.json({ data: mockComments })
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      return NextResponse.json(
+        { error: 'Mock mode is no longer supported for /api/questions/[id]/comments. Disable NEXT_PUBLIC_MOCK_MODE to use this endpoint.' },
+        { status: 503 }
+      )
     }
+
+    const supabase = await createClient()
 
     // 댓글 조회
     const { data: comments, error } = await supabase
@@ -77,11 +59,16 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
-    }
     const questionId = id
+
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+      return NextResponse.json(
+        { error: 'Mock mode is no longer supported for /api/questions/[id]/comments. Disable NEXT_PUBLIC_MOCK_MODE to use this endpoint.' },
+        { status: 503 }
+      )
+    }
+
+    const supabase = await createClient()
 
     // 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

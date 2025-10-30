@@ -17,12 +17,7 @@ type Props = {
   sidebar?: React.ReactNode
 }
 
-export default function PageLayout({
-  children,
-  variant = 'withSidebar',
-  showSidebar = true,
-  sidebar,
-}: Props) {
+export default function PageLayout({ children, variant = 'withSidebar', showSidebar = true, sidebar }: Props) {
   if (variant === 'centered') {
     return (
       <main className="main-layout">

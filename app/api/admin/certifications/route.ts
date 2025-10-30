@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import type { Database } from '@/lib/supabase'
+import { getServerDbClient } from '@/lib/server/supabase-clients'
+
+type UsersTable = Database['public']['Tables']['users']
+type CertificationRequestsTable = Database['public']['Tables']['certification_requests']
+type AdminCheckRow = Pick<Database['public']['Tables']['users']['Row'], 'role' | 'admin_yn'>
+type CertificationRequestRow = Database['public']['Tables']['certification_requests']['Row']
+type RequestWithUser = CertificationRequestRow & {
+  user: Pick<Database['public']['Tables']['users']['Row'], 'id' | 'name' | 'email' | 'role' | 'admin_yn'> | null
+}
 
 export async function GET(request: NextRequest) {
   try {
     // Get session to verify admin access
-    const supabase = await createSupabaseServerClient()
+    const supabase = await getServerDbClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -21,9 +30,11 @@ export async function GET(request: NextRequest) {
       .eq('id', session.user.id)
       .maybeSingle()
 
+    const adminProfile = userData as AdminCheckRow | null
+
     const isAdmin =
-      userData?.admin_yn === 'Y' ||
-      userData?.role === 'admin'
+      adminProfile?.admin_yn === 'Y' ||
+      adminProfile?.role === 'admin'
 
     if (userError || !isAdmin) {
       return NextResponse.json(
@@ -82,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      requests: certRequests,
+      requests: (certRequests ?? []) as RequestWithUser[],
       pagination: {
         total: count || 0,
         limit,

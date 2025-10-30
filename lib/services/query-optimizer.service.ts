@@ -54,7 +54,7 @@ export class QueryOptimizerService {
         tags,
         author:users!author_id(
           id,
-          display_name,
+          name,
           avatar_url,
           trust_score
         ),
@@ -194,7 +194,7 @@ export class QueryOptimizerService {
         answer_count,
         is_resolved,
         tags,
-        author:users!author_id(id, display_name, avatar_url),
+        author:users!author_id(id, name, avatar_url),
         category:categories!category_id(name, slug, icon)
       `, { count: 'exact' })
       .neq('status', 'deleted')
@@ -273,7 +273,7 @@ export class QueryOptimizerService {
         vote_score,
         is_accepted,
         is_helpful,
-        author:users!author_id(id, display_name, avatar_url),
+        author:users!author_id(id, name, avatar_url),
         question:questions!question_id(
           id,
           title,
@@ -316,7 +316,7 @@ export class QueryOptimizerService {
       .from('users')
       .select(`
         id,
-        display_name,
+        name,
         avatar_url,
         bio,
         trust_score,
@@ -326,7 +326,7 @@ export class QueryOptimizerService {
         expertise_areas,
         created_at
       `, { count: 'exact' })
-      .or(`display_name.ilike.%${query}%, bio.ilike.%${query}%`)
+      .or(`name.ilike.%${query}%, bio.ilike.%${query}%`)
 
     // 필터 적용
     if (filters.minTrustScore) {
@@ -509,7 +509,7 @@ export class QueryOptimizerService {
           view_count,
           vote_score,
           answer_count,
-          author:users!author_id(id, display_name, avatar_url),
+        author:users!author_id(id, name, avatar_url),
           category:categories!category_id(name, slug, icon)
         `)
         .in('id', uncachedIds)

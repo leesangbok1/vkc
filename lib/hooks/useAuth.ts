@@ -1,6 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+'use client'
+
+import { useMemo, useCallback } from 'react'
+import { useSafeAuth } from '@/components/providers/ClientProviders'
 
 export type UserRole = 'GUEST' | 'USER' | 'VERIFIED' | 'ADMIN'
 
@@ -9,7 +12,7 @@ export interface MockUser {
   email: string
   name: string
   role: UserRole
-  avatar_url?: string
+  avatar_url?: string | null
   admin_yn?: 'Y' | 'N'
   onboarding_completed?: boolean
   residence?: string | null
@@ -28,82 +31,68 @@ export interface AuthState {
   updateUser: (updates: Partial<MockUser>) => void
 }
 
-/**
- * Unified authentication hook for VietKConnect
- * Uses localStorage-based mock authentication consistently across all pages
- */
+const mapRole = (role: string | null | undefined, adminYn: string | null | undefined): UserRole => {
+  if (adminYn === 'Y') return 'ADMIN'
+  if (!role) return 'USER'
+  const upper = role.toUpperCase()
+  if (upper === 'ADMIN') return 'ADMIN'
+  if (upper === 'VERIFIED') return 'VERIFIED'
+  if (upper === 'GUEST') return 'GUEST'
+  return 'USER'
+}
+
 export function useAuth(): AuthState {
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user, setUser] = useState<MockUser | null>(null)
+  const { loading, profile, signOut } = useSafeAuth()
 
-  const checkAuth = async () => {
-    setIsLoading(true)
-    try {
-      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
-      if (!res.ok) {
-        setUser(null)
-        setIsLoggedIn(false)
-        return
-      }
-      const json = await res.json()
-      const data = json.data || {}
-      const onboardingCompleted =
-        Object.prototype.hasOwnProperty.call(data, 'onboarding_completed')
-          ? data.onboarding_completed === false ? false : true
-          : true
-      const isAdmin = data.admin_yn === 'Y' || data.role?.toLowerCase?.() === 'admin'
-      const role = (isAdmin ? 'ADMIN' : (data.role?.toUpperCase?.() as UserRole)) || 'USER'
-      setUser({
-        id: data.id,
-        email: data.email,
-        name: data.name || data.email || '사용자',
-        role,
-        admin_yn: data.admin_yn,
-        onboarding_completed: onboardingCompleted,
-        residence: data.residence ?? null,
-        gender: data.gender ?? null,
-        age: data.age ?? null,
-        interests: Array.isArray(data.interests) ? data.interests as string[] : []
-      })
-      setIsLoggedIn(true)
-    } catch (error) {
-      console.error('Auth check failed:', error)
-      setUser(null)
-      setIsLoggedIn(false)
-    } finally {
-      setIsLoading(false)
+  const user = useMemo<MockUser | null>(() => {
+    if (!profile) return null
+    const fallbackEmail = typeof profile.email === 'string' ? profile.email : ''
+    const fallbackName = typeof profile.name === 'string' && profile.name.trim().length > 0
+      ? profile.name.trim()
+      : fallbackEmail || '사용자'
+
+    const extendedProfile = profile as typeof profile & {
+      onboarding_completed?: boolean | null
+      residence?: string | null
+      gender?: string | null
+      age?: string | null
     }
-  }
 
-  // For compatibility with existing callers; prefer redirect flow in pages
-  const login = (_newUser: MockUser) => {
+    return {
+      id: profile.id,
+      email: fallbackEmail,
+      name: fallbackName,
+      avatar_url: profile.avatar_url ?? null,
+      role: mapRole(profile.role, profile.admin_yn),
+      admin_yn: profile.admin_yn ?? 'N',
+      onboarding_completed:
+        extendedProfile.onboarding_completed === undefined ? true : Boolean(extendedProfile.onboarding_completed),
+      residence: extendedProfile.residence ?? null,
+      gender: extendedProfile.gender ?? null,
+      age: extendedProfile.age ?? null,
+      interests: Array.isArray(profile.interests) ? profile.interests.slice() : []
+    }
+  }, [profile])
+
+  const login = useCallback((_: MockUser) => {
     if (typeof window !== 'undefined') {
       window.location.href = '/auth/login'
     }
-  }
-
-  const logout = () => {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/'
-    }
-  }
-
-  const updateUser = (_updates: Partial<MockUser>) => {
-    // no-op for server-backed auth; pages should POST to /api/auth/profile
-  }
-
-  useEffect(() => {
-    checkAuth()
   }, [])
 
+  const logout = useCallback(() => {
+    void signOut().catch((error) => {
+      console.error('Failed to sign out:', error)
+    })
+  }, [signOut])
+
   return {
-    isLoading,
-    isLoggedIn,
+    isLoading: loading,
+    isLoggedIn: Boolean(profile),
     user,
-    checkAuth,
+    checkAuth: () => Promise.resolve(),
     login,
     logout,
-    updateUser
+    updateUser: () => {},
   }
 }

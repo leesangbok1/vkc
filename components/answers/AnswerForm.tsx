@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import NotificationSetupModal from '@/components/modals/NotificationSetupModal'
 import RichEditor from '@/components/editor/RichEditor'
 import { EDITOR_USAGE_GUIDE } from '@/lib/constants/editor'
+import { useNotificationPrompt } from '@/contexts/NotificationPromptContext'
 
 interface AnswerFormProps {
   questionId: string
@@ -11,10 +11,10 @@ interface AnswerFormProps {
 }
 
 export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerFormProps) {
+  const { openNotificationPrompt } = useNotificationPrompt()
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showNotificationModal, setShowNotificationModal] = useState(false)
   const [userEmail, setUserEmail] = useState<string>('')
 
   useEffect(() => {
@@ -70,7 +70,15 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
       setContent('')
       onAnswerSubmitted()
 
-      setShowNotificationModal(true)
+      openNotificationPrompt({
+        email: userEmail,
+        onComplete: () => {
+          alert('답변이 등록되었습니다! 알림 설정이 완료되었습니다.')
+        },
+        onDismiss: () => {
+          alert('답변이 등록되었습니다!')
+        },
+      })
 
     } catch (err) {
       console.error('Error submitting answer:', err)
@@ -83,16 +91,6 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     await submitAnswer()
-  }
-
-  const handleNotificationComplete = () => {
-    setShowNotificationModal(false)
-    alert('답변이 등록되었습니다! 알림 설정이 완료되었습니다.')
-  }
-
-  const handleNotificationClose = () => {
-    setShowNotificationModal(false)
-    alert('답변이 등록되었습니다!')
   }
 
   return (
@@ -184,14 +182,6 @@ export default function AnswerForm({ questionId, onAnswerSubmitted }: AnswerForm
           </ul>
         </div>
       </div>
-
-      {/* Notification Setup Modal */}
-      <NotificationSetupModal
-        isOpen={showNotificationModal}
-        onClose={handleNotificationClose}
-        onComplete={handleNotificationComplete}
-        userEmail={userEmail}
-      />
     </div>
   )
 }

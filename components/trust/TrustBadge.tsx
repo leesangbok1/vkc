@@ -304,7 +304,7 @@ export function CertifiedUserCard({
       {/* 통계 */}
       <div className="grid grid-cols-3 gap-2 mb-4 text-center">
         <div>
-          <div className="text-lg font-bold text-primary-blue">{expert.answer_count || 0}</div>
+          <div className="text-lg font-bold text-vk-primary">{expert.answer_count || 0}</div>
           <div className="text-xs text-tertiary">답변</div>
         </div>
         <div>
@@ -322,7 +322,7 @@ export function CertifiedUserCard({
         {onSelect && (
           <button
             onClick={onSelect}
-            className="flex-1 bg-primary-blue hover:bg-primary-700 text-white text-sm py-2 px-4 rounded-lg transition-colors"
+            className="flex-1 bg-vk-primary hover:bg-primary-700 text-white text-sm py-2 px-4 rounded-lg transition-colors"
           >
             선택
           </button>

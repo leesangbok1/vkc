@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { UserRole, getRoleDisplayInfo } from '@/lib/utils/permissions'
 import { cn } from '@/lib/utils'
 import {
@@ -35,19 +35,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Search,
-  Filter,
-  UserCheck,
-  UserX,
   Settings,
-  Mail,
-  Calendar,
-  Eye,
   Edit,
-  MoreHorizontal,
   Crown,
   Shield,
   User,
@@ -59,16 +51,41 @@ interface UserData {
   email: string
   name: string | null
   role: UserRole
-  createdAt: string
+  createdAt: string | null
   lastLogin: string | null
   isActive: boolean
   questionsCount: number
   answersCount: number
   verificationStatus?: 'pending' | 'approved' | 'rejected' | null
+  customBadgeLabel?: string
+  customBadgeIcon?: string
 }
 
 interface UserManagementProps {
   userRole: UserRole
+}
+
+const mapRoleToEnum = (role: string | null | undefined): UserRole => {
+  switch ((role || '').toLowerCase()) {
+    case UserRole.ADMIN:
+      return UserRole.ADMIN
+    case UserRole.VERIFIED:
+      return UserRole.VERIFIED
+    case UserRole.GUEST:
+      return UserRole.GUEST
+    default:
+      return UserRole.USER
+  }
+}
+
+const normalizeVerificationStatus = (
+  status: string | null | undefined
+): 'pending' | 'approved' | 'rejected' | null => {
+  const value = (status || '').toLowerCase()
+  if (value === 'pending' || value === 'approved' || value === 'rejected') {
+    return value
+  }
+  return null
 }
 
 export default function UserManagement({ userRole }: UserManagementProps) {
@@ -81,6 +98,12 @@ export default function UserManagement({ userRole }: UserManagementProps) {
   const [isRoleChangeDialogOpen, setIsRoleChangeDialogOpen] = useState(false)
   const [newRole, setNewRole] = useState<UserRole>(UserRole.USER)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [roleChangeLoading, setRoleChangeLoading] = useState(false)
+  const [isBadgeDialogOpen, setIsBadgeDialogOpen] = useState(false)
+  const [badgeLabel, setBadgeLabel] = useState('')
+  const [badgeIcon, setBadgeIcon] = useState('')
+  const [badgeSaving, setBadgeSaving] = useState(false)
 
   // 권한 확인
   const isAdmin = userRole === UserRole.ADMIN
@@ -96,75 +119,42 @@ export default function UserManagement({ userRole }: UserManagementProps) {
   }, [users, searchTerm, roleFilter, statusFilter])
 
   const loadUsers = async () => {
+    if (!isAdmin) return
+
     try {
       setLoading(true)
-      // Mock 데이터 (실제로는 API 호출)
-      const mockUsers: UserData[] = [
-        {
-          id: '1',
-          email: 'admin@vietkconnect.com',
-          name: '관리자',
-          role: UserRole.ADMIN,
-          createdAt: '2024-01-15T09:00:00Z',
-          lastLogin: '2024-12-05T14:30:00Z',
-          isActive: true,
-          questionsCount: 5,
-          answersCount: 28,
-          verificationStatus: 'approved'
-        },
-        {
-          id: '2',
-          email: 'nguyen.minh@example.com',
-          name: 'Nguyen Minh',
-          role: UserRole.VERIFIED,
-          createdAt: '2024-03-20T10:15:00Z',
-          lastLogin: '2024-12-05T16:20:00Z',
-          isActive: true,
-          questionsCount: 12,
-          answersCount: 45,
-          verificationStatus: 'approved'
-        },
-        {
-          id: '3',
-          email: 'tran.linh@example.com',
-          name: 'Tran Linh',
-          role: UserRole.USER,
-          createdAt: '2024-08-10T14:22:00Z',
-          lastLogin: '2024-12-04T11:45:00Z',
-          isActive: true,
-          questionsCount: 8,
-          answersCount: 15,
-          verificationStatus: 'pending'
-        },
-        {
-          id: '4',
-          email: 'le.duc@example.com',
-          name: 'Le Duc',
-          role: UserRole.USER,
-          createdAt: '2024-09-05T16:30:00Z',
-          lastLogin: '2024-12-03T09:10:00Z',
-          isActive: true,
-          questionsCount: 3,
-          answersCount: 7,
-          verificationStatus: null
-        },
-        {
-          id: '5',
-          email: 'pham.anh@example.com',
-          name: 'Pham Anh',
-          role: UserRole.USER,
-          createdAt: '2024-11-12T11:00:00Z',
-          lastLogin: null,
-          isActive: false,
-          questionsCount: 1,
-          answersCount: 0,
-          verificationStatus: 'rejected'
-        }
-      ]
+      setError(null)
 
-      setUsers(mockUsers)
-    } catch (error) {
+      const res = await fetch('/api/admin/users?limit=200', { cache: 'no-store' })
+      const payload = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        const message =
+          payload?.error || payload?.details || '사용자 목록을 불러오지 못했습니다.'
+        throw new Error(message)
+      }
+
+      const apiUsers = Array.isArray(payload?.data) ? payload.data : []
+      const normalized: UserData[] = apiUsers.map((item: any) => ({
+        id: item?.id ?? '',
+        email: item?.email ?? '',
+        name: item?.name ?? null,
+        role: mapRoleToEnum(item?.role),
+        createdAt: item?.created_at ?? null,
+        lastLogin: item?.last_active ?? null,
+        isActive: Boolean(item?.is_active),
+        questionsCount: Number(item?.questions_count ?? 0),
+        answersCount: Number(item?.answers_count ?? 0),
+        verificationStatus: normalizeVerificationStatus(item?.verification_status),
+        customBadgeLabel: typeof item?.custom_badge_label === 'string' ? item.custom_badge_label : '',
+        customBadgeIcon: typeof item?.custom_badge_icon === 'string' ? item.custom_badge_icon : '',
+      }))
+
+      setUsers(normalized)
+    } catch (error: any) {
       console.error('Failed to load users:', error)
+      setError(error?.message || '사용자 목록을 불러오지 못했습니다.')
+      setUsers([])
     } finally {
       setLoading(false)
     }
@@ -204,35 +194,81 @@ export default function UserManagement({ userRole }: UserManagementProps) {
     if (!selectedUser) return
 
     try {
-      // 실제로는 API 호출
-      const updatedUsers = users.map(user =>
-        user.id === selectedUser.id
-          ? { ...user, role: newRole }
-          : user
+      setRoleChangeLoading(true)
+      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      const payload = await res.json().catch(() => null)
+      if (!res.ok || payload?.success === false) {
+        const message = payload?.error || '역할 변경에 실패했습니다.'
+        throw new Error(message)
+      }
+
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === selectedUser.id
+            ? { ...user, role: newRole }
+            : user
+        )
       )
-      setUsers(updatedUsers)
       setIsRoleChangeDialogOpen(false)
       setSelectedUser(null)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to change user role:', error)
+      alert(error?.message || '역할 변경에 실패했습니다.')
+    } finally {
+      setRoleChangeLoading(false)
     }
   }
 
-  const handleUserStatusToggle = async (userId: string) => {
+  const handleBadgeSave = async () => {
+    if (!selectedUser) return
+
+    const nextLabel = badgeLabel.trim()
+    const nextIcon = badgeIcon.trim()
+
     try {
-      const updatedUsers = users.map(user =>
-        user.id === userId
-          ? { ...user, isActive: !user.isActive }
-          : user
+      setBadgeSaving(true)
+      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customBadgeLabel: nextLabel,
+          customBadgeIcon: nextIcon,
+        }),
+      })
+      const payload = await res.json().catch(() => null)
+      if (!res.ok || payload?.success === false) {
+        const message = payload?.error || '배지를 업데이트하지 못했습니다.'
+        throw new Error(message)
+      }
+
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === selectedUser.id
+            ? { ...user, customBadgeLabel: nextLabel, customBadgeIcon: nextIcon }
+            : user
+        )
       )
-      setUsers(updatedUsers)
-    } catch (error) {
-      console.error('Failed to toggle user status:', error)
+      setIsBadgeDialogOpen(false)
+      setSelectedUser(null)
+      setBadgeLabel('')
+      setBadgeIcon('')
+    } catch (error: any) {
+      console.error('Failed to update custom badge:', error)
+      alert(error?.message || '배지 업데이트에 실패했습니다.')
+    } finally {
+      setBadgeSaving(false)
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return '-'
+    return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -337,9 +373,15 @@ export default function UserManagement({ userRole }: UserManagementProps) {
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-blue"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-vk-primary"></div>
                         <span className="ml-2">로딩 중...</span>
                       </div>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-red-600">
+                      {error}
                     </TableCell>
                   </TableRow>
                 ) : filteredUsers.length === 0 ? (
@@ -353,12 +395,18 @@ export default function UserManagement({ userRole }: UserManagementProps) {
                     <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-primary-blue rounded-full flex items-center justify-center text-white text-sm font-medium">
+                          <div className="w-8 h-8 bg-vk-primary rounded-full flex items-center justify-center text-white text-sm font-medium">
                             {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <div className="font-medium">{user.name || 'Unknown'}</div>
                             <div className="text-sm text-gray-500">{user.email}</div>
+                            {(user.customBadgeLabel || user.customBadgeIcon) && (
+                              <div className="mt-1 flex items-center gap-2 text-xs text-purple-600">
+                                {user.customBadgeIcon && <span aria-hidden>{user.customBadgeIcon}</span>}
+                                {user.customBadgeLabel && <span>{user.customBadgeLabel}</span>}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -413,16 +461,22 @@ export default function UserManagement({ userRole }: UserManagementProps) {
                               setNewRole(user.role)
                               setIsRoleChangeDialogOpen(true)
                             }}
+                            title="역할 변경"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleUserStatusToggle(user.id)}
-                            className={user.isActive ? "text-red-600" : "text-green-600"}
+                            onClick={() => {
+                              setSelectedUser(user)
+                              setBadgeLabel(user.customBadgeLabel ?? '')
+                              setBadgeIcon(user.customBadgeIcon ?? '')
+                              setIsBadgeDialogOpen(true)
+                            }}
+                            title="배지 설정"
                           >
-                            {user.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                            <Crown className="w-4 h-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -490,11 +544,60 @@ export default function UserManagement({ userRole }: UserManagementProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRoleChangeDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsRoleChangeDialogOpen(false)}
+              disabled={roleChangeLoading}
+            >
               취소
             </Button>
-            <Button onClick={handleRoleChange}>
-              역할 변경
+            <Button onClick={handleRoleChange} disabled={roleChangeLoading}>
+              {roleChangeLoading ? '변경 중...' : '역할 변경'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 배지 설정 다이얼로그 */}
+      <Dialog open={isBadgeDialogOpen} onOpenChange={setIsBadgeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>사용자 배지 설정</DialogTitle>
+            <DialogDescription>
+              닉네임 옆에 표시할 이모지와 라벨을 설정합니다. 공백으로 비워두면 배지가 제거됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">배지 라벨</label>
+              <Input
+                value={badgeLabel}
+                onChange={(event) => setBadgeLabel(event.target.value)}
+                placeholder="예: Senior Expert"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">배지 아이콘 (이모지)</label>
+              <Input
+                value={badgeIcon}
+                onChange={(event) => setBadgeIcon(event.target.value)}
+                placeholder="예: 👑"
+                className="mt-1"
+                maxLength={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsBadgeDialogOpen(false)}
+              disabled={badgeSaving}
+            >
+              취소
+            </Button>
+            <Button onClick={handleBadgeSave} disabled={badgeSaving}>
+              {badgeSaving ? '저장 중...' : '저장'}
             </Button>
           </DialogFooter>
         </DialogContent>

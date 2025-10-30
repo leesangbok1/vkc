@@ -5,7 +5,8 @@ import { upsertUserWithFallback } from '@/lib/utils/supabase-user'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const redirectTo = searchParams.get('redirectTo') ?? '/'
+  const redirectParam = searchParams.get('redirectTo')
+  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/'
 
   if (!code) {
     const errorUrl = new URL('/auth/login', origin)
@@ -33,7 +34,13 @@ export async function GET(request: NextRequest) {
   const desiredRole = 'user'
 
   try {
-    const service = createSupabaseServiceClient()
+    let service
+    try {
+      service = createSupabaseServiceClient()
+    } catch (serviceError) {
+      console.warn('Auth callback: service client unavailable, falling back to user client', serviceError)
+      service = supabase
+    }
 
     const { data: existingUser, error: fetchError } = await service
       .from('users')
@@ -66,9 +73,9 @@ export async function GET(request: NextRequest) {
         console.warn('User upsert skipped columns:', upsertResult.removedColumns)
       }
 
-      const redirectUrl = new URL('/onboarding', origin)
-      redirectUrl.searchParams.set('redirectTo', redirectTo)
-      const response = NextResponse.redirect(redirectUrl)
+      const onboardingUrl = new URL('/onboarding', origin)
+      onboardingUrl.searchParams.set('redirectTo', redirectTo)
+      const response = NextResponse.redirect(onboardingUrl)
       response.cookies.set('auth-callback-success', 'true', { maxAge: 5, httpOnly: false })
       return response
     }
@@ -76,9 +83,9 @@ export async function GET(request: NextRequest) {
     // 기존 프로필이 있으면 admin_yn은 유지 (수동 관리용)
 
     if ('onboarding_completed' in existingUser && !existingUser.onboarding_completed) {
-      const redirectUrl = new URL('/onboarding', origin)
-      redirectUrl.searchParams.set('redirectTo', redirectTo)
-      const response = NextResponse.redirect(redirectUrl)
+      const onboardingUrl = new URL('/onboarding', origin)
+      onboardingUrl.searchParams.set('redirectTo', redirectTo)
+      const response = NextResponse.redirect(onboardingUrl)
       response.cookies.set('auth-callback-success', 'true', { maxAge: 5, httpOnly: false })
       return response
     }

@@ -7,7 +7,23 @@ import {
   type ViewerContext,
 } from '@/lib/services/feed-utils'
 
-type SupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>
+type SupabaseClient = any
+type SupabaseAnyClient = any
+
+const NOT_FOUND_ERROR_CODES = new Set(['PGRST116', '22P02', '42501'])
+
+const isNotFoundSupabaseError = (error: any): boolean => {
+  if (!error) return false
+  const code = typeof error.code === 'string' ? error.code : ''
+  const message = String(error.message ?? '')
+
+  return (
+    NOT_FOUND_ERROR_CODES.has(code) ||
+    /invalid input syntax for type uuid/i.test(message) ||
+    /no rows returned/i.test(message) ||
+    /permission denied/i.test(message)
+  )
+}
 
 export type QuestionMetrics = {
   score: number
@@ -30,7 +46,12 @@ export type QuestionDTO = {
   id: string
   title: string
   content: string
-  author: { id: string; name: string | null; role: string | null; avatar_url?: string | null }
+  author: {
+    id: string
+    name: string | null
+    role: string | null
+    avatar_url?: string | null
+  }
   category: { id: number; slug?: string | null; name?: string | null; icon?: string | null }
   upvote_count: number
   answer_count: number
@@ -52,6 +73,7 @@ export type AnswerDTO = {
   upvote_count: number
   downvote_count: number
   is_accepted: boolean
+  comment_count?: number
   author: {
     id: string
     name: string | null
@@ -122,6 +144,16 @@ export async function listQuestions(params: ListParams) {
     }
   }
 
+  let queryClient: SupabaseAnyClient = supabase
+  try {
+    queryClient = createSupabaseServiceClient()
+  } catch (serviceError) {
+    console.warn(
+      '[listQuestions] service client unavailable, using session client instead',
+      (serviceError as Error)?.message || serviceError
+    )
+  }
+
   const sort = params.sort === 'recent' ? 'recent' : 'popular'
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 50)
   const offset = Math.max(params.offset ?? 0, 0)
@@ -140,13 +172,13 @@ export async function listQuestions(params: ListParams) {
 
   const pagination: PaginationConfig = { sort, limit, offset, page, recentWindowDays }
 
-  const viewResult = await fetchQuestionsFromView(supabase, params, viewerContext, pagination)
+  const viewResult = await fetchQuestionsFromView(queryClient, params, viewerContext, pagination)
   if (viewResult.success) {
     return viewResult.payload
   }
 
   console.warn('[listQuestions] falling back to legacy query', viewResult.error)
-  return fetchQuestionsLegacy(supabase, params, viewerContext, pagination)
+  return fetchQuestionsLegacy(queryClient, params, viewerContext, pagination)
 }
 
 type ViewQuerySuccess = {
@@ -158,7 +190,7 @@ type ViewQueryFailure = { success: false; error: unknown }
 type ViewQueryResult = ViewQuerySuccess | ViewQueryFailure
 
 async function fetchQuestionsFromView(
-  supabase: SupabaseClient,
+  supabase: SupabaseAnyClient,
   params: ListParams,
   viewerContext: ViewerContext,
   pagination: PaginationConfig
@@ -273,7 +305,10 @@ async function fetchQuestionsFromView(
         content: typeof row.content === 'string' ? row.content : '',
         author: {
           id: authorRaw?.id ?? authorId ?? '',
-          name: authorRaw?.name ?? null,
+          name:
+            typeof authorRaw?.name === 'string' && authorRaw.name.length > 0
+              ? authorRaw.name
+              : null,
           role: authorRaw?.role ?? null,
           avatar_url: authorRaw?.avatar_url ?? null,
         },
@@ -330,7 +365,7 @@ async function fetchQuestionsFromView(
 }
 
 async function fetchQuestionsLegacy(
-  supabase: SupabaseClient,
+  supabase: SupabaseAnyClient,
   params: ListParams,
   viewerContext: ViewerContext,
   pagination: PaginationConfig
@@ -429,7 +464,12 @@ async function fetchQuestionsLegacy(
   }
 
   const { data, error, count } = await query.range(offset, offset + limit - 1)
-  if (error) throw error
+  if (error) {
+    if (isNotFoundSupabaseError(error)) {
+      return { items: [], page, limit, total: 0 }
+    }
+    throw error
+  }
 
   const rawRows = Array.isArray(data) ? (data as ReadonlyArray<Record<string, unknown>>) : []
   const helpfulCountsMap = new Map<string, number>()
@@ -438,8 +478,7 @@ async function fetchQuestionsLegacy(
     .filter((id): id is string => Boolean(id))
 
   if (questionIds.length > 0) {
-    let aggregateClient: SupabaseClient | ReturnType<typeof createSupabaseServiceClient> | null =
-      supabase
+    let aggregateClient: SupabaseAnyClient | null = supabase
     try {
       aggregateClient = createSupabaseServiceClient()
     } catch (serviceError) {
@@ -643,7 +682,13 @@ function buildMetricsFromViewRow(
 }
 
 export async function getQuestionById(id: string, viewerId?: string | null) {
-  const serviceClient = createSupabaseServiceClient()
+  let serviceClient: SupabaseAnyClient
+  try {
+    serviceClient = createSupabaseServiceClient()
+  } catch (error) {
+    console.warn('[getQuestionById] service client unavailable, falling back to session client', (error as Error)?.message || error)
+    serviceClient = await createSupabaseServerClient()
+  }
 
   const { data: questionRow, error } = await serviceClient
     .from('questions')
@@ -670,7 +715,21 @@ export async function getQuestionById(id: string, viewerId?: string | null) {
     .eq('id', id)
     .maybeSingle()
 
-  if (error) throw error
+  if (error) {
+    const message = String(error.message ?? '')
+    const normalizedCode = typeof error.code === 'string' ? error.code : ''
+    const notFound =
+      normalizedCode === 'PGRST116' ||
+      normalizedCode === '22P02' ||
+      /invalid input syntax for type uuid/i.test(message) ||
+      /no rows returned/i.test(message)
+
+    if (notFound) {
+      throw Object.assign(new Error('Question not found'), { code: 'NOT_FOUND' })
+    }
+
+    throw error
+  }
   if (!questionRow) throw Object.assign(new Error('Question not found'), { code: 'NOT_FOUND' })
 
   const dto: QuestionDTO = {
@@ -679,7 +738,10 @@ export async function getQuestionById(id: string, viewerId?: string | null) {
     content: questionRow.content,
     author: {
       id: questionRow.author?.id ?? questionRow.author_id,
-      name: questionRow.author?.name ?? null,
+      name:
+        typeof questionRow.author?.name === 'string' && questionRow.author.name.length > 0
+          ? questionRow.author.name
+          : null,
       role: questionRow.author?.role ?? null,
       avatar_url: questionRow.author?.avatar_url ?? null,
     },
@@ -718,43 +780,92 @@ export async function getQuestionById(id: string, viewerId?: string | null) {
     .order('helpful_count', { ascending: false })
     .order('created_at', { ascending: true })
 
-  if (answersError) throw answersError
+  if (answersError) {
+    if (isNotFoundSupabaseError(answersError)) {
+      return { question: dto, answers: [] }
+    }
+    throw answersError
+  }
 
   const rawAnswers: ReadonlyArray<Record<string, unknown>> = Array.isArray(answersRows)
     ? (answersRows as ReadonlyArray<Record<string, unknown>>)
     : []
 
-  const answers: AnswerDTO[] = rawAnswers.map(answerRow => ({
-    id: typeof answerRow.id === 'string' ? answerRow.id : String(answerRow.id ?? ''),
-    content: typeof answerRow.content === 'string' ? answerRow.content : '',
-    created_at:
-      typeof answerRow.created_at === 'string' ? answerRow.created_at : new Date().toISOString(),
-    updated_at: typeof answerRow.updated_at === 'string' ? answerRow.updated_at : null,
-    helpful_count: Number(answerRow.helpful_count ?? 0),
-    upvote_count: Number(answerRow.upvote_count ?? 0),
-    downvote_count: Number(answerRow.downvote_count ?? 0),
-    is_accepted: Boolean(answerRow.is_accepted),
-    author: {
-      id:
-        typeof (answerRow.author as Record<string, unknown> | null)?.id === 'string'
-          ? ((answerRow.author as Record<string, unknown>).id as string)
-          : typeof answerRow.author_id === 'string'
-            ? (answerRow.author_id as string)
-            : '',
-      name:
-        typeof (answerRow.author as Record<string, unknown> | null)?.name === 'string'
-          ? ((answerRow.author as Record<string, unknown>).name as string)
-          : null,
-      role:
-        typeof (answerRow.author as Record<string, unknown> | null)?.role === 'string'
-          ? ((answerRow.author as Record<string, unknown>).role as string)
-          : null,
-      avatar_url:
-        typeof (answerRow.author as Record<string, unknown> | null)?.avatar_url === 'string'
-          ? ((answerRow.author as Record<string, unknown>).avatar_url as string)
-          : null,
-    },
-  }))
+  const answerIds = rawAnswers
+    .map((answerRow) => {
+      const idValue = answerRow.id
+      if (typeof idValue === 'string' && idValue.length > 0) return idValue
+      if (typeof idValue === 'number') return String(idValue)
+      if (typeof answerRow['id'] === 'string') return answerRow['id'] as string
+      return null
+    })
+    .filter((id): id is string => Boolean(id))
+
+  const commentCountByAnswer = new Map<string, number>()
+
+  if (answerIds.length > 0) {
+    try {
+      const { data: commentRows, error: commentError } = await serviceClient
+        .from('comments')
+        .select('target_id')
+        .in('target_id', answerIds)
+        .eq('target_type', 'answer')
+
+      if (commentError) {
+        console.warn('[getQuestionById] failed to load answer comment counts', commentError)
+      } else if (Array.isArray(commentRows)) {
+        commentRows.forEach((row: Record<string, unknown>) => {
+          const targetId = typeof row.target_id === 'string' ? row.target_id : null
+          if (!targetId) return
+          commentCountByAnswer.set(targetId, (commentCountByAnswer.get(targetId) ?? 0) + 1)
+        })
+      }
+    } catch (commentAggregateError) {
+      console.warn('[getQuestionById] failed to aggregate answer comment counts', commentAggregateError)
+    }
+  }
+
+  const answers: AnswerDTO[] = rawAnswers.map((answerRow) => {
+    const authorData = (answerRow.author as Record<string, unknown> | null) || null
+    const authorId = typeof authorData?.['id'] === 'string'
+      ? (authorData['id'] as string)
+      : typeof answerRow.author_id === 'string'
+        ? (answerRow.author_id as string)
+        : ''
+    const displayName =
+      typeof authorData?.['name'] === 'string' && (authorData['name'] as string).length > 0
+        ? (authorData['name'] as string)
+        : null
+
+    const answerId = typeof answerRow.id === 'string' ? answerRow.id : String(answerRow.id ?? '')
+
+    return {
+      id: answerId,
+      content: typeof answerRow.content === 'string' ? answerRow.content : '',
+      created_at:
+        typeof answerRow.created_at === 'string'
+          ? answerRow.created_at
+          : new Date().toISOString(),
+      updated_at: typeof answerRow.updated_at === 'string' ? answerRow.updated_at : null,
+      helpful_count: Number(answerRow.helpful_count ?? 0),
+      upvote_count: Number(answerRow.upvote_count ?? 0),
+      downvote_count: Number(answerRow.downvote_count ?? 0),
+      is_accepted: Boolean(answerRow.is_accepted),
+      comment_count: commentCountByAnswer.get(answerId) ?? 0,
+      author: {
+        id: authorId,
+        name: displayName,
+        role:
+          typeof authorData?.['role'] === 'string' ? (authorData['role'] as string) : null,
+        avatar_url:
+          typeof authorData?.['avatar_url'] === 'string'
+            ? (authorData['avatar_url'] as string)
+            : null,
+      },
+    }
+  })
+
+  dto.answer_count = answers.length
 
   try {
     const { count: helpfulCount } = await serviceClient

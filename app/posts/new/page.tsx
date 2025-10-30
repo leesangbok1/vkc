@@ -5,9 +5,14 @@ import { useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
 import RichEditor from '@/components/editor/RichEditor'
 import { EDITOR_USAGE_GUIDE } from '@/lib/constants/editor'
+import { useSafeAuth } from '@/components/providers/ClientProviders'
+import { useFirstPostPrompt } from '@/contexts/FirstPostPromptContext'
+import { registerFirstPostCreation } from '@/lib/utils/first-post-prompt'
 
 export default function NewPostPage() {
   const router = useRouter()
+  const { user } = useSafeAuth()
+  const { openFirstPostPrompt } = useFirstPostPrompt()
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [categories, setCategories] = useState<Array<{ id: number; name: string; icon?: string | null }>>([])
   const [loadingCategories, setLoadingCategories] = useState(true)
@@ -137,7 +142,17 @@ export default function NewPostPage() {
       if (response.ok) {
         alert('정보 글이 성공적으로 등록되었습니다!')
         const highlightId = json?.data?.id
-        router.push(highlightId ? `/posts?highlight=${highlightId}` : '/posts')
+        const redirectTarget = highlightId ? `/posts?highlight=${highlightId}` : '/posts'
+        const shouldOpenFirstPostPrompt = registerFirstPostCreation(user?.id)
+        if (shouldOpenFirstPostPrompt) {
+          const notificationSettingsUrl = `/settings?section=notifications&modal=settings&returnTo=${encodeURIComponent(redirectTarget)}`
+          openFirstPostPrompt({
+            userId: user?.id ?? null,
+            userEmail: user?.email ?? null,
+            targetUrl: notificationSettingsUrl
+          })
+        }
+        router.push(redirectTarget)
       } else {
         const message = json?.error || '정보 글 작성 중 오류가 발생했습니다.'
         const details = json?.details || json?.hint

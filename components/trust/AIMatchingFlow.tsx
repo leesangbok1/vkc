@@ -133,12 +133,12 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
       {/* Step 1: 질문 분석 */}
       <div className={cn(
         'mb-6 p-4 rounded-lg border transition-all duration-300',
-        currentStep >= 1 ? 'border-primary-blue bg-primary-blue/5' : 'border-gray-200'
+        currentStep >= 1 ? 'border-vk-primary bg-vk-primary/5' : 'border-gray-200'
       )}>
         <div className="flex items-center gap-3 mb-3">
           <div className={cn(
             'w-8 h-8 rounded-full flex items-center justify-center text-white font-bold',
-            currentStep >= 1 ? 'bg-primary-blue' : 'bg-gray-300'
+            currentStep >= 1 ? 'bg-vk-primary' : 'bg-gray-300'
           )}>
             1
           </div>
@@ -152,7 +152,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
           <div className="ml-11">
             <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
               <div
-                className="bg-primary-blue h-2 rounded-full transition-all duration-300"
+                className="bg-vk-primary h-2 rounded-full transition-all duration-300"
                 style={{ width: `${analysisProgress}%` }}
               />
             </div>
@@ -244,7 +244,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
                     className={cn(
                       'border-2 rounded-xl transition-all duration-200',
                       isSelected
-                        ? 'border-primary-blue shadow-lg scale-105'
+                        ? 'border-vk-primary shadow-lg scale-105'
                         : 'border-gray-200 hover:border-gray-300'
                     )}
                   >
@@ -267,7 +267,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
               {selectedExperts.length > 0 && (
                 <button
                   onClick={handleComplete}
-                  className="btn-primary-blue px-6 py-2"
+                  className="px-6 py-2 rounded-lg bg-vk-primary text-white hover:bg-primary-700 transition-normal"
                 >
                   선택 완료 ({selectedExperts.length}명)
                 </button>
@@ -278,7 +278,7 @@ export default function AIMatchingFlow({ question }: AIMatchingFlowProps) {
       )}
 
       {/* AI 매칭 완료 안내 */}
-      <div className="bg-gradient-to-r from-primary-blue/10 to-primary-green/10 rounded-lg p-4">
+      <div className="bg-gradient-to-r from-vk-primary/10 to-primary-green/10 rounded-lg p-4">
         <div className="flex items-center gap-3">
           <div className="text-lg">🤖</div>
           <div>

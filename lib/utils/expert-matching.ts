@@ -1,10 +1,6 @@
-import { Question, User } from '@/lib/types/api'
+import { QuestionWithRelations, UserWithStats } from '@/lib/types/api'
 
-interface CertifiedUser extends User {
-  specialties?: string[]
-  residence_years?: number
-  badges?: Record<string, boolean>
-}
+type CertifiedUser = UserWithStats
 
 interface CertifiedMatch {
   certifiedUser: CertifiedUser
@@ -13,17 +9,21 @@ interface CertifiedMatch {
 }
 
 // 베트남 커뮤니티 인증 사용자 매칭 알고리즘
-export function findCertifiedMatches(question: Question, availableCertifiedUsers: CertifiedUser[]): CertifiedMatch[] {
+export function findCertifiedMatches(
+  question: QuestionWithRelations,
+  availableCertifiedUsers: CertifiedUser[]
+): CertifiedMatch[] {
   const matches = availableCertifiedUsers.map(certifiedUser => {
     let score = 0
 
     // 1. 인증 분야 매칭 (40점)
-    if (certifiedUser.specialties && question.category) {
-      const categoryMatch = certifiedUser.specialties.some((specialty: string) =>
-        question.category.toLowerCase().includes(specialty.toLowerCase()) ||
-        question.title.toLowerCase().includes(specialty.toLowerCase()) ||
-        question.tags?.some((tag: string) => tag.toLowerCase().includes(specialty.toLowerCase()))
-      )
+    if (certifiedUser.specialty_areas && certifiedUser.specialty_areas.length > 0) {
+      const normalizedTags = (question.tags ?? []).map((tag) => tag.toLowerCase())
+      const categoryMatch = certifiedUser.specialty_areas.some((specialty) => {
+        if (typeof specialty !== 'string') return false
+        const lower = specialty.toLowerCase()
+        return normalizedTags.includes(lower) || question.title.toLowerCase().includes(lower)
+      })
       if (categoryMatch) score += 40
     }
 
@@ -32,7 +32,7 @@ export function findCertifiedMatches(question: Question, availableCertifiedUsers
     score += Math.min(trustRatio * 20, 20)
 
     // 3. 거주 기간 (경험) (15점)
-    const yearsScore = Math.min((certifiedUser.residence_years || 0) * 3, 15)
+    const yearsScore = Math.min((certifiedUser.years_in_korea || 0) * 3, 15)
     score += yearsScore
 
     // 4. 답변 활동성 (10점)
@@ -66,20 +66,26 @@ export function findCertifiedMatches(question: Question, availableCertifiedUsers
 }
 
 // 매칭 이유 생성
-function generateMatchReasons(certifiedUser: CertifiedUser, question: Question, score: number): string[] {
+function generateMatchReasons(
+  certifiedUser: CertifiedUser,
+  question: QuestionWithRelations,
+  score: number
+): string[] {
   const reasons: string[] = []
 
-  if (certifiedUser.specialties?.some((s: string) =>
-    question.category?.toLowerCase().includes(s.toLowerCase())
-  )) {
-    reasons.push(`${question.category} 인증 사용자`)
+  const normalizedTags = (question.tags ?? []).map((tag) => tag.toLowerCase())
+  const specialtyHit = certifiedUser.specialty_areas?.some((specialty) =>
+    typeof specialty === 'string' && normalizedTags.includes(specialty.toLowerCase())
+  )
+  if (specialtyHit) {
+    reasons.push('관련 분야 인증 사용자')
   }
 
-  if (certifiedUser.residence_years >= 5) {
-    reasons.push(`한국 거주 ${certifiedUser.residence_years}년 경험`)
+  if ((certifiedUser.years_in_korea ?? 0) >= 5) {
+    reasons.push(`한국 거주 ${certifiedUser.years_in_korea}년 경험`)
   }
 
-  if (certifiedUser.badges?.certified) {
+  if (certifiedUser.badges.certified) {
     reasons.push('인증된 사용자')
   }
 
@@ -104,7 +110,7 @@ interface Answer {
 }
 
 // 답변 품질 평가 알고리즘
-export function evaluateAnswerQuality(answer: Answer, question: Question): number {
+export function evaluateAnswerQuality(answer: Answer, question: QuestionWithRelations): number {
   let qualityScore = 0
 
   // 1. 답변 길이 (최대 20점)
@@ -121,16 +127,17 @@ export function evaluateAnswerQuality(answer: Answer, question: Question): numbe
   if (hasFormatting) qualityScore += 5
 
   // 3. 전문성 키워드 (최대 15점)
+  const normalizedContent = answer.content?.toLowerCase() ?? ''
   const expertKeywords = ['서류', '신청', '절차', '방법', '팁', '주의', '경험', '추천']
-  const keywordMatches = expertKeywords.filter(keyword =>
-    answer.content?.toLowerCase().includes(keyword)
+  const keywordMatches = expertKeywords.filter((keyword) =>
+    normalizedContent.includes(keyword)
   ).length
   qualityScore += Math.min(keywordMatches * 2, 15)
 
   // 4. 베트남 특화 정보 (최대 10점)
   const vietnamKeywords = ['베트남', '아포스티유', '영사확인', '번역공증', '한국어']
-  const vietnamMatches = vietnamKeywords.filter(keyword =>
-    answer.content?.toLowerCase().includes(keyword.toLowerCase())
+  const vietnamMatches = vietnamKeywords.filter((keyword) =>
+    normalizedContent.includes(keyword.toLowerCase())
   ).length
   qualityScore += Math.min(vietnamMatches * 2, 10)
 
@@ -143,10 +150,11 @@ export function evaluateAnswerQuality(answer: Answer, question: Question): numbe
   else if (answer.author?.badges?.verified) qualityScore += 5
 
   // 7. 응답 속도 보너스 (최대 10점)
-  if (answer.response_time_hours <= 1) qualityScore += 10
-  else if (answer.response_time_hours <= 6) qualityScore += 7
-  else if (answer.response_time_hours <= 24) qualityScore += 5
-  else if (answer.response_time_hours <= 72) qualityScore += 3
+  const responseTime = answer.response_time_hours ?? Number.POSITIVE_INFINITY
+  if (responseTime <= 1) qualityScore += 10
+  else if (responseTime <= 6) qualityScore += 7
+  else if (responseTime <= 24) qualityScore += 5
+  else if (responseTime <= 72) qualityScore += 3
 
   return Math.min(Math.round(qualityScore), 100)
 }

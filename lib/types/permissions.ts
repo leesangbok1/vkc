@@ -200,10 +200,10 @@ export interface PermissionChecker {
 export interface LayoutConfig {
   showGuestBanner: boolean
   showVerificationCTA: boolean
-  showExpertNetwork: boolean
+  showCertifiedNetwork: boolean
   showAdminPanel: boolean
-  bannerVariant: 'registration-cta' | 'expert-network' | 'admin-tools'
-  prioritizeContent: 'questions' | 'experts' | 'management'
+  bannerVariant: 'registration-cta' | 'certified-network' | 'admin-tools'
+  prioritizeContent: 'questions' | 'certified_users' | 'management'
   label: string
   icon: string
   badgeColor: string

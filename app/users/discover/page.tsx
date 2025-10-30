@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import PageLayout from '@/components/layout/PageLayout'
+import { DEFAULT_AVATAR_URL } from '@/lib/constants/avatar'
+import { safeJsonFetch } from '@/lib/utils/fetcher'
+import { toggleFollowUser } from '@/lib/utils/follow-manager'
 
 type PopularUser = {
   id: string
@@ -22,6 +25,7 @@ export default function DiscoverUsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [following, setFollowing] = useState<Record<string, boolean>>({})
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [viewerId, setViewerId] = useState<string | null>(null)
 
   useEffect(() => {
     let ignore = false
@@ -29,21 +33,30 @@ export default function DiscoverUsersPage() {
       setLoading(true)
       setError(null)
       try {
-        const profileRes = await fetch('/api/auth/profile', { cache: 'no-store' })
+        const profileRes = await safeJsonFetch<any>('/api/auth/profile', { cache: 'no-store' })
         setIsLoggedIn(profileRes.ok)
+        setViewerId(profileRes.ok ? profileRes.data?.data?.id ?? null : null)
 
-        const res = await fetch('/api/users/popular?limit=30', { cache: 'no-store' })
-        if (!res.ok) throw new Error(`Failed: ${res.status}`)
-        const json = await res.json()
-        const list: PopularUser[] = Array.isArray(json?.data) ? json.data : []
+        const popularRes = await safeJsonFetch<any>('/api/users/popular?limit=30', {
+          cache: 'no-store',
+        })
+        if (!popularRes.ok || !popularRes.data) {
+          throw new Error(popularRes.error || '인기 사용자를 불러오지 못했습니다.')
+        }
+        const list: PopularUser[] = Array.isArray(popularRes.data?.data) ? popularRes.data.data : []
         if (!ignore) setUsers(list)
 
         if (profileRes.ok) {
-          const f = await fetch('/api/users/following', { cache: 'no-store' })
-          if (f.ok) {
-            const fj = await f.json()
-            const ids: string[] = Array.isArray(fj?.data) ? fj.data : []
-            const map = ids.reduce<Record<string, boolean>>((acc, id) => { acc[id] = true; return acc }, {})
+          const followRes = await safeJsonFetch<any>('/api/users/following', {
+            cache: 'no-store',
+            credentials: 'include',
+          })
+          if (followRes.ok && Array.isArray(followRes.data?.data)) {
+            const ids: string[] = followRes.data.data
+            const map = ids.reduce<Record<string, boolean>>((acc, id) => {
+              acc[id] = true
+              return acc
+            }, {})
             if (!ignore) setFollowing(map)
           }
         }
@@ -66,13 +79,21 @@ export default function DiscoverUsersPage() {
     // optimistic
     setFollowing((prev) => ({ ...prev, [userId]: !isFollowing }))
     try {
-      const method = isFollowing ? 'DELETE' : 'POST'
-      const res = await fetch(`/api/users/${userId}/follow`, { method })
-      if (!res.ok) throw new Error('failed')
-      const data = await res.json()
-      setFollowing((prev) => ({ ...prev, [userId]: !!data?.isFollowing }))
-    } catch (_) {
-      // rollback
+      const { success, isFollowing: nextStatus, error } = await toggleFollowUser(userId, {
+        viewerId,
+      })
+      if (!success) {
+        if (error === 'SELF_FOLLOW') {
+          alert('내 계정은 팔로우할 수 없습니다.')
+        } else {
+          alert('팔로우 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
+        }
+        setFollowing((prev) => ({ ...prev, [userId]: isFollowing }))
+        return
+      }
+      setFollowing((prev) => ({ ...prev, [userId]: nextStatus }))
+    } catch (error) {
+      console.error('[DiscoverUsers] toggleFollow failed', error)
       setFollowing((prev) => ({ ...prev, [userId]: isFollowing }))
       alert('팔로우 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
     }
@@ -110,14 +131,22 @@ export default function DiscoverUsersPage() {
 
         {!loading && !error && users.length > 0 && (
           <div className="grid" style={{ display: 'grid', gap: '12px' }}>
-            {users.map((u) => (
+            {users.map((u) => {
+              const displayName = u.name || '커뮤니티 멤버'
+              return (
               <div key={u.id} className="question-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="author-avatar-small"></div>
+                  <div className="author-avatar-small">
+                    <img
+                      src={u.avatar_url || DEFAULT_AVATAR_URL}
+                      alt={`${displayName}의 프로필 사진`}
+                      loading="lazy"
+                    />
+                  </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Link href={`/users/${u.id}`} className="question-author-link">
-                        {u.name}
+                        {displayName}
                       </Link>
                       {u.role === 'verified' && (
                         <span className="badge" style={{ background: '#2d6cdf', color: 'white', padding: '2px 6px', borderRadius: 8, fontSize: 12 }}>인증</span>
@@ -137,7 +166,8 @@ export default function DiscoverUsersPage() {
                   </button>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

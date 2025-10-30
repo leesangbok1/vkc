@@ -3,6 +3,11 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { ValidationUtils } from '@/lib/validation'
 
 const ALLOWED_TARGET_TYPES = new Set(['question', 'answer', 'post'])
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_CACHE_HEADERS })
     }
 
     const url = new URL(request.url)
@@ -40,17 +45,32 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
+      if (error.code === '42501') {
+        return NextResponse.json(
+          { error: 'Forbidden', details: 'Bookmark access is restricted by policy.' },
+          { status: 403, headers: NO_CACHE_HEADERS }
+        )
+      }
       console.error('[GET /api/bookmarks] failed', error)
-      return NextResponse.json({ error: 'Failed to load bookmarks' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Failed to load bookmarks', details: error.message },
+        { status: 500, headers: NO_CACHE_HEADERS }
+      )
     }
 
-    return NextResponse.json({
-      success: true,
-      data: data ?? []
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        data: data ?? [],
+      },
+      { headers: NO_CACHE_HEADERS }
+    )
   } catch (error) {
     console.error('[GET /api/bookmarks] unexpected error', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500, headers: NO_CACHE_HEADERS }
+    )
   }
 }
 
@@ -72,7 +92,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_CACHE_HEADERS })
     }
 
     const sanitizedTitle = rawTitle ? ValidationUtils.sanitizeInput(rawTitle, 200) : null
@@ -103,22 +123,38 @@ export async function POST(request: NextRequest) {
           .maybeSingle()
 
         if (existing) {
-          return NextResponse.json({ success: true, data: existing }, { status: 200 })
+          return NextResponse.json(
+            { success: true, data: existing },
+            { status: 200, headers: NO_CACHE_HEADERS }
+          )
         }
 
         return NextResponse.json(
           { error: 'Bookmark already exists' },
-          { status: 409 }
+          { status: 409, headers: NO_CACHE_HEADERS }
+        )
+      }
+
+      if (error.code === '42501') {
+        return NextResponse.json(
+          { error: 'Forbidden', details: 'Bookmark write blocked by policy.' },
+          { status: 403, headers: NO_CACHE_HEADERS }
         )
       }
 
       console.error('[POST /api/bookmarks] insert failed', error)
-      return NextResponse.json({ error: 'Failed to add bookmark' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Failed to add bookmark', details: error.message },
+        { status: 500, headers: NO_CACHE_HEADERS }
+      )
     }
 
-    return NextResponse.json({ success: true, data })
+    return NextResponse.json({ success: true, data }, { headers: NO_CACHE_HEADERS })
   } catch (error) {
     console.error('[POST /api/bookmarks] unexpected error', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500, headers: NO_CACHE_HEADERS }
+    )
   }
 }

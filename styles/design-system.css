@@ -6,6 +6,25 @@
 /* ===== Color Palette (Material Design 3.0) ===== */
 
 :root {
+  /* Viet K-Connect Brand Palette */
+  --vk-primary: #5682ef;
+  --vk-primary-hover: #2553e5;
+  --vk-secondary: #10b981;
+  --vk-danger: #f04452;
+  --vk-warning: #f59e0b;
+  --vk-success: #10b981;
+
+  --primary-blue: #2563EB;
+  --primary-blue-dark: #1D4ED8;
+  --primary-blue-light: #60A5FA;
+  --primary-blue-pale: #EFF6FF;
+  --primary-green: #10B981;
+  --primary-green-dark: #047857;
+  --primary-green-light: #34D399;
+  --primary-green-pale: #ECFDF5;
+  --secondary-blue: #1D4ED8;
+  --secondary-green: #059669;
+
   /* Primary Colors - Google Blue 계열 (신뢰성과 전문성) */
   --primary-50: #E3F2FD;
   --primary-100: #BBDEFB;
@@ -17,6 +36,12 @@
   --primary-700: #0D47A1;
   --primary-800: #0A3D91;
   --primary-900: #063078;
+
+  /* Derived Brand Tokens */
+  --primary: var(--primary-500);
+  --primary-dark: var(--primary-600);
+  --primary-light: var(--primary-400);
+  --primary-pale: var(--primary-100);
 
   /* Semantic Colors */
   --success-50: #E8F5E8;
@@ -51,6 +76,121 @@
   --neutral-700: #616161;
   --neutral-800: #424242;
   --neutral-900: #212121;
+
+  /* Trust & Expert System */
+  --trust-green: var(--success-500);
+  --trust-green-light: var(--success-400);
+  --trust-green-pale: var(--success-100);
+  --expert-gold: var(--warning-500);
+  --expert-gold-light: var(--warning-400);
+  --expert-gold-pale: var(--warning-100);
+
+  /* Urgency Level Colors */
+  --urgency-1: #dc2626;
+  --urgency-2: #ea580c;
+  --urgency-3: #d97706;
+  --urgency-4: #65a30d;
+  --urgency-5: #059669;
+
+  /* Category Colors */
+  --category-visa: #4285F4;
+  --category-life: #34A853;
+  --category-education: #FBBC04;
+  --category-employment: #EA4335;
+  --category-housing: #9C27B0;
+  --category-healthcare: #00BCD4;
+
+  /* 4-Tier Permission System Colors */
+  --tier-guest: #6b7280;
+  --tier-user: #3b82f6;
+  --tier-verified: #10b981;
+  --tier-admin: #f59e0b;
+
+  /* Aha-inspired Extended Palette */
+  --aha-blue-600: #2563eb;
+  --aha-blue-500: #3b82f6;
+  --aha-blue-400: #60a5fa;
+  --aha-blue-50: #eff6ff;
+  --aha-red-500: #ef4444;
+  --aha-red-50: #fef2f2;
+  --aha-green-500: #22c55e;
+  --aha-green-50: #f0fdf4;
+  --aha-yellow-500: #eab308;
+  --aha-yellow-50: #fefce8;
+  --aha-purple-500: #a855f7;
+  --aha-purple-50: #faf5ff;
+
+  /* Legacy Color Aliases */
+  --color-blue-500: var(--vk-primary);
+  --color-blue-600: var(--vk-primary-hover);
+  --color-blue-50: var(--aha-blue-50);
+  --color-red-500: var(--vk-danger);
+  --color-green-500: var(--vk-success);
+  --color-yellow-500: var(--vk-warning);
+  --color-purple-500: var(--aha-purple-500);
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-600: #4b5563;
+  --color-gray-800: #1f2937;
+
+  /* Header & Interactive Surfaces */
+  --header-bg: #fafbfc;
+  --header-border: #e1e4e8;
+  --header-text-primary: #24292e;
+  --header-text-secondary: #6a737d;
+  --header-text-muted: #959da5;
+
+  --search-bg: #f6f8fa;
+  --search-border: #e1e4e8;
+  --search-focus-border: var(--vk-primary);
+  --search-text: #24292e;
+  --search-placeholder: #959da5;
+
+  --hover-bg: #f5f7f9;
+  --active-bg: #e9ecef;
+  --profile-bg: #e6f0ff;
+  --profile-text: var(--vk-primary);
+
+  --header-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --dropdown-shadow: 0 8px 24px rgba(36, 41, 46, 0.12);
+  --button-shadow: 0 4px 12px rgba(86, 130, 239, 0.25);
+
+  --success: var(--success-500);
+  --warning: var(--warning-500);
+  --error: var(--error-500);
+  --info: var(--primary-500);
+
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  --border: #e5e5e5;
+  --secondary: #f5f5f5;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --foreground: #0a0a0a;
+  --background: #ffffff;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: var(--gray-50);
+  --bg-tertiary: var(--gray-100);
+
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-700);
+  --text-tertiary: var(--gray-500);
+  --text-inverse: #ffffff;
+
+  /* Vietnam Theme Accents */
+  --vietnam-red: #EA4335;
+  --vietnam-yellow: #FFCD00;
 
   /* 4-Tier Permission System Colors */
   --guest-color: var(--neutral-500);     /* 회색 계열 */
@@ -88,10 +228,31 @@
   --text-label-medium: 0.75rem;    /* 12px */
   --text-label-small: 0.6875rem;   /* 11px */
 
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+
   /* Line Heights */
   --line-height-tight: 1.2;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  --font-size-xs: var(--text-xs);
+  --font-size-sm: var(--text-sm);
+  --font-size-base: var(--text-base);
+  --font-size-lg: var(--text-lg);
+  --font-size-xl: var(--text-xl);
+  --font-size-2xl: var(--text-2xl);
+  --font-size-3xl: var(--text-3xl);
 
   /* ===== Spacing Scale ===== */
 
@@ -109,14 +270,25 @@
   --space-20: 5rem;    /* 80px */
   --space-24: 6rem;    /* 96px */
 
+  --space-tight: 8px;
+  --space-normal: 12px;
+  --space-loose: 16px;
+
+  --space-xs: var(--space-1);     /* 4px */
+  --space-sm: var(--space-2);     /* 8px */
+  --space-md: var(--space-4);     /* 16px */
+  --space-lg: var(--space-6);     /* 24px */
+  --space-xl: var(--space-8);     /* 32px */
+  --space-2xl: var(--space-12);   /* 48px */
+
   /* ===== Border Radius ===== */
 
   --radius-none: 0;
   --radius-sm: 0.25rem;   /* 4px */
-  --radius-md: 0.375rem;  /* 6px */
-  --radius-lg: 0.5rem;    /* 8px */
-  --radius-xl: 0.75rem;   /* 12px */
-  --radius-2xl: 1rem;     /* 16px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1rem;      /* 16px */
+  --radius-2xl: 1.5rem;   /* 24px */
   --radius-3xl: 1.5rem;   /* 24px */
   --radius-full: 9999px;
 
@@ -131,9 +303,9 @@
 
   /* ===== Transitions ===== */
 
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
-  --transition-slow: 350ms ease;
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 200ms ease-in-out;
+  --transition-slow: 300ms ease-in-out;
 
   /* ===== Z-Index Scale ===== */
 
@@ -160,6 +332,13 @@
   --container-lg: 1024px;
   --container-xl: 1280px;
   --container-2xl: 1536px;
+
+  --layout-max-width: 1180px;
+  --content-width: 720px;
+  --sidebar-width: 280px;
+  --layout-gap: 24px;
+  --container-padding: 1rem;
+  --header-height: 56px;
 }
 
 /* ===== Dark Mode Support ===== */
@@ -198,6 +377,156 @@
 .text-title-large { font-size: var(--text-title-large); line-height: var(--line-height-normal); font-weight: var(--font-weight-medium); }
 .text-title-medium { font-size: var(--text-title-medium); line-height: var(--line-height-normal); font-weight: var(--font-weight-medium); }
 .text-title-small { font-size: var(--text-title-small); line-height: var(--line-height-normal); font-weight: var(--font-weight-medium); }
+
+/* Chip & Banner Pattern ====================================== */
+.vk-chip {
+  --vk-chip-bg: rgba(37, 99, 235, 0.08);
+  --vk-chip-border: rgba(37, 99, 235, 0.18);
+  --vk-chip-color: #1f2937;
+  --vk-chip-bg-hover: rgba(37, 99, 235, 0.16);
+  --vk-chip-border-hover: rgba(37, 99, 235, 0.32);
+  --vk-chip-color-hover: #1d4ed8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-full);
+  padding: 0.55rem 1rem;
+  border: 1.5px solid var(--vk-chip-border);
+  background: var(--vk-chip-bg);
+  color: var(--vk-chip-color);
+  font-size: var(--text-label-large);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: none;
+  transition:
+    background var(--transition-normal),
+    border-color var(--transition-normal),
+    color var(--transition-normal),
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal);
+}
+
+.vk-chip__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2em;
+  line-height: 1;
+}
+
+.vk-chip__label {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.vk-chip--interactive {
+  cursor: pointer;
+}
+
+.vk-chip--interactive:hover,
+.vk-chip--interactive:focus-visible {
+  outline: none;
+  background: var(--vk-chip-bg-hover);
+  border-color: var(--vk-chip-border-hover);
+  color: var(--vk-chip-color-hover);
+  box-shadow: 0 14px 24px -18px rgba(37, 99, 235, 0.55);
+  transform: translateY(-1px);
+}
+
+.vk-chip--lg {
+  min-height: var(--button-height-lg);
+  padding: 0.65rem 1.2rem;
+  font-size: var(--text-body-medium);
+}
+
+.vk-chip--md {
+  min-height: var(--button-height-md);
+}
+
+.vk-chip--sm {
+  min-height: var(--button-height-sm);
+  padding: 0.45rem 0.85rem;
+  font-size: var(--text-label-medium);
+}
+
+.vk-chip--xs {
+  min-height: 28px;
+  padding: 0.35rem 0.65rem;
+  font-size: var(--text-label-small);
+  gap: var(--space-1);
+}
+
+.vk-chip--sm .vk-chip__icon {
+  font-size: 1.1em;
+}
+
+.vk-chip--xs .vk-chip__icon {
+  font-size: 1.05em;
+}
+
+.vk-chip--primary {
+  --vk-chip-bg: #ffffff;
+  --vk-chip-border: rgba(37, 99, 235, 0.22);
+  --vk-chip-color: #1f2937;
+  --vk-chip-bg-hover: #eef2ff;
+  --vk-chip-border-hover: rgba(37, 99, 235, 0.45);
+  --vk-chip-color-hover: #1d4ed8;
+}
+
+.vk-chip--surface {
+  --vk-chip-bg: rgba(37, 99, 235, 0.12);
+  --vk-chip-border: transparent;
+  --vk-chip-color: #1d4ed8;
+  --vk-chip-bg-hover: rgba(37, 99, 235, 0.16);
+  --vk-chip-border-hover: transparent;
+  --vk-chip-color-hover: #1d4ed8;
+}
+
+.vk-chip--outline {
+  --vk-chip-bg: var(--neutral-0);
+  --vk-chip-border: rgba(15, 23, 42, 0.18);
+  --vk-chip-color: #1f2937;
+  --vk-chip-bg-hover: rgba(15, 23, 42, 0.08);
+  --vk-chip-border-hover: rgba(15, 23, 42, 0.28);
+  --vk-chip-color-hover: #1d4ed8;
+}
+
+.vk-chip--muted {
+  --vk-chip-bg: rgba(15, 23, 42, 0.07);
+  --vk-chip-border: transparent;
+  --vk-chip-color: #334155;
+  --vk-chip-bg-hover: rgba(15, 23, 42, 0.12);
+  --vk-chip-border-hover: transparent;
+  --vk-chip-color-hover: #0f172a;
+}
+
+.vk-chip--link {
+  --vk-chip-bg: rgba(37, 99, 235, 0.14);
+  --vk-chip-border: transparent;
+  --vk-chip-color: #1d4ed8;
+  --vk-chip-bg-hover: rgba(37, 99, 235, 0.24);
+  --vk-chip-border-hover: transparent;
+  --vk-chip-color-hover: #1e3a8a;
+}
+
+.vk-chip--ghost {
+  --vk-chip-bg: transparent;
+  --vk-chip-border: rgba(148, 163, 184, 0.35);
+  --vk-chip-color: #475569;
+  --vk-chip-bg-hover: rgba(148, 163, 184, 0.12);
+  --vk-chip-border-hover: rgba(148, 163, 184, 0.45);
+  --vk-chip-color-hover: #1f2937;
+}
+
+.vk-chip-group {
+  display: inline-flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
 .text-body-large { font-size: var(--text-body-large); line-height: var(--line-height-normal); font-weight: var(--font-weight-regular); }
 .text-body-medium { font-size: var(--text-body-medium); line-height: var(--line-height-normal); font-weight: var(--font-weight-regular); }
 .text-body-small { font-size: var(--text-body-small); line-height: var(--line-height-normal); font-weight: var(--font-weight-regular); }

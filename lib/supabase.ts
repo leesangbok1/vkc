@@ -1,5 +1,6 @@
 import { createBrowserClient, createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { sanitizeSupabaseCookieValue } from '@/lib/utils/supabase-cookie'
 
 export type Json =
   | string
@@ -36,6 +37,7 @@ export type Database = {
           region: string | null
           specialty_areas: string[] | null
           preferred_language: string
+          interests: string[] | null
 
           // Verification Timestamps
           verified_at: string | null
@@ -45,13 +47,14 @@ export type Database = {
           is_verified: boolean
           verification_date: string | null
           trust_score: number
-          badges: Record<string, boolean>
+          badges: Record<string, unknown>
           question_count: number
           answer_count: number
           helpful_answer_count: number
           last_active: string
           created_at: string
           updated_at: string
+          notification_preferences: Json | null
         }
         Insert: {
           id?: string
@@ -75,6 +78,7 @@ export type Database = {
           region?: string | null
           specialty_areas?: string[] | null
           preferred_language?: string
+          interests?: string[] | null
 
           // Verification Timestamps
           verified_at?: string | null
@@ -84,13 +88,14 @@ export type Database = {
           is_verified?: boolean
           verification_date?: string | null
           trust_score?: number
-          badges?: Record<string, boolean>
+          badges?: Record<string, unknown>
           question_count?: number
           answer_count?: number
           helpful_answer_count?: number
           last_active?: string
           created_at?: string
           updated_at?: string
+          notification_preferences?: Json | null
         }
         Update: {
           id?: string
@@ -110,17 +115,18 @@ export type Database = {
           region?: string | null
           specialty_areas?: string[] | null
           preferred_language?: string
+          interests?: string[] | null
           verified_at?: string | null
           verification_expires_at?: string | null
           is_verified?: boolean
           verification_date?: string | null
           trust_score?: number
-          badges?: Record<string, boolean>
+          badges?: Record<string, unknown>
           question_count?: number
           answer_count?: number
           helpful_answer_count?: number
           last_active?: string
-          notification_preferences?: Record<string, unknown> | null
+          notification_preferences?: Json | null
           updated_at?: string
         }
       }
@@ -417,6 +423,52 @@ export type Database = {
           resolved_at?: string | null
         }
       }
+      posts: {
+        Row: {
+          id: string
+          title: string
+          content: string
+          category_id: number | null
+          author_id: string | null
+          post_type: 'community' | 'news'
+          helpful_count: number
+          comment_count: number
+          tags: string[]
+          is_published: boolean
+          is_reported: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          content: string
+          category_id?: number | null
+          author_id?: string | null
+          post_type?: 'community' | 'news'
+          helpful_count?: number
+          comment_count?: number
+          tags?: string[]
+          is_published?: boolean
+          is_reported?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          content?: string
+          category_id?: number | null
+          author_id?: string | null
+          post_type?: 'community' | 'news'
+          helpful_count?: number
+          comment_count?: number
+          tags?: string[]
+          is_published?: boolean
+          is_reported?: boolean
+          updated_at?: string
+        }
+      }
       answers: {
         Row: {
           id: string
@@ -559,6 +611,49 @@ export type Database = {
           updated_at?: string
         }
       }
+      content_reports: {
+        Row: {
+          id: string
+          target_id: string
+          target_type: 'question' | 'post' | 'answer' | 'comment'
+          reporter_id: string | null
+          reason: string
+          description: string | null
+          status: 'pending' | 'in_review' | 'resolved' | 'dismissed'
+          metadata: Json | null
+          created_at: string
+          updated_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+        }
+        Insert: {
+          id?: string
+          target_id: string
+          target_type: 'question' | 'post' | 'answer' | 'comment'
+          reporter_id?: string | null
+          reason: string
+          description?: string | null
+          status?: 'pending' | 'in_review' | 'resolved' | 'dismissed'
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Update: {
+          id?: string
+          target_id?: string
+          target_type?: 'question' | 'post' | 'answer' | 'comment'
+          reporter_id?: string | null
+          reason?: string
+          description?: string | null
+          status?: 'pending' | 'in_review' | 'resolved' | 'dismissed'
+          metadata?: Json | null
+          updated_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+      }
       notifications: {
         Row: {
           id: string
@@ -566,7 +661,7 @@ export type Database = {
           type: string
           title: string
           message: string
-          data: Record<string, unknown> | null
+          data: Json | null
           created_by: string | null
           related_id: string | null
           related_type: string | null
@@ -574,7 +669,7 @@ export type Database = {
           is_email_sent: boolean
           is_push_sent: boolean
           is_kakao_sent: boolean
-          channels: Record<string, unknown>
+          channels: Json
           created_at: string
           read_at: string | null
           sent_at: string | null
@@ -585,7 +680,7 @@ export type Database = {
           type: string
           title: string
           message: string
-          data?: Record<string, unknown> | null
+          data?: Json | null
           created_by?: string | null
           related_id?: string | null
           related_type?: string | null
@@ -593,7 +688,7 @@ export type Database = {
           is_email_sent?: boolean
           is_push_sent?: boolean
           is_kakao_sent?: boolean
-          channels?: Record<string, unknown>
+          channels?: Json
           created_at?: string
           read_at?: string | null
           sent_at?: string | null
@@ -604,7 +699,7 @@ export type Database = {
           type?: string
           title?: string
           message?: string
-          data?: Record<string, unknown> | null
+          data?: Json | null
           created_by?: string | null
           related_id?: string | null
           related_type?: string | null
@@ -612,7 +707,7 @@ export type Database = {
           is_email_sent?: boolean
           is_push_sent?: boolean
           is_kakao_sent?: boolean
-          channels?: Record<string, unknown>
+          channels?: Json
           read_at?: string | null
           sent_at?: string | null
         }
@@ -677,10 +772,10 @@ export const createSupabaseServerClient = async () => {
       {
         cookies: {
           get(name: string) {
-            return cookieStore.get(name)?.value
+            return sanitizeSupabaseCookieValue(name, cookieStore.get(name)?.value)
           },
         },
-        cookieEncoding: 'raw',
+        cookieEncoding: 'base64url',
       }
     )
   } catch (error) {
@@ -706,7 +801,7 @@ export const createSupabaseServerReadClient = () => {
           // No-op for read-only client
         },
       },
-      cookieEncoding: 'raw',
+      cookieEncoding: 'base64url',
     }
   )
 }

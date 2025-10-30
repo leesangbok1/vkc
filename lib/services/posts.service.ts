@@ -6,7 +6,8 @@ import {
   type ViewerContext,
 } from '@/lib/services/feed-utils'
 
-type SupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>
+type SupabaseClient = any
+type SupabaseAnyClient = any
 
 export type PostMetrics = {
   score: number
@@ -31,9 +32,15 @@ export type PostDTO = {
   helpful_count: number
   comment_count: number
   tags: string[] | null
-  author: { id: string | null; name: string | null; role: string | null; avatar_url?: string | null }
+  author: {
+    id: string | null
+    name: string | null
+    role: string | null
+    avatar_url?: string | null
+  }
   category: { id: number | null; name?: string | null; slug?: string | null; icon?: string | null } | null
   is_helpful_by_viewer?: boolean
+  viewer_can_manage?: boolean
   metrics?: PostMetrics
 }
 
@@ -73,6 +80,16 @@ export async function listPosts(params: PostListParams) {
     return { items: [], limit: params.limit ?? 20 }
   }
 
+  let queryClient: SupabaseAnyClient = supabase
+  try {
+    queryClient = createSupabaseServiceClient()
+  } catch (serviceError) {
+    console.warn(
+      '[listPosts] service client unavailable, using session client instead',
+      (serviceError as Error)?.message || serviceError
+    )
+  }
+
   const sort = params.sort === 'popular' ? 'popular' : 'recent'
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 100)
   const offset = Math.max(params.offset ?? 0, 0)
@@ -83,11 +100,31 @@ export async function listPosts(params: PostListParams) {
     helpfulQuestionIds: new Set(),
     helpfulPostIds: new Set(),
   }
+  let viewerIsAdmin = false
+  const viewerId = params.userId ?? null
   if (params.userId) {
     viewerContext = await buildViewerContextUtil(supabase, params.userId)
+    try {
+      const { data: viewerProfile, error: viewerProfileError } = await supabase
+        .from('users')
+        .select('role, admin_yn')
+        .eq('id', params.userId)
+        .maybeSingle()
+
+      if (viewerProfileError) {
+        console.warn('[listPosts] failed to load viewer profile', viewerProfileError.message)
+      } else {
+        const normalizedRole =
+          typeof viewerProfile?.role === 'string' ? viewerProfile.role.toLowerCase() : ''
+        viewerIsAdmin =
+          viewerProfile?.admin_yn === 'Y' || normalizedRole === 'admin'
+      }
+    } catch (viewerCheckError) {
+      console.warn('[listPosts] viewer admin check failed', viewerCheckError)
+    }
   }
 
-  let query = supabase
+  let query = queryClient
     .from('posts')
     .select(
       `
@@ -134,7 +171,7 @@ export async function listPosts(params: PostListParams) {
     if (/^\d+$/.test(categoryParam)) {
       query = query.eq('category_id', Number(categoryParam))
     } else {
-      const { data: categoryRow, error: categoryError } = await supabase
+      const { data: categoryRow, error: categoryError } = await queryClient
         .from('categories')
         .select('id')
         .eq('slug', categoryParam)
@@ -176,8 +213,27 @@ export async function listPosts(params: PostListParams) {
 
   query = query.range(offset, offset + limit - 1)
 
-  const { data, error } = await query
-  if (error) throw error
+  let data: unknown
+  try {
+    const response = await query
+    if (response.error) {
+      console.error('[listPosts] post query failed', {
+        message: response.error.message,
+        code: response.error.code,
+        details: response.error.details,
+        hint: response.error.hint,
+      })
+      return { items: [], limit }
+    }
+    data = response.data
+  } catch (queryError) {
+    const errorMessage = queryError instanceof Error ? queryError.message : String(queryError)
+    console.error('[listPosts] post query threw', {
+      message: errorMessage,
+      error: queryError,
+    })
+    return { items: [], limit }
+  }
 
   const rawRows: ReadonlyArray<Record<string, unknown>> = Array.isArray(data)
     ? (data as ReadonlyArray<Record<string, unknown>>)
@@ -189,7 +245,7 @@ export async function listPosts(params: PostListParams) {
     .filter((id): id is string => Boolean(id))
 
   if (postIds.length > 0) {
-    let aggregateClient: SupabaseClient | ReturnType<typeof createSupabaseServiceClient> | null = supabase
+    let aggregateClient: SupabaseAnyClient | null = queryClient
     try {
       aggregateClient = createSupabaseServiceClient()
     } catch (serviceError) {
@@ -246,6 +302,21 @@ export async function listPosts(params: PostListParams) {
       viewerContext
     )
 
+    const displayName =
+      typeof author?.['name'] === 'string' && (author['name'] as string).length > 0
+        ? (author['name'] as string)
+        : null
+
+    const authorIdValue =
+      typeof author?.['id'] === 'string'
+        ? (author['id'] as string)
+        : typeof row.author_id === 'string'
+          ? (row.author_id as string)
+          : null
+
+    const viewerCanManage =
+      (viewerId && authorIdValue && viewerId === authorIdValue) || viewerIsAdmin
+
     return {
       id: rowId,
       title: typeof row.title === 'string' ? (row.title as string) : '',
@@ -256,17 +327,13 @@ export async function listPosts(params: PostListParams) {
       helpful_count: aggregatedHelpful,
       comment_count: Number(row.comment_count ?? 0),
       tags: Array.isArray(row.tags) ? (row.tags as string[]) : [],
-      author: {
-        id:
-          typeof author?.id === 'string'
-            ? (author.id as string)
-            : typeof row.author_id === 'string'
-              ? (row.author_id as string)
-              : null,
-        name: typeof author?.name === 'string' ? (author.name as string) : null,
-        role: typeof author?.role === 'string' ? (author.role as string) : null,
-        avatar_url: typeof author?.avatar_url === 'string' ? (author.avatar_url as string) : null,
-      },
+        author: {
+          id: authorIdValue,
+          name: displayName,
+          role: typeof author?.['role'] === 'string' ? (author['role'] as string) : null,
+          avatar_url:
+            typeof author?.['avatar_url'] === 'string' ? (author['avatar_url'] as string) : null,
+        },
       category: category
         ? {
             id:
@@ -282,6 +349,7 @@ export async function listPosts(params: PostListParams) {
         : null,
       metrics,
       is_helpful_by_viewer: rowId ? viewerContext.helpfulPostIds.has(rowId) : false,
+      viewer_can_manage: viewerCanManage,
     }
   })
 

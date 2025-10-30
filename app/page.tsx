@@ -1,37 +1,23 @@
 'use client'
 
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import PageLayout from '@/components/layout/PageLayout'
 import FeedBoard, { type FeedBoardItem } from '@/components/feed/FeedBoard'
-import BannerCarousel from '@/components/banners/BannerCarousel'
 import CertificationModal from '@/components/modals/CertificationModal'
 import QuestionCreateModal from '@/components/modals/QuestionCreateModal'
 import PostCreateModal from '@/components/modals/PostCreateModal'
 import QuickTour from '@/components/tour/QuickTour'
 import { useQuickTour, defaultTourSteps } from '@/lib/hooks/useQuickTour'
-import { BRAND_NAME, BRAND_SHORT_DESCRIPTION, BRAND_TAGLINE, LOGIN_CTA_TEXT } from '@/lib/constants/branding'
-
-const EVENT_MODAL_STORAGE_KEY = 'vietkconnect_event_modal_state'
-const EVENT_MODAL_SNOOZE_DAYS = 7
-const LEGACY_EVENT_MODAL_STORAGE_KEY = 'vietkconnect_event_modal_state'
-
-type EventModalState = {
-  lastSeen?: string
-  snoozedUntil?: string
-  showCount?: number
-}
-
-type Banner = {
-  id: string
-  title: string
-  description: string
-  imageUrl?: string
-  linkUrl: string
-  backgroundColor?: string
-}
+import { useEventModalState } from '@/lib/hooks/useEventModalState'
+import { useNewsBanners, type NewsBanner } from '@/lib/hooks/useNewsBanners'
+import { BRAND_NAME } from '@/lib/constants/branding'
+import { getFollowedUsers, toggleFollowUser } from '@/lib/utils/follow-manager'
+import { safeJsonFetch } from '@/lib/utils/fetcher'
 
 export default function HomePage() {
+  const router = useRouter()
   // 초기 SSR 단계에서는 번역 확장으로 인한 hydration mismatch를 막기 위해 빈 상태로 시작
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(true)
@@ -40,108 +26,32 @@ export default function HomePage() {
   const [isDevAdmin, setIsDevAdmin] = useState(false)
   const [userRole, setUserRole] = useState<'guest' | 'user' | 'verified' | 'admin'>('guest')
   const [isCheckingAuth, setIsCheckingAuth] = useState(true) // 초기 로딩 상태
-  const [showEventModal, setShowEventModal] = useState(false) // 이벤트 모달 상태
   const [showCertificationModal, setShowCertificationModal] = useState(false) // 인증 신청 모달 상태
   const [showQuestionModal, setShowQuestionModal] = useState(false)
   const [showPostModal, setShowPostModal] = useState(false)
+  const searchParams = useSearchParams()
+  const viewParam = (searchParams.get('view') || '').toLowerCase()
+  const highlightId = searchParams.get('highlight')
+  const initialTab: 'popular' | 'topics' | 'following' =
+    viewParam === 'topics' ? 'topics' : viewParam === 'following' ? 'following' : 'popular'
+  const initialPopularFeedMode: 'all' | 'questions' = viewParam === 'answers' ? 'questions' : 'all'
+  const [activeTab, setActiveTab] = useState<'popular' | 'topics' | 'following'>(initialTab)
+  const popularFeedMode: 'all' | 'questions' = initialPopularFeedMode
   const [followedUsers, setFollowedUsers] = useState<string[]>([]) // 팔로우한 사용자 목록
-  const [banners, setBanners] = useState<Banner[]>([]) // 배너 목록
+  const { banners: newsBanners } = useNewsBanners({ limit: 4 })
+  const {
+    isOpen: showEventModal,
+    dismiss: dismissEventModal,
+    snooze: snoozeEventModal,
+  } = useEventModalState({
+    userId,
+    isLoggedIn,
+    isAuthLoading: isCheckingAuth,
+  })
 
-  const sidebarBanners = useMemo(() => banners.slice(0, 4), [banners])
-
-  const getEventModalStorageKey = () => {
-    if (userId) return `${EVENT_MODAL_STORAGE_KEY}_${userId}`
-    return EVENT_MODAL_STORAGE_KEY
-  }
-
-  const readEventModalState = (): EventModalState => {
-    if (typeof window === 'undefined') return {}
-    try {
-      const storageKey = getEventModalStorageKey()
-      if (userId && window.localStorage.getItem(LEGACY_EVENT_MODAL_STORAGE_KEY) && !window.localStorage.getItem(storageKey)) {
-        try {
-          window.localStorage.setItem(storageKey, window.localStorage.getItem(LEGACY_EVENT_MODAL_STORAGE_KEY) || '')
-        } finally {
-          window.localStorage.removeItem(LEGACY_EVENT_MODAL_STORAGE_KEY)
-        }
-      }
-      const raw = window.localStorage.getItem(storageKey)
-      if (!raw) return { showCount: 0 }
-      const parsed = JSON.parse(raw)
-      return {
-        lastSeen: parsed.lastSeen ?? undefined,
-        snoozedUntil: parsed.snoozedUntil ?? undefined,
-        showCount: typeof parsed.showCount === 'number' ? parsed.showCount : 0,
-      }
-    } catch (error) {
-      console.error('Failed to parse event modal state:', error)
-      return { showCount: 0 }
-    }
-  }
-
-  const updateEventModalState = (patch: EventModalState) => {
-    if (typeof window === 'undefined') return
-    try {
-      const current = readEventModalState()
-      const nextState = { ...current, ...patch }
-      window.localStorage.setItem(getEventModalStorageKey(), JSON.stringify(nextState))
-    } catch (error) {
-      console.error('Failed to persist event modal state:', error)
-    }
-  }
-
-  const markEventModalShown = () => {
-    const current = readEventModalState()
-    updateEventModalState({
-      lastSeen: new Date().toISOString(),
-      showCount: Math.min((current.showCount ?? 0) + 1, 1),
-    })
-  }
-
-  const dismissEventModal = () => {
-    updateEventModalState({ lastSeen: new Date().toISOString() })
-    setShowEventModal(false)
-  }
-
-  const snoozeEventModal = () => {
-    const now = new Date()
-    const snoozeUntil = new Date(now)
-    snoozeUntil.setDate(snoozeUntil.getDate() + EVENT_MODAL_SNOOZE_DAYS)
-    updateEventModalState({
-      lastSeen: now.toISOString(),
-      snoozedUntil: snoozeUntil.toISOString(),
-      showCount: Math.max(readEventModalState().showCount ?? 0, 1),
-    })
-    setShowEventModal(false)
-  }
+  const sidebarBanners = useMemo<NewsBanner[]>(() => newsBanners.slice(0, 4), [newsBanners])
 
   const allowQuickTour = isLoggedIn && onboardingCompleted
-
-  async function loadBanners() {
-    try {
-      const res = await fetch('/api/posts?post_type=news&limit=4', { cache: 'no-store' })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null)
-        throw new Error(payload?.error || `배너 데이터를 불러오지 못했습니다. (status: ${res.status})`)
-      }
-      const payload = await res.json()
-      const items = Array.isArray(payload?.items) ? payload.items : []
-      const mapped: Banner[] = items.map((item: any) => ({
-        id: String(item.id),
-        title: String(item.title || '소식'),
-        description: typeof item.content === 'string'
-          ? item.content.slice(0, 120)
-          : '',
-        imageUrl: undefined,
-        linkUrl: `/posts/${item.id}`,
-        backgroundColor: '#1f2937'
-      }))
-      setBanners(mapped)
-    } catch (error) {
-      console.error('[HomePage] loadBanners failed:', error)
-      setBanners([])
-    }
-  }
 
   // Quick Tour state (only for 온보딩 완료 사용자, 이벤트 모달 종료 후 진행)
   const { isOpen: isTourOpen, handleComplete: completeTour, handleSkip: skipTour } = useQuickTour(
@@ -152,7 +62,6 @@ export default function HomePage() {
 
   useEffect(() => {
     checkAuth()
-    loadBanners()
   }, [])
 
   // 로그인하면 서버에서 팔로잉 목록 로드
@@ -163,16 +72,12 @@ export default function HomePage() {
     }
 
     let ignore = false
+
     const loadFollowing = async () => {
       try {
-        const res = await fetch('/api/users/following', { cache: 'no-store' })
-        if (!res.ok) {
-          throw new Error(`follow list failed ${res.status}`)
-        }
-        const json = await res.json()
-        const ids: string[] = Array.isArray(json?.data) ? json.data : []
+        const followed = await getFollowedUsers(true)
         if (!ignore) {
-          setFollowedUsers(ids)
+          setFollowedUsers(followed.map((user) => user.id))
         }
       } catch (error) {
         console.error('[Home] failed to load follow list', error)
@@ -184,27 +89,6 @@ export default function HomePage() {
       ignore = true
     }
   }, [isLoggedIn])
-
-  // 로그인 후 이벤트 모달 자동 오픈 (한 번만)
-  useEffect(() => {
-    if (!isLoggedIn || isCheckingAuth || !userId) {
-      return
-    }
-
-    const timer = setTimeout(() => {
-      const state = readEventModalState()
-      const hasShownOnce = (state.showCount ?? 0) >= 1
-      const snoozedUntil = state?.snoozedUntil ? new Date(state.snoozedUntil) : null
-      const snoozeExpired = snoozedUntil ? snoozedUntil.getTime() <= Date.now() : false
-
-      if (!hasShownOnce || snoozeExpired) {
-        markEventModalShown()
-        setShowEventModal(true)
-      }
-    }, 1000) // 1초 후 모달 오픈 (부드러운 UX)
-
-    return () => clearTimeout(timer)
-  }, [isLoggedIn, isCheckingAuth, userId])
 
   // URL 파라미터로 인증 모달 오픈 제어
   useEffect(() => {
@@ -232,8 +116,13 @@ export default function HomePage() {
 
   async function checkAuth() {
     try {
-      const res = await fetch('/api/auth/profile', { cache: 'no-store' })
-      if (!res.ok) {
+      const { ok, data, error } = await safeJsonFetch<any>('/api/auth/profile', {
+        cache: 'no-store',
+      })
+      if (!ok || !data?.data) {
+        if (error) {
+          console.warn('[Home] auth profile load failed:', error)
+        }
         setIsLoggedIn(false)
         setUserRole('guest')
         setIsDevAdmin(false)
@@ -241,8 +130,7 @@ export default function HomePage() {
         setOnboardingCompleted(false)
         return
       }
-      const json = await res.json()
-      const profile = json.data
+      const profile = data.data
       setUserId(profile?.id ?? null)
       if (!profile) {
         setIsLoggedIn(false)
@@ -340,6 +228,11 @@ export default function HomePage() {
       return
     }
 
+    if (userId && userId === authorId) {
+      alert('내 계정은 팔로우할 수 없습니다.')
+      return
+    }
+
     const previous = [...followedUsers]
     setFollowedUsers((prev) => {
       if (isCurrentlyFollowing) {
@@ -349,25 +242,52 @@ export default function HomePage() {
     })
 
     try {
-      const method = isCurrentlyFollowing ? 'DELETE' : 'POST'
-      const res = await fetch(`/api/users/${authorId}/follow`, { method })
-      const body = await res.json().catch(() => null)
-      if (!res.ok || body?.success === false) {
-        throw new Error('follow request failed')
+      const { success, isFollowing, error } = await toggleFollowUser(authorId, {
+        viewerId: userId ?? null,
+      })
+      if (!success) {
+        if (error === 'SELF_FOLLOW') {
+          setFollowedUsers(previous)
+          alert('내 계정은 팔로우할 수 없습니다.')
+          return
+        }
+        throw new Error(error || 'follow request failed')
       }
-      if (typeof body?.isFollowing === 'boolean') {
-        setFollowedUsers((prev) => {
-          const next = new Set(prev)
-          if (body.isFollowing) next.add(authorId)
-          else next.delete(authorId)
-          return Array.from(next)
-        })
-      }
+      setFollowedUsers((prev) => {
+        const next = new Set(prev)
+        if (isFollowing) {
+          next.add(authorId)
+        } else {
+          next.delete(authorId)
+        }
+        return Array.from(next)
+      })
     } catch (error) {
       console.error('follow toggle failed', error)
       setFollowedUsers(previous)
       alert('팔로우 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
     }
+  }
+
+  const goToLogin = (redirectTo: string) => {
+    const encodedPath = encodeURIComponent(redirectTo)
+    window.location.href = `/auth/login?redirectTo=${encodedPath}`
+  }
+
+  const openQuestionComposer = () => {
+    if (!isLoggedIn) {
+      goToLogin('/questions/new')
+      return
+    }
+    setShowQuestionModal(true)
+  }
+
+  const openPostComposer = () => {
+    if (!isLoggedIn) {
+      goToLogin('/posts/new')
+      return
+    }
+    setShowPostModal(true)
   }
 
   // 인증 체크 중일 때 로딩 화면 표시 (FOUC 방지)
@@ -395,101 +315,97 @@ export default function HomePage() {
       sidebar={<Sidebar showContent={true} banners={sidebarBanners} />}
     >
       {/* Main Content Area */}
-      <div>
-          {/* Desktop Hero Section */}
-          {!isLoggedIn ? (
-            // 로그인 전: 플랫폼 가치 강조
-            <div className="desktop-hero">
-              <div className="hero-badge" translate="no" data-no-translate="true">
-                <span>🛡️</span>
-                <span>{BRAND_NAME} Certified Network</span>
-              </div>
-              <h1 className="hero-title">
-                {BRAND_TAGLINE}<br />
-                실제 경험을 검증한 Certified User가 답변합니다
-              </h1>
-              <p className="hero-subtitle">{BRAND_SHORT_DESCRIPTION}</p>
-              <div className="hero-actions">
+      <div className="home-page">
+        <section className="home-hero-grid">
+          <div className="home-hero-card">
+            <div className="home-hero-combined" role="group" aria-label="빠른 작성 및 탐색">
+              <button
+                type="button"
+                className="home-hero-trigger"
+                onClick={openQuestionComposer}
+                data-tour="ask-question"
+                aria-label="질문 작성하기"
+              >
+                <span className="home-hero-avatar" aria-hidden>👤</span>
+                <span className="home-hero-placeholder" aria-hidden="true">
+                  비자, 유학, 취업 등 궁금한 점을 질문해보세요!
+                </span>
+              </button>
+              <div className="home-hero-chip-group">
                 <button
-                  className="hero-btn-primary"
-                  onClick={() => window.location.href = '/auth/login'}
+                  className="vk-chip vk-chip--lg vk-chip--interactive home-hero-action-button home-hero-action-question"
+                  type="button"
+                  onClick={openQuestionComposer}
                 >
-                  🚀 {LOGIN_CTA_TEXT}
+                  <span className="vk-chip__icon" aria-hidden>❓</span>
+                  <span className="vk-chip__label">Ask</span>
+                </button>
+                <button
+                  className="vk-chip vk-chip--lg vk-chip--interactive home-hero-action-button home-hero-action-post"
+                  type="button"
+                  onClick={openPostComposer}
+                >
+                  <span className="vk-chip__icon" aria-hidden>📝</span>
+                  <span className="vk-chip__label">Post</span>
+                </button>
+                <button
+                  className="vk-chip vk-chip--lg vk-chip--interactive home-hero-action-button home-hero-action-feed"
+                  type="button"
+                  onClick={() => { window.location.href = '/posts' }}
+                >
+                  <span className="vk-chip__icon" aria-hidden>📰</span>
+                  <span className="vk-chip__label">게시글</span>
                 </button>
               </div>
             </div>
-          ) : (
-            // 로그인 후: 컴팩트 입력창
-            <div className="desktop-hero-compact">
-              <div className="hero-input-row">
-                <div className="profile-avatar-medium">
-                  👤
-                </div>
-                <input
-                  type="text"
-                  placeholder="비자, 유학, 취업 등 한국생활 관련 궁금한 점을 질문해보세요"
-                  className="hero-search-input"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      window.location.href = '/auth/login?redirectTo=/questions/new'
-                      return
-                    }
-                    setShowQuestionModal(true)
-                  }}
-                  readOnly
-                />
-              </div>
-              <div className="hero-action-buttons">
-                <button
-                  className="hero-action-btn"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      window.location.href = '/auth/login?redirectTo=/questions/new'
-                      return
-                    }
-                    setShowQuestionModal(true)
-                  }}
-                  data-tour="ask-question"
-                >
-                  ❓ Ask
-                </button>
-                <button
-                  className="hero-action-btn"
-                  onClick={() => window.location.href = '/questions'}
-                >
-                  💬 Answer
-                </button>
-                <button
-                  className="hero-action-btn"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      window.location.href = '/auth/login?redirectTo=/posts/new'
-                      return
-                    }
-                    setShowPostModal(true)
-                  }}
-                >
-                  📝 Post
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Banner Carousel - 미션/이벤트 배너 */}
-          {isLoggedIn && (
-            <BannerCarousel banners={banners} />
-          )}
-
-          {/* Categories Tabs */}
-          <div className="category-tabs">
-            <a href="/" className="category-tab active">Popular</a>
-            <a href="/topics" className="category-tab" data-tour="topics">Topic</a>
-            <a href="/following" className="category-tab">Following</a>
           </div>
+        </section>
 
+        {/* Categories Tabs */}
+        <div className="feed-filter-bar">
+          <div className="feed-filter-scroll feed-filter-scroll--plain">
+            <button
+              type="button"
+              className={`category-tab ${activeTab === 'popular' ? 'active' : ''}`}
+              onClick={() => setActiveTab('popular')}
+            >
+              Popular
+            </button>
+            <button
+              type="button"
+              className={`category-tab ${activeTab === 'topics' ? 'active' : ''}`}
+              onClick={() => setActiveTab('topics')}
+              data-tour="topics"
+            >
+              Topic
+            </button>
+            <button
+              type="button"
+              className={`category-tab ${activeTab === 'following' ? 'active' : ''}`}
+              onClick={() => setActiveTab('following')}
+            >
+              Following
+            </button>
+            {activeTab === 'following' && isLoggedIn && (
+              <button
+                type="button"
+                className="feed-filter-action-btn"
+                onClick={() => router.push('/?modal=followers&section=recommended')}
+              >
+                <span aria-hidden>✨</span>
+                <span>팔로잉 추천 멤버 찾아보기</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {activeTab === 'popular' && (
           <FeedBoard
-            mode="all"
+            mode={popularFeedMode}
             renderStats={renderFeedStats}
+            defaultSort={popularFeedMode === 'questions' ? 'recent' : 'popular'}
+            showSortTabs={false}
+            highlightId={highlightId}
             followControls={{
               followedIds: followedUsers,
               onToggleFollow: handleFollowToggle,
@@ -502,7 +418,78 @@ export default function HomePage() {
               actionHref: '/questions/new',
               actionLabel: '질문 작성하기'
             }}
+            includeCredentials={isLoggedIn}
           />
+        )}
+
+        {activeTab === 'topics' && (
+          <TopicsTabContent
+            isLoggedIn={isLoggedIn}
+            onLoginRequired={() => goToLogin('/?view=topics')}
+            renderStats={renderFeedStats}
+            followedIds={followedUsers}
+            onToggleFollow={handleFollowToggle}
+          />
+        )}
+
+        {activeTab === 'following' && (
+          isLoggedIn ? (
+            <div
+              className="home-following-section"
+              style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+            >
+              <FeedBoard
+                mode="all"
+                renderStats={renderFeedStats}
+                defaultSort="popular"
+                showSortTabs={false}
+                followControls={{
+                  followedIds: followedUsers,
+                  onToggleFollow: handleFollowToggle,
+                  labels: { follow: '팔로우', following: '팔로잉' }
+                }}
+              emptyState={{
+                icon: '🤝',
+                title: '팔로우한 멤버의 활동이 아직 없습니다',
+                description: '관심 있는 전문가를 팔로우하면 업데이트를 모아볼 수 있어요.',
+                actionHref: '/users/discover',
+                actionLabel: '사람 둘러보기'
+              }}
+              questionsQuery={{ following: 'true' }}
+              postsQuery={{ following: 'true' }}
+              includeCredentials={isLoggedIn}
+            />
+            </div>
+          ) : (
+            <div
+              className="home-following-prompt"
+              style={{
+                border: '1px solid #e2e8f0',
+                borderRadius: '16px',
+                padding: '2.5rem',
+                textAlign: 'center',
+                background: '#f8fafc',
+                boxShadow: '0 18px 40px rgba(15, 23, 42, 0.06)',
+              }}
+            >
+              <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔒</div>
+              <h3 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: 700 }}>
+                팔로우한 멤버들의 피드를 보려면 로그인하세요
+              </h3>
+              <p style={{ color: '#475569', marginBottom: '1.5rem' }}>
+                관심 있는 전문가를 팔로우하면 질문과 답변을 한 곳에서 확인할 수 있어요.
+              </p>
+              <button
+                type="button"
+                className="vk-chip vk-chip--lg vk-chip--interactive vk-chip--primary home-hero-action-button"
+                onClick={() => goToLogin('/following')}
+              >
+                <span className="vk-chip__icon" aria-hidden>🔑</span>
+                <span className="vk-chip__label">로그인하고 보기</span>
+              </button>
+            </div>
+          )
+        )}
       </div>
 
       {/* Event Modal - 베타 오픈 이벤트 팝업 */}
@@ -688,5 +675,456 @@ export default function HomePage() {
         }}
       />
     </PageLayout>
+  )
+}
+
+type TopicsPreviewItem = {
+  id: number | string
+  name: string
+  icon?: string | null
+  description?: string | null
+  slug?: string | null
+  questionCount: number
+}
+
+type TopicsTabContentProps = {
+  isLoggedIn: boolean
+  onLoginRequired: () => void
+  renderStats: (item: FeedBoardItem) => ReactNode
+  followedIds: string[]
+  onToggleFollow: (authorId: string, isFollowing: boolean) => Promise<void> | void
+}
+
+function TopicsTabContent({
+  isLoggedIn,
+  onLoginRequired,
+  renderStats,
+  followedIds,
+  onToggleFollow
+}: TopicsTabContentProps) {
+  const [topics, setTopics] = useState<TopicsPreviewItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedTopic, setSelectedTopic] = useState<TopicsPreviewItem | null>(null)
+  const [subscribedTopicIds, setSubscribedTopicIds] = useState<Set<number>>(new Set())
+  const [pendingTopicId, setPendingTopicId] = useState<number | null>(null)
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadTopics() {
+      setLoading(true)
+      setError(null)
+      try {
+        const { ok, data, error } = await safeJsonFetch<any>(
+          '/api/categories?include_count=true&limit=18',
+          {
+            cache: 'no-store',
+            credentials: 'include',
+          }
+        )
+
+        if (!ok) {
+          throw new Error(error || '토픽을 불러오지 못했습니다.')
+        }
+
+        const dataArray = Array.isArray(data?.data) ? data.data : []
+        if (ignore) return
+
+        const mapped: TopicsPreviewItem[] = dataArray.map((item: any, index: number) => {
+          const fallbackId =
+            typeof item?.id !== 'undefined' && item?.id !== null
+              ? item.id
+              : `topic-${index}-${Date.now()}`
+          return {
+            id: fallbackId,
+            name: typeof item?.name === 'string' && item.name.length > 0 ? item.name : '이름 없는 토픽',
+            icon: typeof item?.icon === 'string' && item.icon.length > 0 ? item.icon : null,
+            description:
+              typeof item?.description === 'string' && item.description.length > 0
+                ? item.description
+                : '추가 설명이 아직 없습니다.',
+            slug: typeof item?.slug === 'string' && item.slug.length > 0 ? item.slug : null,
+            questionCount: Number(item?.question_count ?? item?.questionCount ?? 0)
+          }
+        })
+
+        setTopics(mapped)
+      } catch (err) {
+        console.error('[HomePage] failed to load topics preview', err)
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : '토픽을 불러오지 못했습니다.')
+          setTopics([])
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadTopics()
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setSubscribedTopicIds(new Set())
+      return
+    }
+
+    let ignore = false
+
+    async function loadSubscriptions() {
+      try {
+        const { ok, data, error } = await safeJsonFetch<any>(
+          '/api/topics/subscriptions',
+          {
+            method: 'GET',
+            cache: 'no-store',
+            credentials: 'include',
+          }
+        )
+
+        if (!ok) {
+          throw new Error(error || '토픽 구독 정보를 불러오지 못했습니다.')
+        }
+
+        if (ignore) return
+        const entries = Array.isArray(data?.data) ? data.data : []
+        const next = new Set<number>()
+        entries.forEach((entry: any) => {
+          const value =
+            typeof entry?.category_id === 'number'
+              ? entry.category_id
+              : typeof entry?.category?.id === 'number'
+                ? entry.category.id
+                : null
+          if (typeof value === 'number' && Number.isFinite(value)) {
+            next.add(value)
+          }
+        })
+        setSubscribedTopicIds(next)
+      } catch (err) {
+        console.warn('[HomePage] failed to load topic subscriptions', err)
+      }
+    }
+
+    loadSubscriptions()
+    return () => {
+      ignore = true
+    }
+  }, [isLoggedIn])
+
+  useEffect(() => {
+    if (!selectedTopic || topics.length === 0) return
+    const matched = topics.find((topic) => {
+      if (selectedTopic.slug && topic.slug) {
+        return topic.slug === selectedTopic.slug
+      }
+      return String(selectedTopic.id) === String(topic.id)
+    })
+    if (matched && matched !== selectedTopic) {
+      setSelectedTopic(matched)
+    }
+  }, [topics, selectedTopic])
+
+  const topicQueryParams = useMemo(() => {
+    if (!selectedTopic) return undefined
+    const categoryValue =
+      selectedTopic.slug && selectedTopic.slug.length > 0
+        ? selectedTopic.slug
+        : String(selectedTopic.id)
+    return { category: categoryValue }
+  }, [selectedTopic])
+
+  const handleTopicSelect = async (topic: TopicsPreviewItem) => {
+    setSelectedTopic(topic)
+
+    const resolvedId =
+      typeof topic.id === 'number'
+        ? topic.id
+        : Number.isFinite(Number(topic.id))
+          ? Number(topic.id)
+          : null
+    const resolvedSlug = typeof topic.slug === 'string' && topic.slug.length > 0 ? topic.slug : null
+
+    if (!isLoggedIn) {
+      return
+    }
+
+    if (resolvedId !== null && subscribedTopicIds.has(resolvedId)) {
+      return
+    }
+
+    if (resolvedId === null && !resolvedSlug) {
+      console.warn('[HomePage] missing topic id/slug', topic)
+      return
+    }
+
+    if (resolvedId !== null) {
+      setPendingTopicId(resolvedId)
+    }
+
+    try {
+      const body: Record<string, unknown> = {}
+      if (resolvedId !== null) {
+        body.category_id = resolvedId
+      } else if (resolvedSlug) {
+        body.category_slug = resolvedSlug
+      }
+
+      const res = await fetch('/api/topics/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+      })
+
+      if (res.status === 401) {
+        if (typeof window !== 'undefined') {
+          window.setTimeout(() => onLoginRequired(), 200)
+        } else {
+          onLoginRequired()
+        }
+        return
+      }
+
+      let payload: any = null
+      try {
+        payload = await res.json()
+      } catch {
+        payload = null
+      }
+
+      if (!res.ok && res.status !== 409) {
+        const message = payload?.error || '토픽 구독에 실패했습니다.'
+        throw new Error(message)
+      }
+
+      const subscribedId = (() => {
+        const dataId = payload?.data?.category_id ?? payload?.category?.id ?? resolvedId
+        return typeof dataId === 'number'
+          ? dataId
+          : Number.isFinite(Number(dataId))
+            ? Number(dataId)
+            : resolvedId
+      })()
+
+      if (typeof subscribedId === 'number' && Number.isFinite(subscribedId)) {
+        setSubscribedTopicIds((prev) => {
+          const next = new Set(prev)
+          next.add(subscribedId)
+          return next
+        })
+      }
+
+      const alreadySubscribed = res.status === 409
+      if (!alreadySubscribed) {
+        console.info('[HomePage] topic subscribed', {
+          id: subscribedId,
+          name: topic.name
+        })
+      }
+    } catch (err) {
+      console.error('[HomePage] topic subscribe failed', err)
+    } finally {
+      setPendingTopicId(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem 0' }}>
+        <div className="topics-spinner" aria-hidden>⏳</div>
+        <p style={{ color: '#64748b', marginTop: '0.75rem' }}>토픽을 불러오는 중입니다...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          border: '1px solid #fecaca',
+          background: '#fef2f2',
+          color: '#b91c1c',
+          padding: '1.5rem',
+          borderRadius: '16px',
+          textAlign: 'center'
+        }}
+      >
+        <p>{error}</p>
+        <button
+          type="button"
+          className="vk-chip vk-chip--interactive"
+          style={{ marginTop: '1rem' }}
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/topics'
+            }
+          }}
+        >
+          <span className="vk-chip__label">토픽 페이지 열기</span>
+        </button>
+      </div>
+    )
+  }
+
+  if (topics.length === 0) {
+    return (
+      <div
+        style={{
+          border: '1px solid #e2e8f0',
+          borderRadius: '16px',
+          padding: '2rem',
+          textAlign: 'center',
+          background: '#f8fafc',
+          color: '#475569'
+        }}
+      >
+        <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>표시할 토픽이 없습니다</p>
+        <p style={{ fontSize: '0.95rem' }}>관심 있는 주제를 찾으러 토픽 페이지로 이동해보세요.</p>
+        <button
+          type="button"
+          className="vk-chip vk-chip--interactive"
+          style={{ marginTop: '1rem' }}
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/topics'
+            }
+          }}
+        >
+          <span className="vk-chip__label">토픽 둘러보기</span>
+        </button>
+      </div>
+    )
+  }
+
+  const MAX_VISIBLE_TOPICS = 10
+  const visibleTopics = topics.slice(0, MAX_VISIBLE_TOPICS)
+  const hasMoreTopics = topics.length > MAX_VISIBLE_TOPICS
+
+  const followControls = isLoggedIn
+    ? {
+        followedIds,
+        onToggleFollow,
+        labels: { follow: '팔로우', following: '팔로잉' }
+      }
+    : undefined
+
+  return (
+    <div className="home-topics-section">
+      <div className="topics-chip-row" role="list">
+        {visibleTopics.map((topic) => {
+          const numericId =
+            typeof topic.id === 'number'
+              ? topic.id
+              : Number.isFinite(Number(topic.id))
+                ? Number(topic.id)
+                : null
+          const isSubscribed =
+            typeof numericId === 'number' && subscribedTopicIds.has(numericId)
+          const isActive =
+            selectedTopic != null &&
+            (selectedTopic.slug && topic.slug
+              ? selectedTopic.slug === topic.slug
+              : String(selectedTopic.id) === String(topic.id))
+          const isPending =
+            typeof numericId === 'number' && pendingTopicId === numericId
+
+          return (
+            <button
+              key={String(topic.id)}
+              type="button"
+              className={[
+                'topic-chip-button',
+                isActive ? 'active' : '',
+                isSubscribed ? 'subscribed' : '',
+                isPending ? 'pending' : ''
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => handleTopicSelect(topic)}
+              aria-pressed={isActive}
+              disabled={isPending}
+              title={`${topic.name} 토픽 보기`}
+            >
+              <span className="topic-chip-icon" aria-hidden>
+                {topic.icon || '📌'}
+              </span>
+              <span className="topic-chip-text">
+                <span className="topic-chip-label">{topic.name}</span>
+                <span className="topic-chip-count">
+                  질문 {topic.questionCount.toLocaleString()}개
+                </span>
+              </span>
+              {isSubscribed && (
+                <span className="topic-chip-status" aria-label="구독 중">✓</span>
+              )}
+            </button>
+          )
+        })}
+        {hasMoreTopics && (
+          <button
+            type="button"
+            className="topic-chip-button topic-chip-more"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/topics'
+              }
+            }}
+            title="모든 토픽 보기"
+          >
+            <span className="topic-chip-icon" aria-hidden>➕</span>
+            <span className="topic-chip-text">
+              <span className="topic-chip-label">더 많은 토픽</span>
+              <span className="topic-chip-count">전체 보기</span>
+            </span>
+          </button>
+        )}
+      </div>
+
+      {!selectedTopic && (
+        <div className="topics-feed-placeholder">
+          <strong>토픽을 선택해보세요</strong>
+          <p>관심 있는 토픽 버튼을 누르면 관련 질문과 정보글을 한 곳에서 모아볼 수 있습니다.</p>
+        </div>
+      )}
+
+      {selectedTopic && topicQueryParams && (
+        <div className="topics-feed-wrapper">
+          <div className="topics-feed-header">
+            <h3>
+              <span aria-hidden style={{ marginRight: '0.35rem' }}>
+                {selectedTopic.icon || '📌'}
+              </span>
+              {selectedTopic.name} 토픽 최신 콘텐츠
+            </h3>
+            <p>토픽을 구독하면 맞춤형 질문과 정보글을 더 빠르게 확인할 수 있어요.</p>
+          </div>
+          <FeedBoard
+            key={`${selectedTopic.slug ?? selectedTopic.id}`}
+            mode="all"
+            renderStats={renderStats}
+            defaultSort="popular"
+            showSortTabs
+            questionsQuery={topicQueryParams}
+            postsQuery={topicQueryParams}
+            followControls={followControls}
+            emptyState={{
+              icon: '📭',
+              title: `${selectedTopic.name} 토픽에 아직 게시글이 없습니다`,
+              description: '첫 질문을 남겨보거나 경험을 공유해보세요.',
+              actionHref: '/questions/new',
+              actionLabel: '질문 작성하기'
+            }}
+            includeCredentials={isLoggedIn}
+          />
+        </div>
+      )}
+    </div>
   )
 }

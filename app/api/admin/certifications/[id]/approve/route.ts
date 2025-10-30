@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import type { Database } from '@/lib/supabase'
+import { getServerDbClient } from '@/lib/server/supabase-clients'
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
+
+type UsersTable = Database['public']['Tables']['users']
+type CertificationRequestsTable = Database['public']['Tables']['certification_requests']
+type AdminCheckRow = Pick<UsersTable['Row'], 'role' | 'admin_yn'>
+type CertificationRequestRow = CertificationRequestsTable['Row']
+type CertificationRequestUpdate = CertificationRequestsTable['Update']
+type UserUpdate = UsersTable['Update']
 
 export async function POST(
   request: NextRequest,
@@ -13,7 +21,7 @@ export async function POST(
     const { id: certificationId } = await params
 
     // Get session to verify admin access
-    const supabase = await createSupabaseServerClient()
+    const supabase = await getServerDbClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -30,9 +38,11 @@ export async function POST(
       .eq('id', session.user.id)
       .maybeSingle()
 
+    const adminProfile = userData as AdminCheckRow | null
+
     const isAdmin =
-      userData?.admin_yn === 'Y' ||
-      userData?.role === 'admin'
+      adminProfile?.admin_yn === 'Y' ||
+      adminProfile?.role === 'admin'
 
     if (userError || !isAdmin) {
       return NextResponse.json(
@@ -42,18 +52,22 @@ export async function POST(
     }
 
     // Update certification request status to approved
+    const certUpdate: CertificationRequestUpdate = {
+      status: 'approved',
+      reviewed_by: session.user.id,
+      reviewed_at: new Date().toISOString()
+    }
+
     const { data: certRequest, error: updateError } = await supabase
       .from('certification_requests')
-      .update({
-        status: 'approved',
-        reviewed_by: session.user.id,
-        reviewed_at: new Date().toISOString()
-      })
+      .update<CertificationRequestUpdate>(certUpdate)
       .eq('id', certificationId)
       .select()
-      .single()
+      .maybeSingle()
 
-    if (updateError || !certRequest) {
+    const certRequestRow = certRequest as CertificationRequestRow | null
+
+    if (updateError || !certRequestRow) {
       console.error('Failed to approve certification:', updateError)
       return NextResponse.json(
         { error: 'Failed to approve certification' },
@@ -62,15 +76,30 @@ export async function POST(
     }
 
     // Update user profile to VERIFIED role
+    const allowedVerificationTypes = new Set<Exclude<UserUpdate['verification_type'], null>>([
+      'student',
+      'work',
+      'family',
+      'resident',
+      'other'
+    ])
+    const rawVerificationType = certRequestRow.verification_type
+    const derivedVerificationType: UserUpdate['verification_type'] =
+      rawVerificationType && allowedVerificationTypes.has(rawVerificationType as Exclude<UserUpdate['verification_type'], null>)
+        ? (rawVerificationType as Exclude<UserUpdate['verification_type'], null>)
+        : 'other'
+
+    const profileUpdate: UserUpdate = {
+      role: 'verified',
+      is_verified: true,
+      verification_type: derivedVerificationType,
+      verified_at: new Date().toISOString()
+    }
+
     const { error: profileError } = await supabase
       .from('users')
-      .update({
-        role: 'verified',
-        is_verified: true,
-        verification_type: certRequest.verification_type,
-        verified_at: new Date().toISOString()
-      })
-      .eq('id', certRequest.user_id)
+      .update<UserUpdate>(profileUpdate)
+      .eq('id', certRequestRow.user_id)
 
     if (profileError) {
       console.error('Failed to update user profile:', profileError)
@@ -86,7 +115,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: 'Certification approved successfully',
-      certification: certRequest
+      certification: certRequestRow
     })
 
   } catch (error) {

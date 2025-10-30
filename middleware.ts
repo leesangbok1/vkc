@@ -1,19 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
+import type { Session } from '@supabase/supabase-js'
 import { Database } from './lib/supabase'
 import { addSecurityHeaders, validateCSRFToken } from '@/lib/middleware/security-headers'
 import { systemMetrics } from '@/lib/monitoring/system-metrics'
+import { sanitizeSupabaseCookieValue } from '@/lib/utils/supabase-cookie'
 
-const sanitizeCookieValue = (value?: string | null) => {
-  if (!value) return undefined
-  const trimmed = value.trim()
-  if (!trimmed) return undefined
-  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    return trimmed.slice(1, -1)
-  }
-  return trimmed.replace(/"/g, '')
-}
+type CookieOptions = Partial<Omit<ResponseCookie, 'name' | 'value'>>
 
 export async function middleware(request: NextRequest) {
   const start = Date.now()
@@ -45,9 +40,9 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         get(name: string) {
-          return sanitizeCookieValue(request.cookies.get(name)?.value)
+          return sanitizeSupabaseCookieValue(name, request.cookies.get(name)?.value)
         },
-        set(name: string, value: string, options: any) {
+        set(name: string, value: string, options: CookieOptions = {}) {
           // Apply the cookie to the request
           request.cookies.set({
             name,
@@ -67,7 +62,7 @@ export async function middleware(request: NextRequest) {
             ...options,
           })
         },
-        remove(name: string, options: any) {
+        remove(name: string, options: CookieOptions = {}) {
           // Apply the deletion to the request
           request.cookies.set({
             name,
@@ -94,7 +89,7 @@ export async function middleware(request: NextRequest) {
 
   const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true'
 
-  let session = null
+  let session: Session | null = null
 
   // Mock 모드가 아닐 때만 Supabase 세션 체크
   if (!isMockMode) {

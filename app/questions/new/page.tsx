@@ -3,12 +3,18 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PageLayout from '@/components/layout/PageLayout'
-import NotificationSetupModal from '@/components/modals/NotificationSetupModal'
 import RichEditor from '@/components/editor/RichEditor'
 import { EDITOR_USAGE_GUIDE } from '@/lib/constants/editor'
+import { useNotificationPrompt } from '@/contexts/NotificationPromptContext'
+import {
+  DEFAULT_QUESTION_CONTENT_GUIDE,
+  DEFAULT_QUESTION_TITLE_PLACEHOLDER,
+  getRandomQuestionPlaceholders,
+} from '@/lib/utils/question-placeholders'
 
 export default function NewQuestionPage() {
   const router = useRouter()
+  const { openNotificationPrompt } = useNotificationPrompt()
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [categories, setCategories] = useState<Array<{ id: number; name: string; icon?: string | null }>>([])
   const [loadingCategories, setLoadingCategories] = useState(true)
@@ -44,8 +50,9 @@ export default function NewQuestionPage() {
   const [content, setContent] = useState('')
   const [categoryId, setCategoryId] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
-  const [showNotificationModal, setShowNotificationModal] = useState(false)
   const [userEmail, setUserEmail] = useState('')
+  const [titlePlaceholder, setTitlePlaceholder] = useState(DEFAULT_QUESTION_TITLE_PLACEHOLDER)
+  const [contentPlaceholder, setContentPlaceholder] = useState(DEFAULT_QUESTION_CONTENT_GUIDE)
 
   // 사용자 이메일 로드
   useEffect(() => {
@@ -64,6 +71,59 @@ export default function NewQuestionPage() {
     }
 
     loadProfileEmail()
+  }, [])
+
+  useEffect(() => {
+    const placeholders = getRandomQuestionPlaceholders()
+    setTitlePlaceholder(placeholders.title)
+    setContentPlaceholder(placeholders.content)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let cancelled = false
+
+    const syncNotificationSettings = async () => {
+      try {
+        const stored = window.localStorage.getItem('notification_settings')
+        if (stored) return
+
+        const response = await fetch('/api/users/notification-preferences', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          cache: 'no-store'
+        })
+
+        if (!response.ok) return
+
+        const payload = await response.json().catch(() => null)
+        const preferences = payload?.preferences || {}
+
+        if (cancelled) return
+
+        persistNotificationSettings({
+          email_notifications:
+            typeof preferences.email_notifications === 'boolean'
+              ? preferences.email_notifications
+              : true,
+          push_notifications:
+            typeof preferences.push_notifications === 'boolean'
+              ? preferences.push_notifications
+              : false,
+          setup_completed: false,
+          dismissed: false
+        })
+      } catch (error) {
+        console.warn('[QuestionNew] failed to sync notification settings from server', error)
+      }
+    }
+
+    syncNotificationSettings()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -157,6 +217,33 @@ export default function NewQuestionPage() {
     }
   }
 
+  const openNotificationSetupModal = () => {
+    persistNotificationSettings({
+      last_prompted_at: new Date().toISOString(),
+    })
+    openNotificationPrompt({
+      email: userEmail,
+      onComplete: () => {
+        persistNotificationSettings({
+          setup_completed: true,
+          dismissed: false,
+          completed_at: new Date().toISOString(),
+        })
+        alert('질문이 성공적으로 등록되었습니다!\n답변 알림을 받으실 수 있습니다.')
+        router.push('/my-questions?tab=questions')
+      },
+      onDismiss: () => {
+        persistNotificationSettings({
+          dismissed: true,
+          dismissed_at: new Date().toISOString(),
+          setup_completed: false,
+        })
+        alert('질문이 성공적으로 등록되었습니다!')
+        router.push('/my-questions?tab=questions')
+      },
+    })
+  }
+
   const submitQuestion = async () => {
     const trimmedTitle = title.trim()
     const trimmedContent = content.trim()
@@ -197,10 +284,7 @@ export default function NewQuestionPage() {
       if (response.ok) {
         // 질문 등록 성공 후 알림 설정 모달 표시 여부 확인
         if (shouldShowNotificationModal()) {
-          setShowNotificationModal(true)
-          persistNotificationSettings({
-            last_prompted_at: new Date().toISOString(),
-          })
+          openNotificationSetupModal()
         } else {
           alert('질문이 성공적으로 등록되었습니다!')
           router.push('/my-questions?tab=questions')
@@ -223,30 +307,6 @@ export default function NewQuestionPage() {
     e.preventDefault()
     if (submitting) return
     await submitQuestion()
-  }
-
-  // 알림 설정 완료 핸들러
-  const handleNotificationComplete = () => {
-    persistNotificationSettings({
-      setup_completed: true,
-      dismissed: false,
-      completed_at: new Date().toISOString(),
-    })
-    setShowNotificationModal(false)
-    alert('질문이 성공적으로 등록되었습니다!\n답변 알림을 받으실 수 있습니다.')
-    router.push('/my-questions?tab=questions')
-  }
-
-  // 모달 닫기 핸들러 (나중에 설정)
-  const handleNotificationClose = () => {
-    persistNotificationSettings({
-      dismissed: true,
-      dismissed_at: new Date().toISOString(),
-      setup_completed: false,
-    })
-    setShowNotificationModal(false)
-    alert('질문이 성공적으로 등록되었습니다!')
-    router.push('/my-questions?tab=questions')
   }
 
   // 취소 핸들러
@@ -316,7 +376,7 @@ export default function NewQuestionPage() {
                   type="text"
                   id="question-title"
                   className="question-field-input"
-                  placeholder="간단하고 명확한 질문 제목을 작성해주세요"
+                  placeholder={titlePlaceholder}
                   maxLength={80}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -342,14 +402,7 @@ export default function NewQuestionPage() {
                   onChange={setContent}
                   minRows={12}
                   maxLength={10000}
-                  disabled={submitting}
-                  placeholder={`구체적인 상황과 궁금한 점을 자세히 설명해주세요.
-
-예시:
-- 현재 상황은 어떤가요?
-- 어떤 도움이 필요한가요?
-- 시도해본 방법이 있나요?`}
-                  onSubmitShortcut={submitQuestion}
+                  placeholder={contentPlaceholder}
                   helperText={EDITOR_USAGE_GUIDE}
                 />
                 <div className={`question-char-counter ${content.length > 9000 ? 'warning' : ''}`}>
@@ -403,13 +456,6 @@ export default function NewQuestionPage() {
         </div>
       </div>
 
-      {/* Notification Setup Modal */}
-      <NotificationSetupModal
-        isOpen={showNotificationModal}
-        onClose={handleNotificationClose}
-        onComplete={handleNotificationComplete}
-        userEmail={userEmail}
-      />
     </PageLayout>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
 import {
@@ -22,7 +22,9 @@ export default function BookmarkButton({ targetId, type, title, content, compact
   const { isLoggedIn } = useAuth()
   const [bookmarked, setBookmarked] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [bookmarkRecord, setBookmarkRecord] = useState<Bookmark | null>(null)
+  const [, setBookmarkRecord] = useState<Bookmark | null>(null)
+  const contentPreview = useMemo(() => content.trim().slice(0, 200), [content])
+  const sanitizedTitle = useMemo(() => title.trim().slice(0, 200), [title])
 
   useEffect(() => {
     let ignore = false
@@ -55,26 +57,17 @@ export default function BookmarkButton({ targetId, type, title, content, compact
       const result = await toggleBookmark({
         type,
         targetId,
-        title,
-        content: content.substring(0, 200) // Store preview only
+        title: sanitizedTitle,
+        content: contentPreview
       })
 
-      if (result.success) {
-        setBookmarked(result.isBookmarked)
-        setBookmarkRecord(result.bookmark ?? null)
-
-        // 시각적 피드백: 토스트 알림
-        if (result.isBookmarked) {
-          alert('✅ 북마크에 저장되었습니다')
-        } else {
-          alert('🗑️ 북마크에서 제거되었습니다')
-        }
-      } else if (result.isBookmarked) {
-        setBookmarked(true)
-        setBookmarkRecord(result.bookmark ?? null)
-      } else {
+      if (!result.success && !result.bookmark) {
         alert('북마크 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
+        return
       }
+
+      setBookmarked(result.isBookmarked)
+      setBookmarkRecord(result.bookmark ?? null)
     } catch (error) {
       console.error('Bookmark toggle failed:', error)
       alert('북마크 처리 중 오류가 발생했습니다')
@@ -83,48 +76,51 @@ export default function BookmarkButton({ targetId, type, title, content, compact
     }
   }
 
+  const stateLabel = isProcessing ? '처리 중...' : bookmarked ? '저장됨' : '북마크'
+
   if (compact) {
+    const buttonClassName = [
+      'action-btn',
+      'action-btn--bookmark',
+      'action-btn--compact',
+      bookmarked ? 'is-active' : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+
     return (
       <button
-        className={`action-btn ${bookmarked ? 'active' : ''}`}
+        type="button"
+        className={buttonClassName}
         onClick={handleToggle}
         disabled={isProcessing}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.25rem',
-          padding: '0.25rem 0.5rem',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          background: bookmarked ? '#fef3c7' : 'white',
-          color: bookmarked ? '#d97706' : '#6b7280',
-          cursor: isProcessing ? 'not-allowed' : 'pointer',
-          fontSize: '0.875rem',
-          fontWeight: bookmarked ? 600 : 400,
-          transition: 'all 0.2s',
-          opacity: isProcessing ? 0.6 : 1
-        }}
+        aria-pressed={bookmarked}
+        data-loading={isProcessing ? 'true' : undefined}
       >
         <span>{bookmarked ? '⭐' : '🔖'}</span>
-        <span>{bookmarked ? '저장됨' : '북마크'}</span>
+        <span>{stateLabel}</span>
       </button>
     )
   }
 
+  const defaultButtonClassName = [
+    'bookmark-btn',
+    bookmarked ? 'bookmark-btn--active' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <button
-      className={`btn ${bookmarked ? 'btn-primary' : 'btn-secondary'}`}
+      type="button"
+      className={defaultButtonClassName}
       onClick={handleToggle}
       disabled={isProcessing}
-      style={{
-        background: bookmarked ? '#fef3c7' : 'white',
-        color: bookmarked ? '#d97706' : '#6b7280',
-        borderColor: bookmarked ? '#f59e0b' : '#e5e7eb',
-        fontWeight: bookmarked ? 600 : 400,
-        transition: 'all 0.2s'
-      }}
+      aria-pressed={bookmarked}
+      data-loading={isProcessing ? 'true' : undefined}
     >
-      {isProcessing ? '처리 중...' : bookmarked ? '⭐ 저장됨' : '🔖 북마크'}
+      <span aria-hidden>{bookmarked ? '⭐' : '🔖'}</span>
+      <span>{stateLabel}</span>
     </button>
   )
 }

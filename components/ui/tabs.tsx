@@ -49,8 +49,8 @@ const TabsTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       'px-4 py-3 text-sm font-medium transition-normal whitespace-nowrap',
-      'border-b-2 hover:text-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue',
-      'data-[state=active]:border-primary-blue data-[state=active]:text-primary-blue data-[state=active]:bg-secondary/50',
+      'border-b-2 hover:text-vk-primary focus:outline-none focus:ring-2 focus:ring-vk-primary',
+      'data-[state=active]:border-vk-primary data-[state=active]:text-vk-primary data-[state=active]:bg-secondary/50',
       'data-[state=inactive]:border-transparent data-[state=inactive]:text-secondary data-[state=inactive]:hover:border-tertiary',
       'disabled:pointer-events-none disabled:opacity-50',
       className
@@ -69,7 +69,7 @@ const TabsContent = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'pt-4 focus:outline-none focus:ring-2 focus:ring-primary-blue',
+      'pt-4 focus:outline-none focus:ring-2 focus:ring-vk-primary',
       className
     )}
     role="tabpanel"

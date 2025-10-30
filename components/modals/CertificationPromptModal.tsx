@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import BaseModal from './BaseModal'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 interface CertificationPromptModalProps {
   isOpen: boolean
@@ -18,30 +19,62 @@ export default function CertificationPromptModal({
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'domestic' | 'international'>('domestic')
   const STORAGE_KEY = 'certification_prompt_data'
+  const { user } = useAuth()
+  const storageKey = user?.id ?? 'anonymous'
+
+  const coercePromptStore = () => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return {}
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        if (storageKey in parsed) {
+          return parsed
+        }
+        if (isPromptEntry(parsed)) {
+          return { [storageKey]: parsed }
+        }
+        return parsed
+      }
+    } catch (error) {
+      console.warn('[CertificationPromptModal] failed to read prompt store', error)
+    }
+    return {}
+  }
 
   const upsertPromptState = (patch: Record<string, unknown>) => {
     if (typeof window === 'undefined') return
     try {
-      const existingRaw = localStorage.getItem(STORAGE_KEY)
-      const existing = existingRaw ? JSON.parse(existingRaw) : {}
-      const next = {
-        ...existing,
+      const store = coercePromptStore()
+      const existingEntry =
+        store[storageKey] && typeof store[storageKey] === 'object' ? store[storageKey] : {}
+
+      const nextEntry = {
+        ...existingEntry,
         ...patch,
         last_shown: new Date().toISOString(),
         trigger_type: trigger,
         completed: true,
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      const nextStore = {
+        ...store,
+        [storageKey]: nextEntry,
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextStore))
     } catch (error) {
       console.warn('[CertificationPromptModal] failed to persist prompt state', error)
-      const fallback = {
-        ...patch,
-        last_shown: new Date().toISOString(),
-        trigger_type: trigger,
-        completed: true,
-      }
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(fallback))
+        const fallbackEntry = {
+          ...patch,
+          last_shown: new Date().toISOString(),
+          trigger_type: trigger,
+          completed: true,
+        }
+        const fallbackStore = {
+          [storageKey]: fallbackEntry,
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fallbackStore))
       } catch (storageError) {
         console.warn('[CertificationPromptModal] unable to write fallback prompt state', storageError)
       }
@@ -387,5 +420,17 @@ export default function CertificationPromptModal({
         </button>
       </div>
     </BaseModal>
+  )
+}
+
+function isPromptEntry(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const candidate = value as Record<string, unknown>
+  return (
+    'completed' in candidate ||
+    'status' in candidate ||
+    'dismissed' in candidate ||
+    'last_shown' in candidate ||
+    'trigger_type' in candidate
   )
 }

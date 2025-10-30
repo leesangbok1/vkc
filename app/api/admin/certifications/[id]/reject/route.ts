@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import type { Database } from '@/lib/supabase'
+import { getServerDbClient } from '@/lib/server/supabase-clients'
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
+
+type UsersTable = Database['public']['Tables']['users']
+type CertificationRequestsTable = Database['public']['Tables']['certification_requests']
+type AdminCheckRow = Pick<UsersTable['Row'], 'role' | 'admin_yn'>
+type CertificationRequestRow = CertificationRequestsTable['Row']
+type CertificationRequestUpdate = CertificationRequestsTable['Update']
 
 export async function POST(
   request: NextRequest,
@@ -22,7 +29,7 @@ export async function POST(
     }
 
     // Get session to verify admin access
-    const supabase = await createSupabaseServerClient()
+    const supabase = await getServerDbClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -39,9 +46,11 @@ export async function POST(
       .eq('id', session.user.id)
       .maybeSingle()
 
+    const adminProfile = userData as AdminCheckRow | null
+
     const isAdmin =
-      userData?.admin_yn === 'Y' ||
-      userData?.role === 'admin'
+      adminProfile?.admin_yn === 'Y' ||
+      adminProfile?.role === 'admin'
 
     if (userError || !isAdmin) {
       return NextResponse.json(
@@ -51,19 +60,23 @@ export async function POST(
     }
 
     // Update certification request status to rejected
+    const certUpdate: CertificationRequestUpdate = {
+      status: 'rejected',
+      rejection_reason: reason,
+      reviewed_by: session.user.id,
+      reviewed_at: new Date().toISOString()
+    }
+
     const { data: certRequest, error: updateError } = await supabase
       .from('certification_requests')
-      .update({
-        status: 'rejected',
-        rejection_reason: reason,
-        reviewed_by: session.user.id,
-        reviewed_at: new Date().toISOString()
-      })
+      .update<CertificationRequestUpdate>(certUpdate)
       .eq('id', certificationId)
       .select()
-      .single()
+      .maybeSingle()
 
-    if (updateError || !certRequest) {
+    const certRequestRow = certRequest as CertificationRequestRow | null
+
+    if (updateError || !certRequestRow) {
       console.error('Failed to reject certification:', updateError)
       return NextResponse.json(
         { error: 'Failed to reject certification' },
@@ -77,7 +90,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: 'Certification rejected successfully',
-      certification: certRequest
+      certification: certRequestRow
     })
 
   } catch (error) {

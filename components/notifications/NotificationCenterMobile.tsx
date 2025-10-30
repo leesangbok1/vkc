@@ -390,7 +390,10 @@ export default function NotificationCenterMobile({ className }: NotificationCent
                   className="w-full text-center text-sm text-gray-600 hover:text-gray-900 h-10 md:h-8"
                   onClick={() => {
                     setIsOpen(false)
-                    window.location.href = '/settings/notifications'
+                    const returnTo = typeof window !== 'undefined'
+                      ? `${window.location.pathname}${window.location.search}`
+                      : '/'
+                    window.location.href = `/settings/notifications?returnTo=${encodeURIComponent(returnTo)}`
                   }}
                 >
                   <Settings className="h-4 w-4 mr-1" />
