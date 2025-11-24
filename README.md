@@ -47,6 +47,18 @@ npm run test         # 테스트 실행
 npm run lint         # 코드 검사
 ```
 
+### HTML 슬라이드(index.html) 보기
+- **파일 위치**: 저장소 루트 `./index.html` (VS Code 탐색기에서도 최상단에 보입니다.)
+- **브라우저로 직접 보기**: `index.html`을 더블 클릭하거나 VS Code 탐색기에서 열기 → 기본 브라우저로 바로 표시.
+- **VS Code Live Server 사용**: Live Server 확장 설치 후 `index.html`에서 **"Open with Live Server"** 선택 → 자동으로 새 탭에서 열립니다.
+- **터미널 로컬 서버**: 아래 명령 실행 후 `http://localhost:4173/index.html` 접속.
+
+- **GitHub 웹에서 보기/다운로드**: GitHub 저장소 페이지 접속 → 파일 목록에서 **`index.html`** 클릭 → **"Raw"** 버튼을 눌러 브라우저에서 바로 확인하거나 `Ctrl/Cmd+S`로 저장.
+
+```bash
+python -m http.server 4173
+```
+
 ---
 
 ## 🏗️ 기술 스택
