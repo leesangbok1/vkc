@@ -53,6 +53,8 @@ npm run lint         # 코드 검사
 - **VS Code Live Server 사용**: Live Server 확장 설치 후 `index.html`에서 **"Open with Live Server"** 선택 → 자동으로 새 탭에서 열립니다.
 - **터미널 로컬 서버**: 아래 명령 실행 후 `http://localhost:4173/index.html` 접속.
 
+- **GitHub 웹에서 보기/다운로드**: GitHub 저장소 페이지 접속 → 파일 목록에서 **`index.html`** 클릭 → **"Raw"** 버튼을 눌러 브라우저에서 바로 확인하거나 `Ctrl/Cmd+S`로 저장.
+
 ```bash
 python -m http.server 4173
 ```
